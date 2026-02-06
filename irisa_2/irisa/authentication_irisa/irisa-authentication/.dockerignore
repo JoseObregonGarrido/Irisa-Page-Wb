@@ -1,0 +1,17 @@
+# Git
+.git
+.gitignore
+
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+RELEASE-NOTES.txt
+
+# IDE
+.idea/
+*.iml
+
+# Logs
+*.log

@@ -1,0 +1,470 @@
+import React, { useState, useRef } from 'react';
+import { logout } from '../services/authService';
+import { useNavigate } from 'react-router-dom';
+import TransmitterTable, { type Measurement } from '../components/TransmitterTable';
+import PressureSwitchTable, { type PressureSwitchTest } from '../components/PressureSwitchTable';
+import ThermostatTable, { type ThermostatTest } from '../components/ThermostatTable';
+import { generatePDFReport } from '../services/pdfService';
+import TransmitterChart from '../components/TransmitterChart';
+import PressureSwitchChart from '../components/PressureSwitchChart';
+import ThermostatChart  from '../components/ThermostatChart';
+const HomePage: React.FC = () => {
+    const navigate = useNavigate();
+    const [instrumentistName, setInstrumentistName] = useState('');
+    const [instrumentistCode, setInstrumentistCode] = useState('');
+    const [deviceType, setDeviceType] = useState('');
+    const [workOrder, setWorkOrder] = useState('');
+    const [instrumentArea, setInstrumentArea] = useState('');
+    const [reviewDate, setReviewDate] = useState('');
+    const [deviceName,setDeviceName] = useState('');
+    const [deviceBrand, setDeviceBrand] = useState('');
+    const [deviceModel, setDeviceModel] = useState('');
+    const [deviceSerial, setDeviceSerial] = useState('');
+    const [deviceRange, setDeviceRange]= useState('');
+    const [unity, setUnity] = useState('');
+    const [deviceCode, setDeviceCode] = useState('');
+    const [observations, setObservations] = useState('');
+    const [transmitterMeasurements, setTransmitterMeasurements] = useState<Measurement[]>([]);
+    const [pressureSwitchTests, setPressureSwitchTests] = useState<PressureSwitchTest[]>([]);
+    const [thermostatTests, setThermostatTests] = useState<ThermostatTest[]>([]);
+    const [showChart, setShowChart] = useState(false);
+    const chartRef = useRef<HTMLDivElement>(null);
+    const transmitterChartRef = useRef(null);
+    const pressureSwitchChartRef = useRef(null);
+    const thermostatChartRef = useRef(null);
+
+ 
+
+    const handleSaveReport = () => {
+        // Funcionalidad pendiente
+        console.log('Guardando reporte...');
+        // Aquí irá la lógica para guardar el reporte
+    };
+
+    const handleGeneratePdf = async () => {
+    const reportData = {
+        instrumentistName,
+        instrumentistCode,
+        deviceType,
+        workOrder,
+        instrumentArea,
+        reviewDate,
+        deviceName,
+        deviceBrand,
+        deviceModel,
+        deviceSerial,
+        deviceRange,
+        unity,
+        deviceCode,
+        observations,
+        transmitterMeasurements,
+        pressureSwitchTests,
+        thermostatTests,
+    };
+
+    try {
+        await generatePDFReport(reportData, chartRef.current);
+    } catch (error) {
+        console.error("Error al generar PDF:", error);
+    }
+    };
+
+    const handleClearForm = () => {
+    const confirmed = window.confirm('¿Está seguro de que desea limpiar todos los campos? Esta acción no se puede deshacer.');
+    
+    if (confirmed) {
+        // Limpiar información del instrumentista y trabajo
+        setInstrumentistName('');
+        setInstrumentistCode('');
+        setDeviceType('');
+        setWorkOrder('');
+        setInstrumentArea('');
+        setReviewDate('');
+        
+        // Limpiar información del dispositivo
+        setDeviceName('');
+        setDeviceBrand('');
+        setDeviceModel('');
+        setDeviceSerial('');
+        setDeviceRange('');
+        setUnity('');
+        setDeviceCode('');
+        setObservations('');
+        
+        // Limpiar arrays de datos
+        setTransmitterMeasurements([]);
+        setPressureSwitchTests([]);
+        setThermostatTests([]);
+        
+        // Ocultar gráfico
+        setShowChart(false);
+        
+        console.log('Formulario limpiado correctamente');
+    }
+};
+
+
+    
+
+    const handleLogout = () => {
+        logout();
+        navigate('/login');
+    };
+
+    const getDeviceTypeLabel = (type: string) => {
+        const labels: { [key: string]: string } = {
+            'transmitter': 'Transmisor',
+            'pressure_switch': 'Presostato',
+            'thermostat': 'Termostato'
+        };
+        return labels[type] || type;
+    };
+
+
+
+    
+
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+            {/* Header */}
+            <header className="bg-white shadow-lg border-b-4 border-teal-500">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex justify-between items-center py-6">
+                        <div className="flex items-center space-x-4">
+                            <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-r from-teal-600 to-emerald-600 rounded-lg shadow-md">
+                                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h1 className="text-2xl font-bold text-gray-800">Ingenio Risaralda</h1>
+                                <p className="text-sm text-gray-600">Sistema de Gestión de Instrumentos</p>
+                            </div>
+                        </div>
+                        <button 
+                            onClick={handleLogout} 
+                            className="flex items-center px-4 py-2 text-white bg-gradient-to-r from-red-500 to-red-600 rounded-lg hover:from-red-600 hover:to-red-700 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105"
+                        >
+                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                            </svg>
+                            Cerrar Sesión
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            {/* Main Content */}
+            <main className="max-w-7xl mx-auto p-6 lg:p-8">
+                <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
+                    {/* Form Header */}
+                    <div className="bg-gradient-to-r from-teal-600 to-emerald-600 px-8 py-6">
+                        <h2 className="text-2xl font-bold text-white flex items-center">
+                            <svg className="w-6 h-6 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            Crear Nuevo Reporte
+                        </h2>
+                        <p className="text-teal-100 mt-2">Complete la información del instrumento y las mediciones correspondientes</p>
+                    </div>
+
+                    {/* Form Content */}
+                    <div className="p-8">
+                        <form className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                            <div className="space-y-2">
+                                <label htmlFor="instrumentistName" className="block text-sm font-semibold text-gray-700">
+                                    Nombre del Instrumentista
+                                </label>
+                                <input
+                                    id="instrumentistName"
+                                    type="text"
+                                    value={instrumentistName}
+                                    onChange={(e) => setInstrumentistName(e.target.value)}
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors"
+                                    placeholder="Ingrese el nombre completo"
+                                    required
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label htmlFor="instrumentistCode" className="block text-sm font-semibold text-gray-700">
+                                    Código de Instrumentista
+                                </label>
+                                <input
+                                    id="instrumentistCode"
+                                    type="text"
+                                    value={instrumentistCode}
+                                    onChange={(e) => setInstrumentistCode(e.target.value)}
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors"
+                                    placeholder="Ej: 8298"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label htmlFor="deviceType" className="block text-sm font-semibold text-gray-700">
+                                    Tipo de Dispositivo
+                                </label>
+                                <select
+                                    id="deviceType"
+                                    value={deviceType}
+                                    onChange={(e) => setDeviceType(e.target.value)}
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors"
+                                >
+                                    <option value="">Seleccione un dispositivo</option>
+                                    <option value="transmitter">Transmisor</option>
+                                    <option value="pressure_switch">Presostato</option>
+                                    <option value="thermostat">Termostato</option>
+                                </select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label htmlFor="workOrder" className="block text-sm font-semibold text-gray-700">
+                                    Orden de Trabajo
+                                </label>
+                                <input 
+                                    type="text" 
+                                    id="workOrder" 
+                                    value={workOrder} 
+                                    onChange={(e) => setWorkOrder(e.target.value)} 
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors"
+                                    placeholder="Ej: OT-2024-001"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label htmlFor="instrumentArea" className="block text-sm font-semibold text-gray-700">
+                                    Área del Instrumento
+                                </label>
+                                <input 
+                                    type="text" 
+                                    id="instrumentArea" 
+                                    value={instrumentArea} 
+                                    onChange={(e) => setInstrumentArea(e.target.value)} 
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors"
+                                    placeholder="Ej: Refinería, Destilería"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label htmlFor="reviewDate" className="block text-sm font-semibold text-gray-700">
+                                    Fecha de Revisión
+                                </label>
+                                <input 
+                                    type="datetime-local" 
+                                    id="reviewDate" 
+                                    value={reviewDate} 
+                                    onChange={(e) => setReviewDate(e.target.value)} 
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label htmlFor="deviceName" className="block text-sm font-semibold text-gray-700">
+                                    Nombre del equipo
+                                </label>
+                                <input
+                                    id="deviceName"
+                                    type="text"
+                                    value={deviceName}
+                                    onChange={(e) => setDeviceName(e.target.value)}
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors"
+                                    placeholder="Ej : Medidor nivel..."
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label htmlFor="deviceBrand" className="block text-sm font-semibold text-gray-700">
+                                        Marca del Equipo 
+                                </label>
+                                <input
+                                    id="deviceBrand"
+                                    type="text"
+                                    value={deviceBrand}
+                                    onChange={(e) => setDeviceBrand(e.target.value)}
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors"
+                                    placeholder="Ej: Foxboro"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label htmlFor="deviceModel" className="block text-sm font-semibold text-gray-700">
+                                    Modelo del Equipo
+                                </label>
+                                <input
+                                    id="deviceModel"
+                                    type="text"
+                                    value={deviceModel}
+                                    onChange={(e) => setDeviceModel(e.target.value)}
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors"
+                                    placeholder="Ej: IMT25"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label htmlFor="deviceSerial" className="block text-sm font-semibold text-gray-700">
+                                    Serial del Instrumento
+                                </label>
+                                <input
+                                    id="deviceSerial"
+                                    type="text"
+                                    value={deviceSerial}
+                                    onChange={(e) => setDeviceSerial(e.target.value)}
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors"
+                                    placeholder="Ej:   B11748"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label htmlFor="deviceRange" className="block text-sm font-semibold text-gray-700">
+                                    Rango del instrumento
+                                </label>
+                                <input
+                                    id="deviceRange"
+                                    type="text"
+                                    value={deviceRange}
+                                    onChange={(e) => setDeviceRange(e.target.value)}
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors"
+                                    placeholder="LRV: 10.5% URV:99.5%"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label htmlFor="unity" className="block text-sm font-semibold text-gray-700">
+                                    Unidades
+                                </label>
+                                <input
+                                    id="unity"
+                                    type="text"
+                                    value={unity}
+                                    onChange={(e) => setUnity(e.target.value)}
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors"
+                                    placeholder="Ej: Milimetros de agua, PSI "
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label htmlFor="deviceCode" className="block text-sm font-semibold text-gray-700">
+                                    Codigo del Equipo
+                                </label>
+                                <input
+                                    id="deviceCode"
+                                    type="text"
+                                    value={deviceCode}
+                                    onChange={(e) => setDeviceCode(e.target.value)}
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors"
+                                    placeholder="Ej: 3344542"
+                                />
+                            </div>
+
+                            <div className="space-y-2 md:col-span-2 lg:col-span-3">
+                                <label htmlFor="observations" className="block text-sm font-semibold text-gray-700">
+                                    Observaciones
+                                </label>
+                                <textarea 
+                                    id="observations" 
+                                    value={observations} 
+                                    onChange={(e) => setObservations(e.target.value)} 
+                                    rows={4}
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors resize-vertical"
+                                    placeholder="Ingrese observaciones adicionales sobre la calibración o el estado del instrumento..."
+                                />
+                            </div>
+                        </form>
+
+                        {/* Device Type Indicator */}
+                        {deviceType && (
+                            <div className="mt-8 p-4 bg-teal-50 border border-teal-200 rounded-lg">
+                                <div className="flex items-center">
+                                    <svg className="w-5 h-5 text-teal-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <span className="text-sm font-medium text-teal-800">
+                                        Configurando mediciones para: <strong>{getDeviceTypeLabel(deviceType)}</strong>
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Dynamic Tables */}
+                        <div className="mt-8">
+                            {deviceType === 'transmitter' && <TransmitterTable measurements={transmitterMeasurements} onMeasurementsChange={setTransmitterMeasurements} />}
+                            {deviceType === 'pressure_switch' && <PressureSwitchTable tests={pressureSwitchTests} onTestsChange={setPressureSwitchTests} />}
+                            {deviceType === 'thermostat' && <ThermostatTable tests={thermostatTests} onTestsChange={setThermostatTests} />}
+                        </div>
+
+                        {/* Action Buttons */}
+                        
+                            <div className="mt-8 flex flex-wrap gap-4 justify-center lg:justify-start">
+                                {/* <button 
+                                    onClick={handleSaveReport}
+                                    className="flex items-center px-6 py-3 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
+                                >
+                                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                                    </svg>
+                                    Guardar Reporte
+                                </button> */}
+                                <button 
+                                    onClick={() => setShowChart(!showChart)} 
+                                    className="flex items-center px-6 py-3 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
+                                >
+                                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                    </svg>
+                                    {showChart ? 'Ocultar Gráfico' : 'Generar Gráfico'}
+                                </button>
+                                <button 
+                                    onClick={handleGeneratePdf}
+                                    className="flex items-center px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
+                                >
+                                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    Generar PDF
+                                </button>
+                                <button 
+                                    onClick={handleClearForm}
+                                    className="flex items-center px-6 py-3 bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white font-semibold rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200"
+                                >
+                                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1-1H8a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                    Limpiar Formulario
+                                </button>
+
+                                
+                            </div>
+                            {/* Mostrar gráfico solo si hay datos y showChart es true */}
+                                {deviceType === 'transmitter' && showChart && (
+                                <div ref={chartRef} className="mt-8 bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+                                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Curva de Error del Transmisor</h3>
+                                    <TransmitterChart data={transmitterMeasurements} />
+                                    {/* <TransmitterChart ref={transmitterChartRef} data={transmitterMeasurements} /> */}
+                                </div>
+                                )}
+
+                                {deviceType === 'pressure_switch' && showChart &&(
+                                     <div ref={chartRef} className="mt-8 bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+                                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Grafico de Presostato</h3>
+                                    <PressureSwitchChart data={pressureSwitchTests} />
+                                    {/* <PressureSwitchChart ref={pressureSwitchChartRef} data={pressureSwitchTests} /> */}
+
+                                    </div>
+                                )}
+
+                                {deviceType === 'thermostat' && showChart &&(
+                                    <div ref={chartRef} className="mt-8 bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+                                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Grafico de Presostato</h3>
+                                    <ThermostatChart data={thermostatTests} />
+                                    {/* <ThermostatChart ref={thermostatChartRef} data={thermostatTests} /> */}
+                                    </div>
+                                )}
+
+                    </div>
+                </div>
+            </main>
+        </div>
+    );
+};
+
+export default HomePage;
