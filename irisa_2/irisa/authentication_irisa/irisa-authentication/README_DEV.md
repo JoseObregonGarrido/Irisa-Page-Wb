@@ -80,3 +80,10 @@ mvn spring-boot:run -Dspring-boot.run.arguments="--server.port=8081"
 3. Backend genera JWT y lo retorna
 4. Frontend almacena JWT en `localStorage`
 5. Frontend incluye JWT en header `Authorization: Bearer <token>` para peticiones protegidas
+
+## Notas de configuración
+
+- Se ha creado `application-dev.properties` con configuración para usar H2 en memoria.
+- Las credenciales de prueba son `admin`/`admin123`.
+- CORS está habilitado para el frontend en `localhost:5173`.
+- Para más detalles, consulta el archivo `README_DEV.md`.
