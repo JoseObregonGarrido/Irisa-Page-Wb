@@ -6,25 +6,15 @@ const LoginPage: React.FC = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
     const navigate = useNavigate();
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
-        setError('');
-        setIsLoading(true);
-
         try {
-            const response = await login(username, password);
-            console.log('Login exitoso:', response);
-            
-            // Navegar después de un login exitoso
-            navigate('/', { replace: true });
+            await login(username, password);
+            navigate('/');
         } catch (err) {
-            console.error('Error de login:', err);
             setError('Usuario o contraseña incorrectos');
-        } finally {
-            setIsLoading(false);
         }
     };
 
@@ -60,7 +50,6 @@ const LoginPage: React.FC = () => {
                                     className="w-full px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors"
                                     placeholder="Ingrese su usuario"
                                     required
-                                    disabled={isLoading}
                                 />
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                     <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -83,7 +72,6 @@ const LoginPage: React.FC = () => {
                                     className="w-full px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors"
                                     placeholder="Ingrese su contraseña"
                                     required
-                                    disabled={isLoading}
                                 />
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                     <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -101,10 +89,9 @@ const LoginPage: React.FC = () => {
 
                         <button 
                             type="submit" 
-                            disabled={isLoading}
-                            className="w-full py-3 px-4 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                            className="w-full py-3 px-4 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
                         >
-                            {isLoading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
+                            Iniciar Sesión
                         </button>
                     </form>
 
