@@ -1,27 +1,37 @@
-import axios from 'axios';
-
-//Configurando link de API
-const API_URL = 'https://authentication-irisa-1.onrender.com/auth';
+// src/services/authService.ts
+const API_URL = 'http://localhost:8080/api/auth'; // Ajusta el puerto según tu backend
 
 export const login = async (username: string, password: string) => {
-    try {
-        const response = await axios.post(`${API_URL}/login`, { username, password });
-        if (response.data.token) {
-            localStorage.setItem('user', JSON.stringify(response.data));
-        }
-        return response.data;
-    } catch (error) {
-        console.error('Login failed:', error);
-        throw error;
+    const response = await fetch(`${API_URL}/login`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username, password }),
+    });
+
+    if (!response.ok) {
+        throw new Error('Login failed');
     }
+
+    const data = await response.json();
+    
+    // Guardar el token en localStorage
+    if (data.token) {
+        localStorage.setItem('authToken', data.token);
+    }
+    
+    return data;
 };
 
 export const logout = () => {
-    localStorage.removeItem('user');
+    localStorage.removeItem('authToken');
 };
 
-export const getCurrentUser = () => {
-    const userStr = localStorage.getItem('user');
-    if (userStr) return JSON.parse(userStr);
-    return null;
+export const getToken = () => {
+    return localStorage.getItem('authToken');
+};
+
+export const isAuthenticated = () => {
+    return !!getToken();
 };
