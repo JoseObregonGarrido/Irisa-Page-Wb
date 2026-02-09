@@ -38,7 +38,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({ measurements, onMea
     
     const errorMa = idealMa - maTransmitter;    
 
-    const errorPercentage = (Math.abs(errorMa) / 16) * 100; 
+    const errorPercentage = (errorMa / 16) * 100; 
     
     return {
         ...measurement,
@@ -181,14 +181,16 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({ measurements, onMea
                                     const isErrorColumn = key.toLowerCase().includes('error');
                                     const fieldLabels: { [key: string]: string } = {
                                         // 'percentage': '%',
-                                        'idealUE': 'UE',
-                                        'patternUE': 'UE',
-                                        'transmitterUE': 'UE',
-                                        'idealMA': 'mA',
-                                        'transmitterMA': 'mA',
-                                        'errorUE': 'UE',
-                                        'errorMA': 'mA',
+                                        'percentage': '%',
+                                        'idealUe': 'UE',
+                                        'patronUe': 'UE',
+                                        'ueTransmitter': 'UE',
+                                        'idealMa': 'mA',
+                                        'maTransmitter': 'mA',
+                                        'errorUe': 'UE',
+                                        'errorMa': 'mA',
                                         'errorPercentage': '%'
+                                       
                                     };
                                     
                                     return (
