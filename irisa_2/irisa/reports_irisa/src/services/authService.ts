@@ -1,4 +1,3 @@
-// src/services/authService.ts
 const API_URL = 'http://localhost:8080/api/auth';
 
 export const login = async (username: string, password: string) => {
@@ -18,6 +17,8 @@ export const login = async (username: string, password: string) => {
     
     if (data.token) {
         localStorage.setItem('authToken', data.token);
+        // Guardamos también el usuario
+        localStorage.setItem('currentUser', username);
     }
     
     return data;
@@ -25,6 +26,7 @@ export const login = async (username: string, password: string) => {
 
 export const logout = () => {
     localStorage.removeItem('authToken');
+    localStorage.removeItem('currentUser');
 };
 
 export const getToken = () => {
@@ -33,4 +35,9 @@ export const getToken = () => {
 
 export const isAuthenticated = () => {
     return !!getToken();
+};
+
+// ¡Esta es la función que faltaba!
+export const getCurrentUser = () => {
+    return localStorage.getItem('currentUser');
 };

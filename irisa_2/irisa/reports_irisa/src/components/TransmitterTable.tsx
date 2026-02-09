@@ -20,7 +20,7 @@ interface TransmitterTableProps {
 
 const TransmitterTable: React.FC<TransmitterTableProps> = ({ measurements, onMeasurementsChange }) => {
     const handleAddRow = () => {
-        onMeasurementsChange([...measurements, { percentage: '', idealUe: '', patronUe: '', ueTransmitter: '', idealMa: '', maTransmitter: '', errorUe: '', errorMa: '', errorPercentage: '' }]);
+        onMeasurementsChange([...measurements, { percentage: "", idealUe: "", patronUe: "", ueTransmitter: "", idealMa:"", maTransmitter: "", errorUe: "", errorMa: "", errorPercentage: "" }]);
     };
 
     const handleDeleteRow = (indexToDelete: number) => {
@@ -29,29 +29,31 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({ measurements, onMea
     };  
 
    const calculateErrors = (measurement: Measurement) => {
-        const patronUe = parseFloat(measurement.patronUe) || 0;
-        const ueTransmitter = parseFloat(measurement.ueTransmitter) || 0;
-        const idealMa = parseFloat(measurement.idealMa) || 0;
-        const maTransmitter = parseFloat(measurement.maTransmitter) || 0;
-        
-        const errorUe = patronUe - ueTransmitter;//Esta bien
-        const errorMa = idealMa - maTransmitter;
-        const errorPercentage = (errorMa / 16) * 100; // Span de 16mA para transmisores 4-20mA
-        
-        return {
-            ...measurement,
-            errorUe: errorUe.toFixed(3),
-            errorMa: errorMa.toFixed(3),
-            errorPercentage: errorPercentage.toFixed(2)
-        };
+    const patronUe = parseFloat(measurement.patronUe) || 0;
+    const ueTransmitter = parseFloat(measurement.ueTransmitter) || 0;
+    const idealMa = parseFloat(measurement.idealMa) || 0;
+    const maTransmitter = parseFloat(measurement.maTransmitter) || 0;
+    
+    const errorUe = ueTransmitter - patronUe; 
+    
+    const errorMa = idealMa - maTransmitter;    
+
+    const errorPercentage = (Math.abs(errorMa) / 16) * 100; 
+    
+    return {
+        ...measurement,
+        errorUe: errorUe.toFixed(3),
+        errorMa: errorMa.toFixed(3),
+        errorPercentage: errorPercentage.toFixed(2)
     };
+};
 
     const handleChange = (index: number, field: keyof Measurement, value: string) => {
         const newMeasurements = [...measurements];
         newMeasurements[index] = { ...newMeasurements[index], [field]: value };
         
         // Calcular errores automáticamente si se modifican campos relevantes
-        const relevantFields: (keyof Measurement)[] = ['patronUe', 'ueTransmitter', 'idealMa', 'maTransmitter'];
+        const relevantFields: (keyof Measurement)[] = ["patronUe", "ueTransmitter", "idealMa", "maTransmitter"];
         if (relevantFields.includes(field)) {
             newMeasurements[index] = calculateErrors(newMeasurements[index]);
         }
@@ -178,7 +180,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({ measurements, onMea
                                 {Object.keys(measurement).map((key, keyIndex) => {
                                     const isErrorColumn = key.toLowerCase().includes('error');
                                     const fieldLabels: { [key: string]: string } = {
-                                        'percentage': '%',
+                                        // 'percentage': '%',
                                         'idealUE': 'UE',
                                         'patternUE': 'UE',
                                         'transmitterUE': 'UE',
