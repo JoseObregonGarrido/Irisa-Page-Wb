@@ -32,11 +32,12 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({ measurements, onMea
     const patronUe = parseFloat(measurement.patronUe) || 0;
     const ueTransmitter = parseFloat(measurement.ueTransmitter) || 0;
     const idealMa = parseFloat(measurement.idealMa) || 0;
+    const idealUe = parseFloat(measurement.idealUe) || 0;
     const maTransmitter = parseFloat(measurement.maTransmitter) || 0;
     
     const errorUe = ueTransmitter - patronUe; 
     
-    const errorMa = idealMa - maTransmitter;    
+    const errorMa = idealUe - idealMa;    
 
     const errorPercentage = (errorMa / 16) * 100; 
     
@@ -180,16 +181,15 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({ measurements, onMea
                                 {Object.keys(measurement).map((key, keyIndex) => {
                                     const isErrorColumn = key.toLowerCase().includes('error');
                                     const fieldLabels: { [key: string]: string } = {
-                                        // 'percentage': '%',
-                                        'percentage': '%',
-                                        'idealUe': 'UE',
-                                        'patronUe': 'UE',
-                                        'ueTransmitter': 'UE',
-                                        'idealMa': 'mA',
-                                        'maTransmitter': 'mA',
-                                        'errorUe': 'UE',
-                                        'errorMa': 'mA',
-                                        'errorPercentage': '%'
+                                        'percentage': 'UE',    
+                                        'idealUe':'mA',        
+                                        'patronUe': 'UE',       
+                                        'ueTransmitter':'UE',  
+                                        'idealMa': 'mA',       
+                                        'maTransmitter':'%',  
+                                        'errorUe': 'UE',        
+                                        'errorMa': 'mA',        
+                                        'errorPercentage': '%' 
                                        
                                     };
                                     

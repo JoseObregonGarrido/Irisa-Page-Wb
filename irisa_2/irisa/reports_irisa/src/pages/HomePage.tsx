@@ -324,7 +324,7 @@ const HomePage: React.FC = () => {
                                     value={deviceRange}
                                     onChange={(e) => setDeviceRange(e.target.value)}
                                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-colors"
-                                    placeholder="LRV: 10.5% URV:99.5%"
+                                    placeholder="LRV: 10.5 URV:99.5"
                                 />
                             </div>
 
