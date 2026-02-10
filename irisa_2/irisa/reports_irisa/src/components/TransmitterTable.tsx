@@ -35,7 +35,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({ measurements, onMea
         const maTransmitter = parseFloat(measurement.maTransmitter) || 0;
         
         const errorUe = ueTransmitter - patronUe; 
-        const errorMa = idealUe - idealMa;    
+        const errorMa = idealMa - maTransmitter;    
         const errorPercentage = (errorMa / 16) * 100; 
         
         return {
@@ -178,9 +178,9 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({ measurements, onMea
                             {measurements.map((measurement, index) => (
                                 <tr key={index} className="hover:bg-gray-50 transition-colors duration-150">
                                     {/* 
-                                         Se elimino el mapeo dinámico con Object.keys() 
+                                         Se elimino el mapeo dinamico con Object.keys() 
                                         que causaba desorden en las columnas. Ahora cada columna está 
-                                        explícitamente definida con su campo correspondiente para garantizar 
+                                        explicitamente definida con su campo correspondiente para garantizar 
                                         el orden correcto: idealUe → idealMa → patronUe → ueTransmitter → 
                                         maTransmitter → percentage → errorUe → errorMa → errorPercentage
                                     */}
