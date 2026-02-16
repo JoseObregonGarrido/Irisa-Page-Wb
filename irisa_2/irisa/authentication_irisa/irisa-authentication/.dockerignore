@@ -9,9 +9,23 @@ pom.xml.releaseBackup
 pom.xml.versionsBackup
 RELEASE-NOTES.txt
 
-# IDE
+# IDEs (Añadimos VS Code y Eclipse)
 .idea/
 *.iml
+.vscode/
+.settings/
+.classpath
+.project
+.factorypath
 
-# Logs
+# Logs y Temporales
 *.log
+tmp/
+
+# Docker (No necesitamos el Dockerfile dentro de la imagen)
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Variables de entorno locales (¡IMPORTANTE por seguridad!)
+.env
