@@ -1,21 +1,20 @@
-# Etapa 1: Compilación con Maven y Java 21
-FROM maven:3.9.6-eclipse-temurin-21 AS build
-
+# Etapa 1: Build
+FROM maven:3.9.6-eclipse-temurin-21-alpine AS build
 WORKDIR /app
-COPY mvnw .
-COPY .mvn .mvn
 COPY pom.xml .
-RUN ./mvnw dependency:go-offline
+RUN mvn dependency:go-offline
 COPY src ./src
-RUN ./mvnw package -DskipTests
+RUN mvn package -DskipTests
 
-# Etapa 2: Ejecución con JRE 21
-FROM eclipse-temurin:21-jre-jammy
-
+# Etapa 2: Runtime (Aquí es donde bajamos el peso)
+FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
-RUN addgroup --system spring && adduser --system --ingroup spring springuser
+# Creamos un usuario sin privilegios por seguridad
+RUN addgroup -S spring && adduser -S springuser -G spring
 USER springuser
 
+# Copiamos solo el JAR de la etapa anterior
 COPY --from=build /app/target/irisa-authentication-*.jar app.jar
+
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]
