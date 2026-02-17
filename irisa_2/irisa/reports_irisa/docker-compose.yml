@@ -1,14 +1,23 @@
-frontend:
-    build: ./reports_irisa  
+services:
+  auth-service:    # <--- 2 espacios de sangría
+    build: ../authentication_irisa/irisa-authentication 
+    container_name: irisa_auth_backend
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_DATASOURCE_URL=jdbc:mysql://host.docker.internal:3306/ingenio_risaralda
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=root
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  frontend:       
     container_name: irisa_web_frontend
     ports:
       - "5173:5173"
     volumes:
-      - ./reports_irisa:/app
+      - .:/app
       - /app/node_modules
     environment:
       - VITE_API_URL=http://localhost:8080/api
-    networks:
-      - irisa-network
-    depends_on:
-      - auth-service
