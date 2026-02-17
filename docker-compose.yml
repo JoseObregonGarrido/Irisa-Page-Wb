@@ -1,0 +1,40 @@
+services:
+  # --- EL CEREBRO (BACKEND) ---
+  auth-service:
+    build: ./authentication_irisa
+    container_name: irisa_auth_backend
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - SPRING_DATASOURCE_URL=${DB_URL}
+      - SPRING_DATASOURCE_USERNAME=${DB_USER}
+      - SPRING_DATASOURCE_PASSWORD=${DB_PASS}
+      - JWT_SECRET_KEY=${JWT_SECRET}
+      - ADMIN_USER=${ADMIN_USER}
+      - ADMIN_PASS=${ADMIN_PASS}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - irisa-network
+
+  # --- LA CARA (FRONTEND) ---
+  frontend:
+    build: ./reports_irisa
+    container_name: irisa_web_frontend
+    ports:
+      - "${VITE_PORT}:${VITE_PORT}"
+    volumes:
+      - ./reports_irisa:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=${API_URL}
+    networks:
+      - irisa-network
+    depends_on:
+      - auth-service
+
+# Red interna para que se hablen entre ellos
+networks:
+  irisa-network:
+    driver: bridge
