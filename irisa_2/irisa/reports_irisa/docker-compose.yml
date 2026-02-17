@@ -1,6 +1,6 @@
 services:
-  auth-service:    # <--- 2 espacios de sangría
-    build: ../authentication_irisa/irisa-authentication 
+  auth-service:
+    build: ../authentication_irisa/irisa-authentication
     container_name: irisa_auth_backend
     ports:
       - "8080:8080"
@@ -12,7 +12,8 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
-  frontend:       
+  frontend:
+    build: .
     container_name: irisa_web_frontend
     ports:
       - "5173:5173"
