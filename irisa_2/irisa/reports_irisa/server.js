@@ -32,7 +32,10 @@ app.post('/api/auth/login', async (req, res) => {
     }
 });
 
-const PORT = 8080;
-app.listen(PORT, () => {
-    console.log(`  Servidor corriendo en http://localhost:${PORT}`);
+
+const PORT = process.env.PORT || 8080;
+
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Servidor activo en puerto ${PORT}`);
 });
+
