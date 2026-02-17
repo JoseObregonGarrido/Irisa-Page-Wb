@@ -1,7 +1,7 @@
 services:
   # --- EL CEREBRO (BACKEND) ---
   auth-service:
-    build: ./authentication_irisa
+    build: ./irisa_2/irisa/authentication_irisa
     container_name: irisa_auth_backend
     ports:
       - "8080:8080"
@@ -20,7 +20,7 @@ services:
 
   # --- LA CARA (FRONTEND) ---
   frontend:
-    build: ./reports_irisa
+    build: ./irisa_2/irisa/reports_irisa
     container_name: irisa_web_frontend
     ports:
       - "${VITE_PORT}:${VITE_PORT}"
