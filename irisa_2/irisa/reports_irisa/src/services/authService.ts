@@ -1,6 +1,8 @@
-const API_URL = 'https://irisa-page-web-backend.onrender.com/api/auth/login';
+// Quitamos el '/login' del final de la URL base
+const API_URL = 'https://irisa-page-web-backend.onrender.com/api/auth';
 
 export const login = async (username: string, password: string) => {
+    // Ahora aquí sí queda bien: .../api/auth/login
     const response = await fetch(`${API_URL}/login`, {
         method: 'POST',
         headers: {
@@ -10,14 +12,15 @@ export const login = async (username: string, password: string) => {
     });
 
     if (!response.ok) {
-        throw new Error('Login failed');
+        // Si el servidor responde 401 o 500, lanzamos error
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Login failed');
     }
 
     const data = await response.json();
     
     if (data.token) {
         localStorage.setItem('authToken', data.token);
-        // Guardamos también el usuario
         localStorage.setItem('currentUser', username);
     }
     
@@ -37,7 +40,6 @@ export const isAuthenticated = () => {
     return !!getToken();
 };
 
-// ¡Esta es la función que faltaba!
 export const getCurrentUser = () => {
     return localStorage.getItem('currentUser');
 };
