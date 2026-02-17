@@ -1,0 +1,14 @@
+frontend:
+    build: ./reports_irisa  
+    container_name: irisa_web_frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./reports_irisa:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost:8080/api
+    networks:
+      - irisa-network
+    depends_on:
+      - auth-service
