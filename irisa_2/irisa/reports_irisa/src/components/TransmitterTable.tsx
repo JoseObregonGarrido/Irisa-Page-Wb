@@ -17,6 +17,32 @@ interface TransmitterTableProps {
     onMeasurementsChange: (measurements: Measurement[]) => void;
 }
 
+// 1. COMPONENTE FUERA PARA EVITAR PERDER EL FOCO
+const InputField = ({ label, value, onChange, unit, isError = false, readOnly = false }: any) => (
+    <div className="flex flex-col w-full">
+        <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1 lg:hidden">
+            {label}
+        </label>
+        <div className="relative w-full">
+            <input
+                type="text"
+                value={value}
+                onChange={onChange}
+                readOnly={readOnly}
+                className={`w-full px-2 py-2 pr-8 text-sm border rounded-lg focus:outline-none focus:ring-2 
+                    ${isError 
+                        ? 'border-red-200 bg-red-50 focus:ring-red-500' 
+                        : 'border-gray-300 bg-white focus:ring-teal-500'
+                    } ${readOnly ? 'cursor-not-allowed' : ''}`}
+                placeholder="0.00"
+            />
+            <span className={`absolute right-2 top-2 text-[10px] font-bold ${isError ? 'text-red-400' : 'text-gray-400'}`}>
+                {unit}
+            </span>
+        </div>
+    </div>
+);
+
 const TransmitterTable: React.FC<TransmitterTableProps> = ({ measurements, onMeasurementsChange }) => {
     
     const handleAddRow = () => {
@@ -31,17 +57,15 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({ measurements, onMea
         onMeasurementsChange(newMeasurements);
     };
 
-    // Funcion central de calculos para automatizar resultados
     const calculateErrors = (measurement: Measurement) => {
         const patronUe = parseFloat(measurement.patronUe) || 0;
         const ueTransmitter = parseFloat(measurement.ueTransmitter) || 0;
         const idealMa = parseFloat(measurement.idealMa) || 0;
         const maTransmitter = parseFloat(measurement.maTransmitter) || 0;
         
-        // Formulas de calculo para errores de instrumentacion
         const errorUe = ueTransmitter - patronUe; 
         const errorMa = idealMa - maTransmitter;    
-        const errorPercentage = (errorMa / 16) * 100; // Basado en span de 16mA
+        const errorPercentage = (errorMa / 16) * 100; 
         
         return {
             ...measurement,
@@ -55,7 +79,6 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({ measurements, onMea
         const newMeasurements = [...measurements];
         newMeasurements[index] = { ...newMeasurements[index], [field]: value };
         
-        // Verifica si el campo modificado requiere recalcular errores
         const relevantFields: (keyof Measurement)[] = ["patronUe", "ueTransmitter", "idealMa", "maTransmitter"];
         if (relevantFields.includes(field)) {
             newMeasurements[index] = calculateErrors(newMeasurements[index]);
@@ -64,38 +87,8 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({ measurements, onMea
         onMeasurementsChange(newMeasurements);
     };
 
-    // Sub-componente reusable para reducir duplicacion de codigo (DRY)
-    const InputField = ({ label, value, onChange, unit, isError = false, readOnly = false }: any) => (
-        <div className="flex flex-col w-full">
-            {/* Label visible solo en movil para dar contexto a la card */}
-            <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1 lg:hidden">
-                {label}
-            </label>
-            <div className="relative w-full">
-                <input
-                    type="text"
-                    value={value}
-                    onChange={onChange}
-                    readOnly={readOnly}
-                    // Estilos condicionales segun si es error o solo lectura
-                    className={`w-full px-2 py-2 pr-8 text-sm border rounded-lg focus:outline-none focus:ring-2 
-                        ${isError 
-                            ? 'border-red-200 bg-red-50 focus:ring-red-500' 
-                            : 'border-gray-300 bg-white focus:ring-teal-500'
-                        } ${readOnly ? 'cursor-not-allowed' : ''}`}
-                    placeholder="0.00"
-                />
-                {/* Unidad de medida posicionada dentro del input */}
-                <span className={`absolute right-2 top-2 text-[10px] font-bold ${isError ? 'text-red-400' : 'text-gray-400'}`}>
-                    {unit}
-                </span>
-            </div>
-        </div>
-    );
-
     return (
         <div className="mt-8 w-full max-w-full overflow-hidden">
-            {/* Encabezado con degradado y boton de accion principal */}
             <div className="bg-gradient-to-r from-teal-600 to-emerald-600 rounded-t-xl px-4 py-4 sm:px-6">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div className="flex items-center">
@@ -116,8 +109,6 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({ measurements, onMea
             </div>
 
             <div className="bg-gray-100 lg:bg-white rounded-b-xl shadow-lg border border-gray-200">
-                
-                {/* Cabecera de tabla tradicional: oculta en movil */}
                 <div className="hidden lg:grid grid-cols-11 bg-gray-50 border-b border-gray-200 text-[10px] font-bold text-gray-600 uppercase tracking-wider">
                     <div className="px-2 py-4 text-center">Ideal UE</div>
                     <div className="px-2 py-4 text-center">Ideal mA</div>
@@ -133,10 +124,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({ measurements, onMea
 
                 <div className="p-4 lg:p-0 space-y-4 lg:space-y-0 lg:divide-y lg:divide-gray-200">
                     {measurements.map((m, index) => (
-                        // Contenedor que cambia de Card (movil) a Fila de Tabla (escritorio)
                         <div key={index} className="bg-white p-4 lg:p-0 rounded-xl lg:rounded-none shadow-sm lg:shadow-none border lg:border-none border-gray-200 lg:grid lg:grid-cols-11 lg:items-center hover:bg-gray-50 transition-colors">
-                            
-                            {/* Grid interno adaptable: 2 o 3 columnas en movil, contenido plano en desktop */}
                             <div className="grid grid-cols-2 md:grid-cols-3 lg:contents gap-3">
                                 <div className="lg:px-2 lg:py-3 text-center">
                                     <InputField label="Ideal UE" unit="UE" value={m.idealUe} onChange={(e:any) => handleChange(index, 'idealUe', e.target.value)} />
@@ -156,8 +144,6 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({ measurements, onMea
                                 <div className="lg:px-2 lg:py-3 text-center">
                                     <InputField label="% Rango" unit="%" value={m.percentage} onChange={(e:any) => handleChange(index, 'percentage', e.target.value)} />
                                 </div>
-                                
-                                {/* Campos de error marcados como solo lectura */}
                                 <div className="lg:px-2 lg:py-3 text-center lg:bg-red-50/30">
                                     <InputField label="Err UE" unit="UE" value={m.errorUe} isError readOnly />
                                 </div>
@@ -167,8 +153,6 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({ measurements, onMea
                                 <div className="lg:px-2 lg:py-3 text-center lg:bg-red-50/30">
                                     <InputField label="Err %" unit="%" value={m.errorPercentage} isError readOnly />
                                 </div>
-
-                                {/* Boton de eliminar que se expande en movil para mejor UX tactil */}
                                 <div className="col-span-2 md:col-span-3 lg:col-span-2 flex justify-center items-center py-2 lg:py-0">
                                     <button
                                         onClick={() => handleDeleteRow(index)}
@@ -185,7 +169,6 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({ measurements, onMea
                     ))}
                 </div>
 
-                {/* Resumen dinmico con calculos agregados sobre el array de mediciones */}
                 {measurements.length > 0 && (
                     <div className="bg-gray-50 p-4 border-t border-gray-200">
                         <div className="flex flex-wrap gap-4 text-xs font-bold uppercase text-gray-500 justify-around">
