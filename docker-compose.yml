@@ -1,8 +1,8 @@
 services:
+  # --- BACKEND (Cerebro) ---
   auth-service:
     build:
-      # Esta es la ruta para entrar a la carpeta del backend
-      context: ./irisa_2/irisa/authentication_irisa
+      context: ./irisa_2/irisa/authentication_irisa/irisa-authentication
       dockerfile: Dockerfile
     container_name: irisa_auth_backend
     ports:
@@ -20,9 +20,9 @@ services:
     networks:
       - irisa-network
 
+  # --- FRONTEND (Cara) ---
   frontend:
     build:
-      # Esta es la ruta para entrar a la carpeta del frontend
       context: ./irisa_2/irisa/reports_irisa
       dockerfile: Dockerfile
     container_name: irisa_web_frontend
