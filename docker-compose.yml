@@ -1,7 +1,9 @@
 services:
-  # --- EL CEREBRO (BACKEND) ---
   auth-service:
-    build: ./irisa_2/irisa/authentication_irisa
+    build:
+      # Esta es la ruta para entrar a la carpeta del backend
+      context: ./irisa_2/irisa/authentication_irisa
+      dockerfile: Dockerfile
     container_name: irisa_auth_backend
     ports:
       - "8080:8080"
@@ -18,14 +20,16 @@ services:
     networks:
       - irisa-network
 
-  # --- LA CARA (FRONTEND) ---
   frontend:
-    build: ./irisa_2/irisa/reports_irisa
+    build:
+      # Esta es la ruta para entrar a la carpeta del frontend
+      context: ./irisa_2/irisa/reports_irisa
+      dockerfile: Dockerfile
     container_name: irisa_web_frontend
     ports:
-      - "${VITE_PORT}:${VITE_PORT}"
+      - "${VITE_PORT:-5173}:${VITE_PORT:-5173}"
     volumes:
-      - ./reports_irisa:/app
+      - ./irisa_2/irisa/reports_irisa:/app
       - /app/node_modules
     environment:
       - VITE_API_URL=${API_URL}
@@ -34,7 +38,6 @@ services:
     depends_on:
       - auth-service
 
-# Red interna para que se hablen entre ellos
 networks:
   irisa-network:
     driver: bridge
