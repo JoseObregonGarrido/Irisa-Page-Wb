@@ -97,9 +97,9 @@ const LoginPage: React.FC = () => {
 
                     {/* Footer */}
                     <div className="mt-6 text-center">
-                        <p className="text-xs text-gray-500">
-                            Sistema de Gestión Industrial © 2024 Risaralda
-                        </p>
+                      <p className="text-xs text-gray-500">
+                      Sistema de Gestión Industrial © {new Date().getFullYear()} Risaralda
+                      </p>
                     </div>
                 </div>
             </div>
