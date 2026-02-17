@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:8080/api/auth';
+const API_URL = 'https://irisa-page-web-backend.onrender.com/api/auth/login';
 
 export const login = async (username: string, password: string) => {
     const response = await fetch(`${API_URL}/login`, {

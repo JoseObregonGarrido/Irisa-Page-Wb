@@ -5,8 +5,10 @@ import db from './db.js'; // <--- Importamos nuestra conexion limpia
 
 dotenv.config();
 const app = express();
-
-app.use(cors());
+// Esto permite que tu frontend específico se comunique con el backend
+app.use(cors({
+    origin: 'https://irisa-page-web.onrender.com' 
+}));
 app.use(express.json());
 
 app.post('/api/auth/login', async (req, res) => {
