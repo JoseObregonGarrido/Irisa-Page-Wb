@@ -49,15 +49,27 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
 
     const processedData = processDataForChart();
 
-    // Función expuesta para capturar todos los gráficos a la vez
+    /**
+     * Función expuesta para capturar todos los gráficos a la vez.
+     * Optimizado para mejorar la calidad del PDF y asegurar el renderizado de los SVG.
+     */
     const captureAllCharts = async () => {
         const captures: string[] = [];
         const refs = [responseRef, errorsRef, linearityRef, percentageRef];
         
         for (const chartRef of refs) {
             if (chartRef.current) {
-                const dataUrl = await toPng(chartRef.current, { backgroundColor: '#ffffff' });
-                captures.push(dataUrl);
+                try {
+                    // Generamos la imagen con pixelRatio alto para que no se vea pixeleada en el PDF
+                    const dataUrl = await toPng(chartRef.current, { 
+                        backgroundColor: '#ffffff',
+                        pixelRatio: 2, 
+                        cacheBust: true, // Ayuda con problemas de renderizado de fuentes/iconos
+                    });
+                    captures.push(dataUrl);
+                } catch (err) {
+                    console.error("Error capturando gráfico:", err);
+                }
             }
         }
         return captures;
@@ -79,10 +91,10 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
                     <YAxis label={{ value: 'Valores', angle: -90, position: 'insideLeft' }} />
                     <Tooltip />
                     <Legend verticalAlign="top" />
-                    <Line type="monotone" dataKey="idealMa" stroke="#3b82f6" name="Ideal mA" strokeWidth={2} />
-                    <Line type="monotone" dataKey="maTransmitter" stroke="#ef4444" name="Medido mA" strokeWidth={2} />
-                    <Line type="monotone" dataKey="idealUe" stroke="#10b981" name="Ideal UE" strokeDasharray="5 5" />
-                    <Line type="monotone" dataKey="ueTransmitter" stroke="#f59e0b" name="UE Transmisor" strokeDasharray="5 5" />
+                    <Line type="monotone" dataKey="idealMa" stroke="#3b82f6" name="Ideal mA" strokeWidth={2} isAnimationActive={false} />
+                    <Line type="monotone" dataKey="maTransmitter" stroke="#ef4444" name="Medido mA" strokeWidth={2} isAnimationActive={false} />
+                    <Line type="monotone" dataKey="idealUe" stroke="#10b981" name="Ideal UE" strokeDasharray="5 5" isAnimationActive={false} />
+                    <Line type="monotone" dataKey="ueTransmitter" stroke="#f59e0b" name="UE Transmisor" strokeDasharray="5 5" isAnimationActive={false} />
                 </LineChart>
             </ResponsiveContainer>
         </div>
@@ -98,8 +110,8 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
                     <YAxis />
                     <Tooltip formatter={(val: number) => val.toFixed(4)} />
                     <Legend verticalAlign="top" />
-                    <Line type="monotone" dataKey="errorUe" stroke="#dc2626" name="Error UE" strokeWidth={2} />
-                    <Line type="monotone" dataKey="errorMa" stroke="#ea580c" name="Error mA" strokeWidth={2} />
+                    <Line type="monotone" dataKey="errorUe" stroke="#dc2626" name="Error UE" strokeWidth={2} isAnimationActive={false} />
+                    <Line type="monotone" dataKey="errorMa" stroke="#ea580c" name="Error mA" strokeWidth={2} isAnimationActive={false} />
                 </LineChart>
             </ResponsiveContainer>
         </div>
@@ -114,7 +126,7 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
                     <XAxis type="number" dataKey="idealMa" name="Ideal" unit="mA" label={{ value: 'Ideal mA', position: 'insideBottom', offset: -10 }} />
                     <YAxis type="number" dataKey="maTransmitter" name="Medido" unit="mA" label={{ value: 'Medido mA', angle: -90, position: 'insideLeft' }} />
                     <Tooltip cursor={{ strokeDasharray: '3 3' }} />
-                    <Scatter name="Puntos" data={processedData} fill="#8884d8" />
+                    <Scatter name="Puntos" data={processedData} fill="#8884d8" isAnimationActive={false} />
                 </ScatterChart>
             </ResponsiveContainer>
         </div>
@@ -129,7 +141,7 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
                     <XAxis dataKey="percentage" label={{ value: '% Rango', position: 'insideBottom', offset: -10 }} />
                     <YAxis label={{ value: '% Error', angle: -90, position: 'insideLeft' }} />
                     <Tooltip formatter={(val: number) => `${val.toFixed(3)}%`} />
-                    <Line type="monotone" dataKey="errorPercentage" stroke="#7c3aed" name="% Error" strokeWidth={3} dot={{ r: 6 }} />
+                    <Line type="monotone" dataKey="errorPercentage" stroke="#7c3aed" name="% Error" strokeWidth={3} dot={{ r: 6 }} isAnimationActive={false} />
                 </LineChart>
             </ResponsiveContainer>
         </div>

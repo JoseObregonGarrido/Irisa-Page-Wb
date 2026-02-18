@@ -44,10 +44,10 @@ const HomePage: React.FC = () => {
 
     const [showChart, setShowChart] = useState(false);
 
-    // --- Refs ---
-    const transmitterChartRef = useRef<HTMLDivElement>(null);
-    const pressureSwitchChartRef = useRef<HTMLDivElement>(null);
-    const thermostatChartRef = useRef<HTMLDivElement>(null);
+    // --- Refs (Cambiados de HTMLDivElement a any para acceder a captureAllCharts) ---
+    const transmitterChartRef = useRef<any>(null);
+    const pressureSwitchChartRef = useRef<any>(null);
+    const thermostatChartRef = useRef<any>(null);
 
     // --- Handlers ---
     const handleLogout = () => {
@@ -77,13 +77,24 @@ const HomePage: React.FC = () => {
         };
 
         try {
-            await generatePDFReport(reportData, [
-                transmitterChartRef.current,
-                pressureSwitchChartRef.current,
-                thermostatChartRef.current
-            ]);
+            let chartImages: string[] = [];
+
+            // Capturar imágenes según el tipo de dispositivo
+            if (deviceType === 'transmitter' && transmitterChartRef.current) {
+                chartImages = await transmitterChartRef.current.captureAllCharts();
+            } else if (deviceType === 'pressure_switch' && pressureSwitchChartRef.current) {
+                // Asumiendo que estos también tienen captureAllCharts o lógica similar
+                chartImages = await pressureSwitchChartRef.current.captureAllCharts?.() || [];
+            } else if (deviceType === 'thermostat' && thermostatChartRef.current) {
+                chartImages = await thermostatChartRef.current.captureAllCharts?.() || [];
+            }
+
+            // Llamar al servicio con los datos y el array de imágenes Base64
+            await generatePDFReport(reportData, chartImages);
+            
         } catch (error) {
             console.error("Error al generar PDF:", error);
+            alert("Hubo un error al generar las gráficas para el PDF.");
         }
     };
 
@@ -392,23 +403,26 @@ const HomePage: React.FC = () => {
 
                                     {/* Contenedor Transmisor */}
                                     {deviceType === 'transmitter' && (
-                                        <div ref={transmitterChartRef}>
-                                            <TransmitterChart data={transmitterMeasurements} />
-                                        </div>
+                                        <TransmitterChart 
+                                            ref={transmitterChartRef} 
+                                            data={transmitterMeasurements} 
+                                        />
                                     )}
 
                                     {/* Contenedor Presostato */}
                                     {deviceType === 'pressure_switch' && (
-                                        <div ref={pressureSwitchChartRef}>
-                                            <PressureSwitchChart data={pressureSwitchTests} />
-                                        </div>
+                                        <PressureSwitchChart 
+                                            ref={pressureSwitchChartRef} 
+                                            data={pressureSwitchTests} 
+                                        />
                                     )}
 
                                     {/* Contenedor Termostato */}
                                     {deviceType === 'thermostat' && (
-                                        <div ref={thermostatChartRef}>
-                                            <ThermostatChart data={thermostatTests} />
-                                        </div>
+                                        <ThermostatChart 
+                                            ref={thermostatChartRef} 
+                                            data={thermostatTests} 
+                                        />
                                     )}
                                 </div>
                             )}
