@@ -1,8 +1,8 @@
 import axios from "axios";
 import { getCurrentUser } from "./authService";
 
-const API_URL = "http://localhost:8080/api/charts";
-
+// Cambia esto en tu service de charts:
+const API_URL = "https://irisa-page-web-backend.onrender.com/api/charts";
 
 export const getTransmitterChartsData = async (lrv : number, 
     span : number,
