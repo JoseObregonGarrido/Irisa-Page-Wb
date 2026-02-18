@@ -44,7 +44,7 @@ const HomePage: React.FC = () => {
 
     const [showChart, setShowChart] = useState(false);
 
-    // --- Refs (Cambiados de HTMLDivElement a any para acceder a captureAllCharts) ---
+    // --- Refs ---
     const transmitterChartRef = useRef<any>(null);
     const pressureSwitchChartRef = useRef<any>(null);
     const thermostatChartRef = useRef<any>(null);
@@ -83,13 +83,11 @@ const HomePage: React.FC = () => {
             if (deviceType === 'transmitter' && transmitterChartRef.current) {
                 chartImages = await transmitterChartRef.current.captureAllCharts();
             } else if (deviceType === 'pressure_switch' && pressureSwitchChartRef.current) {
-                // Asumiendo que estos también tienen captureAllCharts o lógica similar
-                chartImages = await pressureSwitchChartRef.current.captureAllCharts?.() || [];
+                chartImages = await pressureSwitchChartRef.current.captureAllCharts();
             } else if (deviceType === 'thermostat' && thermostatChartRef.current) {
-                chartImages = await thermostatChartRef.current.captureAllCharts?.() || [];
+                chartImages = await thermostatChartRef.current.captureAllCharts();
             }
 
-            // Llamar al servicio con los datos y el array de imágenes Base64
             await generatePDFReport(reportData, chartImages);
             
         } catch (error) {
@@ -129,7 +127,7 @@ const HomePage: React.FC = () => {
             'pressure_switch': 'Presostato',
             'thermostat': 'Termostato'
         };
-        return labels[type] || type;
+        return labels[type] || "Dispositivo no seleccionado";
     };
 
     return (
@@ -397,8 +395,13 @@ const HomePage: React.FC = () => {
                         <div className="mt-6">
                             {showChart && (
                                 <div className="bg-white rounded-xl shadow-inner p-4 border border-gray-200">
-                                    <h3 className="text-lg font-bold text-gray-800 mb-4 border-b pb-2">
-                                        Visualización de Datos: {getDeviceTypeLabel(deviceType)}
+                                    <h3 className="text-lg font-bold text-gray-800 mb-4 border-b pb-2 flex items-center">
+                                        <span className="bg-teal-100 text-teal-700 p-1.5 rounded-lg mr-2">
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+                                            </svg>
+                                        </span>
+                                        Análisis Gráfico: {getDeviceTypeLabel(deviceType)}
                                     </h3>
 
                                     {/* Contenedor Transmisor */}
@@ -413,7 +416,7 @@ const HomePage: React.FC = () => {
                                     {deviceType === 'pressure_switch' && (
                                         <PressureSwitchChart 
                                             ref={pressureSwitchChartRef} 
-                                            data={pressureSwitchTests} 
+                                            tests={pressureSwitchTests} 
                                         />
                                     )}
 
@@ -421,7 +424,7 @@ const HomePage: React.FC = () => {
                                     {deviceType === 'thermostat' && (
                                         <ThermostatChart 
                                             ref={thermostatChartRef} 
-                                            data={thermostatTests} 
+                                            tests={thermostatTests} 
                                         />
                                     )}
                                 </div>
