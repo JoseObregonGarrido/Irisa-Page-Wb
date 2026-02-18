@@ -13,7 +13,7 @@ import TransmitterChart from '../components/TransmitterChart';
 import PressureSwitchChart from '../components/PressureSwitchChart';
 import ThermostatChart from '../components/ThermostatChart';
 
-// Hooks
+// Hooks - Ajustado a la ruta 
 import useLocalStorage from './hooks/useLocalStorage';
 
 const HomePage: React.FC = () => {
@@ -41,12 +41,13 @@ const HomePage: React.FC = () => {
     const [transmitterMeasurements, setTransmitterMeasurements] = useLocalStorage<Measurement[]>('ir_table_trans', []);
     const [pressureSwitchTests, setPressureSwitchTests] = useLocalStorage<PressureSwitchTest[]>('ir_table_press', []);
     const [thermostatTests, setThermostatTests] = useLocalStorage<ThermostatTest[]>('ir_table_therm', []);
-    
+
     const [showChart, setShowChart] = useState(false);
 
     // --- Refs ---
-    // Mantenemos una sola ref ya que el Home renderiza condicionalmente el contenedor del grafico
-    const chartRef = useRef<HTMLDivElement>(null);
+    const transmitterChartRef = useRef<HTMLDivElement>(null);
+    const pressureSwitchChartRef = useRef<HTMLDivElement>(null);
+    const thermostatChartRef = useRef<HTMLDivElement>(null);
 
     // --- Handlers ---
     const handleLogout = () => {
@@ -55,12 +56,6 @@ const HomePage: React.FC = () => {
     };
 
     const handleGeneratePdf = async () => {
-        // Validacion rapida para asegurar que el grafico este visible antes de capturarlo
-        if (!showChart) {
-            alert("Por favor, active 'Ver Grafico' antes de generar el PDF para incluir la grafica.");
-            return;
-        }
-
         const reportData = {
             instrumentistName,
             instrumentistCode,
@@ -82,15 +77,19 @@ const HomePage: React.FC = () => {
         };
 
         try {
-            // Pasamos el chartRef.current dentro de un arreglo como espera el nuevo service
-            await generatePDFReport(reportData, [chartRef.current]);
+            await generatePDFReport(reportData, [
+                transmitterChartRef.current,
+                pressureSwitchChartRef.current,
+                thermostatChartRef.current
+            ]);
         } catch (error) {
             console.error("Error al generar PDF:", error);
         }
     };
 
     const handleClearForm = () => {
-        const confirmed = window.confirm('¿Esta seguro de que desea limpiar todos los campos? Esta accion no se puede deshacer.');
+        const confirmed = window.confirm('¿Está seguro de que desea limpiar todos los campos? Esta acción no se puede deshacer.');
+
         if (confirmed) {
             setInstrumentistName('');
             setInstrumentistCode('');
@@ -136,18 +135,18 @@ const HomePage: React.FC = () => {
                             </div>
                             <div>
                                 <h1 className="text-2xl font-bold text-gray-800">Ingenio Risaralda</h1>
-                                <p className="text-sm text-gray-600">Sistema de Gestion de Instrumentos</p>
+                                <p className="text-sm text-gray-600">Sistema de Gestión de Instrumentos</p>
                             </div>
                         </div>
                         <button
                             onClick={handleLogout}
                             className="flex items-center justify-center p-2 sm:px-4 sm:py-2 text-white bg-gradient-to-r from-red-500 to-red-600 rounded-lg hover:from-red-600 hover:to-red-700 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105"
-                            title="Cerrar Sesion"
+                            title="Cerrar Sesión"
                         >
                             <svg className="w-5 h-5 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                             </svg>
-                            <span className="hidden sm:block font-medium">Cerrar Sesion</span>
+                            <span className="hidden sm:block font-medium">Cerrar Sesión</span>
                         </button>
                     </div>
                 </div>
@@ -162,12 +161,11 @@ const HomePage: React.FC = () => {
                             </svg>
                             Crear Nuevo Reporte
                         </h2>
-                        <p className="text-teal-100 mt-2">Complete la informacion del instrumento y las mediciones correspondientes</p>
+                        <p className="text-teal-100 mt-2">Complete la información del instrumento y las mediciones correspondientes</p>
                     </div>
 
                     <div className="p-8">
                         <form className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-                            {/* Campos del formulario (se mantienen iguales) */}
                             <div className="space-y-2">
                                 <label className="block text-sm font-semibold text-gray-700">Nombre del Instrumentista</label>
                                 <input
@@ -181,7 +179,7 @@ const HomePage: React.FC = () => {
                             </div>
 
                             <div className="space-y-2">
-                                <label className="block text-sm font-semibold text-gray-700">Codigo de Instrumentista</label>
+                                <label className="block text-sm font-semibold text-gray-700">Código de Instrumentista</label>
                                 <input
                                     type="text"
                                     value={instrumentistCode}
@@ -205,21 +203,115 @@ const HomePage: React.FC = () => {
                                 </select>
                             </div>
 
-                            {/* Otros inputs... se omiten por brevedad pero deben estar ahi */}
                             <div className="space-y-2">
                                 <label className="block text-sm font-semibold text-gray-700">Orden de Trabajo</label>
-                                <input type="text" value={workOrder} onChange={(e) => setWorkOrder(e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg" />
+                                <input
+                                    type="text"
+                                    value={workOrder}
+                                    onChange={(e) => setWorkOrder(e.target.value)}
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                                    placeholder="Ej: OT-2024-001"
+                                />
                             </div>
+
                             <div className="space-y-2">
-                                <label className="block text-sm font-semibold text-gray-700">Area del Instrumento</label>
-                                <input type="text" value={instrumentArea} onChange={(e) => setInstrumentArea(e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg" />
+                                <label className="block text-sm font-semibold text-gray-700">Área del Instrumento</label>
+                                <input
+                                    type="text"
+                                    value={instrumentArea}
+                                    onChange={(e) => setInstrumentArea(e.target.value)}
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                                    placeholder="Ej: Refinería, Destilería"
+                                />
                             </div>
+
                             <div className="space-y-2">
-                                <label className="block text-sm font-semibold text-gray-700">Fecha de Revision</label>
-                                <input type="datetime-local" value={reviewDate} onChange={(e) => setReviewDate(e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg" />
+                                <label className="block text-sm font-semibold text-gray-700">Fecha de Revisión</label>
+                                <input
+                                    type="datetime-local"
+                                    value={reviewDate}
+                                    onChange={(e) => setReviewDate(e.target.value)}
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                                />
                             </div>
-                            {/* ... continuar con el resto de campos (deviceName, Brand, Model, etc) */}
-                            
+
+                            <div className="space-y-2">
+                                <label className="block text-sm font-semibold text-gray-700">Nombre del equipo</label>
+                                <input
+                                    type="text"
+                                    value={deviceName}
+                                    onChange={(e) => setDeviceName(e.target.value)}
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                                    placeholder="Ej: Medidor nivel..."
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="block text-sm font-semibold text-gray-700">Marca del Equipo</label>
+                                <input
+                                    type="text"
+                                    value={deviceBrand}
+                                    onChange={(e) => setDeviceBrand(e.target.value)}
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                                    placeholder="Ej: Foxboro"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="block text-sm font-semibold text-gray-700">Modelo del Equipo</label>
+                                <input
+                                    type="text"
+                                    value={deviceModel}
+                                    onChange={(e) => setDeviceModel(e.target.value)}
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                                    placeholder="Ej: IMT25"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="block text-sm font-semibold text-gray-700">Serial del Instrumento</label>
+                                <input
+                                    type="text"
+                                    value={deviceSerial}
+                                    onChange={(e) => setDeviceSerial(e.target.value)}
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                                    placeholder="Ej: B11748"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="block text-sm font-semibold text-gray-700">Rango del instrumento</label>
+                                <input
+                                    type="text"
+                                    value={deviceRange}
+                                    onChange={(e) => setDeviceRange(e.target.value)}
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                                    placeholder="LRV: 10.5 URV: 99.5"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="block text-sm font-semibold text-gray-700">Unidades</label>
+                                <input
+                                    type="text"
+                                    value={unity}
+                                    onChange={(e) => setUnity(e.target.value)}
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                                    placeholder="Ej: PSI, mmH2O"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="block text-sm font-semibold text-gray-700">Codigo del Equipo</label>
+                                <input
+                                    type="text"
+                                    value={deviceCode}
+                                    onChange={(e) => setDeviceCode(e.target.value)}
+                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                                    placeholder="Ej: 3344542"
+                                />
+                            </div>
+
                             <div className="space-y-2 md:col-span-2 lg:col-span-3">
                                 <label className="block text-sm font-semibold text-gray-700">Observaciones</label>
                                 <textarea
@@ -232,7 +324,19 @@ const HomePage: React.FC = () => {
                             </div>
                         </form>
 
-                        {/* Seccion de Tablas */}
+                        {deviceType && (
+                            <div className="mt-8 p-4 bg-teal-50 border border-teal-200 rounded-lg">
+                                <div className="flex items-center">
+                                    <svg className="w-5 h-5 text-teal-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <span className="text-sm font-medium text-teal-800">
+                                        Configurando mediciones para: <strong>{getDeviceTypeLabel(deviceType)}</strong>
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+
                         <div className="mt-8">
                             {deviceType === 'transmitter' && (
                                 <TransmitterTable measurements={transmitterMeasurements} onMeasurementsChange={setTransmitterMeasurements} />
@@ -245,42 +349,67 @@ const HomePage: React.FC = () => {
                             )}
                         </div>
 
-                        {/* Botones de Accion */}
                         <div className="mt-8 p-6 bg-gray-50 rounded-xl border border-gray-200">
                             <div className="flex flex-col sm:flex-row flex-wrap gap-4 justify-center items-center">
                                 <button
                                     onClick={() => setShowChart(!showChart)}
-                                    className="w-full sm:w-auto flex items-center justify-center px-6 py-3 bg-gradient-to-r from-emerald-500 to-green-600 text-white font-semibold rounded-lg shadow-md hover:scale-105 transition-all"
+                                    className="w-full sm:w-auto flex items-center justify-center px-6 py-3 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-semibold rounded-lg shadow-md transition-all duration-200 transform hover:scale-105"
                                 >
-                                    {showChart ? 'Ocultar Grafico' : 'Ver Grafico'}
+                                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                    </svg>
+                                    {showChart ? 'Ocultar Gráfico' : 'Ver Gráfico'}
                                 </button>
 
                                 <button
                                     onClick={handleGeneratePdf}
-                                    className="w-full sm:w-auto flex items-center justify-center px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold rounded-lg shadow-md hover:scale-105 transition-all"
+                                    className="w-full sm:w-auto flex items-center justify-center px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-lg shadow-md transition-all duration-200 transform hover:scale-105"
                                 >
+                                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
                                     Generar PDF
                                 </button>
 
                                 <button
                                     onClick={handleClearForm}
-                                    className="w-full sm:w-auto flex items-center justify-center px-6 py-3 bg-gradient-to-r from-gray-500 to-gray-600 text-white font-semibold rounded-lg shadow-md hover:scale-105 transition-all"
+                                    className="w-full sm:w-auto flex items-center justify-center px-6 py-3 bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white font-semibold rounded-lg shadow-md transition-all duration-200 transform hover:scale-105"
                                 >
+                                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1-1H8a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
                                     Limpiar Formulario
                                 </button>
                             </div>
                         </div>
 
-                        {/* Contenedor del Grafico con Ref */}
                         <div className="mt-6">
                             {showChart && (
-                                <div ref={chartRef} className="bg-white rounded-xl shadow-inner p-4 border border-gray-200">
+                                <div className="bg-white rounded-xl shadow-inner p-4 border border-gray-200">
                                     <h3 className="text-lg font-bold text-gray-800 mb-4 border-b pb-2">
-                                        Visualizacion de Datos: {getDeviceTypeLabel(deviceType)}
+                                        Visualización de Datos: {getDeviceTypeLabel(deviceType)}
                                     </h3>
-                                    {deviceType === 'transmitter' && <TransmitterChart data={transmitterMeasurements} />}
-                                    {deviceType === 'pressure_switch' && <PressureSwitchChart data={pressureSwitchTests} />}
-                                    {deviceType === 'thermostat' && <ThermostatChart data={thermostatTests} />}
+
+                                    {/* Contenedor Transmisor */}
+                                    {deviceType === 'transmitter' && (
+                                        <div ref={transmitterChartRef}>
+                                            <TransmitterChart data={transmitterMeasurements} />
+                                        </div>
+                                    )}
+
+                                    {/* Contenedor Presostato */}
+                                    {deviceType === 'pressure_switch' && (
+                                        <div ref={pressureSwitchChartRef}>
+                                            <PressureSwitchChart data={pressureSwitchTests} />
+                                        </div>
+                                    )}
+
+                                    {/* Contenedor Termostato */}
+                                    {deviceType === 'thermostat' && (
+                                        <div ref={thermostatChartRef}>
+                                            <ThermostatChart data={thermostatTests} />
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
