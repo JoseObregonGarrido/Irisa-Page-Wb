@@ -1,10 +1,8 @@
 // services/pdfService.ts
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import 'jspdf-autotable';
 import logo from '../assets/logo_slogan_2.png';
 
-// Extender tipos de jsPDF para autoTable
 declare module 'jspdf' {
   interface jsPDF {
     autoTable: (options: any) => jsPDF;
@@ -37,24 +35,20 @@ export interface ReportData {
     errorMa: string;
     errorPercentage: string;
   }>;
-  // ... otros campos (pressureSwitchTests, etc)
 }
 
 export const generatePDFReport = async (
   data: ReportData,
-  chartImages?: string[] // Ahora recibe directamente las imágenes en Base64
+  chartImages?: string[]
 ): Promise<void> => {
   const pdf = new jsPDF();
   let yPosition = 20;
 
-  // --- Paleta de colores y tipografía (Igual que tu código) ---
   const colors = {
     black: [0, 0, 0],
     darkGray: [51, 51, 51],
-    mediumGray: [128, 128, 128],
-    lightGray: [245, 245, 245],
-    white: [255, 255, 255],
-    risaraldaGreen: [119, 158, 79]
+    risaraldaGreen: [119, 158, 79],
+    lightGray: [249, 249, 249]
   };
 
   const PAGE_MARGINS = { top: 20, bottom: 30, maxContentY: 275 };
@@ -66,7 +60,6 @@ export const generatePDFReport = async (
     small: { size: 8, weight: 'normal' as const }
   };
 
-  // --- Funciones auxiliares de dibujo ---
   const addSectionHeader = (title: string) => {
     if (yPosition + 25 > PAGE_MARGINS.maxContentY) {
       pdf.addPage();
@@ -98,7 +91,8 @@ export const generatePDFReport = async (
     const generalData = [
       ['Nombre del instrumentista', data.instrumentistName || 'N/A'],
       ['Orden de Trabajo', data.workOrder || 'N/A'],
-      ['Equipo', `${data.deviceName} (${data.deviceCode}`],
+      // CORRECCIÓN: Se quitaron los paréntesis del equipo
+      ['Equipo', `${data.deviceName} - ${data.deviceCode}`],
       ['Rango', `${data.deviceRange} ${data.unity}`],
       ['Fecha', data.reviewDate ? formatDate(data.reviewDate) : 'N/A'],
     ];
@@ -108,57 +102,61 @@ export const generatePDFReport = async (
       startY: yPosition,
       margin: { left: 20 },
       styles: { fontSize: typography.body.size },
-      columnStyles: { 0: { fontStyle: 'bold', cellWidth: 55, fillColor: [249, 249, 249] } }
+      columnStyles: { 0: { fontStyle: 'bold', cellWidth: 55, fillColor: colors.lightGray } }
     });
     yPosition = (pdf as any).lastAutoTable.finalY + 15;
 
-    // 3. Tabla de Mediciones
+    // 3. Tablas de Mediciones (mA y Ohmnios)
     if (data.deviceType === 'transmitter' && data.transmitterMeasurements?.length) {
-      addSectionHeader('MEDICIONES - TRANSMISOR');
-      const tableData = data.transmitterMeasurements.map(m => [
-        m.percentage, m.idealUe, m.ueTransmitter, m.idealMa, m.maTransmitter, m.errorPercentage
+      
+      // --- TABLA 1: SALIDA ANALÓGICA (mA) ---
+      addSectionHeader('PRUEBA DE SALIDA ANALÓGICA (mA)');
+      const maTable = data.transmitterMeasurements.map(m => [
+        m.percentage, m.idealMa, m.maTransmitter, m.errorMa, m.errorPercentage
       ]);
       autoTable(pdf, {
-        head: [['%', 'Ideal UE', 'Tx UE', 'Ideal mA', 'Tx mA', 'Error %']],
-        body: tableData,
+        head: [['% Rango', 'Ideal mA', 'Tx mA', 'Err mA', 'Err %']],
+        body: maTable,
         startY: yPosition,
         headStyles: { fillColor: colors.risaraldaGreen },
         styles: { fontSize: typography.small.size, halign: 'center' }
       });
       yPosition = (pdf as any).lastAutoTable.finalY + 15;
+
+      // --- TABLA 2: UNIDADES DE INGENIERÍA / RESISTENCIA (Ohmnios) ---
+      addSectionHeader('PRUEBA DE RESISTENCIA / UE (Ohmnios)');
+      const ohmTable = data.transmitterMeasurements.map(m => [
+        m.percentage, m.idealUe, m.patronUe, m.ueTransmitter, m.errorUe
+      ]);
+      autoTable(pdf, {
+        head: [['% Rango', 'Ideal UE', 'Patrón UE', 'Tx UE', 'Err UE']],
+        body: ohmTable,
+        startY: yPosition,
+        headStyles: { fillColor: [51, 122, 183] }, // Un azul para diferenciar
+        styles: { fontSize: typography.small.size, halign: 'center' }
+      });
+      yPosition = (pdf as any).lastAutoTable.finalY + 15;
     }
 
-    // 4. SECCIÓN DE GRÁFICAS (Aquí integramos)
+    // 4. SECCIÓN DE GRÁFICAS
     if (chartImages && chartImages.length > 0) {
       const chartTitles = ['Curva de Respuesta', 'Errores Absolutos', 'Análisis de Linealidad', 'Error Porcentual'];
-      
       for (let i = 0; i < chartImages.length; i++) {
         const CHART_HEIGHT = 80;
-        
-        // Verificar si la gráfica cabe en la página actual
         if (yPosition + CHART_HEIGHT + 20 > PAGE_MARGINS.maxContentY) {
           pdf.addPage();
           yPosition = PAGE_MARGINS.top;
         }
-
         addSectionHeader(`ANÁLISIS: ${chartTitles[i] || `Gráfico ${i + 1}`}`);
-        
-        // Recuadro para la gráfica
-        pdf.setDrawColor(...colors.risaraldaGreen);
-        pdf.setLineWidth(0.1);
-        pdf.roundedRect(20, yPosition, 170, CHART_HEIGHT, 2, 2);
-        
-        // Insertar imagen
-        pdf.addImage(chartImages[i], 'PNG', 22, yPosition + 2, 166, CHART_HEIGHT - 4);
-        
+        pdf.addImage(chartImages[i], 'PNG', 22, yPosition, 166, CHART_HEIGHT);
         yPosition += CHART_HEIGHT + 15;
       }
     }
 
-    // 5. Observaciones y Pie de página
+    // 5. Observaciones
     if (data.observations) {
       addSectionHeader('OBSERVACIONES');
-      pdf.setFontSize(typography.body.size).setFont('helvetica', 'normal');
+      pdf.setFontSize(typography.body.size).setFont('helvetica', 'normal').setTextColor(...colors.black);
       const lines = pdf.splitTextToSize(data.observations, 160);
       pdf.text(lines, 25, yPosition);
     }
@@ -167,7 +165,7 @@ export const generatePDFReport = async (
     const totalPages = pdf.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
       pdf.setPage(i);
-      pdf.setFontSize(typography.small.size).setTextColor(...colors.darkGray);
+      pdf.setFontSize(typography.small.size).setTextColor(100, 100, 100);
       pdf.text(`Página ${i} de ${totalPages}`, 190, 290, { align: 'right' });
     }
 
@@ -179,7 +177,7 @@ export const generatePDFReport = async (
   }
 };
 
-// Auxiliares (getBase64ImageFromUrl, formatDate, etc. se mantienen igual)
+// Auxiliares
 const getBase64ImageFromUrl = async (imageUrl: string): Promise<string> => {
   const response = await fetch(imageUrl);
   const blob = await response.blob();
