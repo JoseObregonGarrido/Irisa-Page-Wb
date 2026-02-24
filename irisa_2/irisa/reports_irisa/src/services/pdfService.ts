@@ -30,10 +30,12 @@ export interface ReportData {
 
 export const generatePDFReport = async (data: ReportData, chartImages?: string[]): Promise<void> => {
     const pdf = new jsPDF();
+    
+    // CORRECCIÓN: Forzamos la lectura de la unidad y el estado de UE desde el objeto data
     const unit = data.outputUnit || 'mA';
-    const hasUE = !!data.hasUeTransmitter;
+    const hasUE = data.hasUeTransmitter === true; 
+    
     let yPos = 20;
-
     const colors = { risaraldaGreen: [119, 158, 79], lightGray: [245, 245, 245] };
 
     const addHeader = (title: string) => {
@@ -45,7 +47,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
     };
 
     try {
-        // Logo y Título
+        // --- Logo y Título ---
         try {
             const b64Logo = await getBase64ImageFromUrl(logo);
             pdf.addImage(b64Logo, 'PNG', 20, 15, 55, 22);
@@ -54,7 +56,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         pdf.setFontSize(18).setFont('helvetica', 'bold').text('REPORTE DE INSTRUMENTACIÓN', 85, 28);
         yPos = 50;
 
-        // Info General
+        // --- Información General ---
         addHeader('INFORMACIÓN GENERAL');
         autoTable(pdf, {
             startY: yPos,
@@ -71,11 +73,11 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         });
         yPos = (pdf as any).lastAutoTable.finalY + 15;
 
-        // Tabla de Mediciones Dinámica (Basada en TransmitterTable)
+        // --- Tabla de Mediciones (Dinamizada con Ω y UE) ---
         if (data.deviceType === 'transmitter' && data.transmitterMeasurements?.length) {
             addHeader(`PRUEBA DE SALIDA (${unit})`);
 
-            // Construcción dinámica de cabeceras igual que en el componente React
+            // Cabeceras dinámicas basadas en la unidad real (mA u Ω)
             const headers = [
                 'Ideal UE', 
                 `Ideal ${unit}`, 
@@ -88,7 +90,6 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 'Err %'
             ];
 
-            // Mapeo de datos respetando las columnas activas
             const body = data.transmitterMeasurements.map(m => [
                 m.idealUe, 
                 m.idealMa, 
@@ -105,12 +106,12 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 startY: yPos,
                 head: [headers],
                 body: body,
-                headStyles: { fillColor: colors.risaraldaGreen, halign: 'center', fontSize: 8 },
+                headStyles: { fillColor: colors.risaraldaGreen, halign: 'center', fontSize: 7.5 },
                 styles: { fontSize: 7.5, halign: 'center', cellPadding: 2 },
-                // Estilo especial para columnas de error (Fondo rojo suave como en la web)
+                // Aplicamos el estilo rojo a las columnas de error como en la tabla web
                 didParseCell: (dataCell: any) => {
-                    const errorHeaders = ['Err UE', `Err ${unit}`, 'Err %'];
-                    if (dataCell.section === 'body' && errorHeaders.includes(headers[dataCell.column.index])) {
+                    const headerText = headers[dataCell.column.index];
+                    if (dataCell.section === 'body' && headerText.startsWith('Err')) {
                         dataCell.cell.styles.fillColor = [254, 242, 242]; // Red-50
                         dataCell.cell.styles.textColor = [185, 28, 28];  // Red-700
                     }
@@ -119,7 +120,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             yPos = (pdf as any).lastAutoTable.finalY + 15;
         }
 
-        // Gráficos
+        // --- Gráficos ---
         if (chartImages?.length) {
             chartImages.forEach((img, i) => {
                 const titles = ['Curva de Respuesta', 'Errores Absolutos', 'Linealidad', 'Error Porcentual'];
@@ -129,7 +130,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             });
         }
 
-        // Observaciones
+        // --- Observaciones ---
         if (data.observations) {
             addHeader('OBSERVACIONES');
             const splitText = pdf.splitTextToSize(data.observations, 165);
