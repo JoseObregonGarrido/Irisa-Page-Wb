@@ -1,6 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
 
-// Interfaz para las mediciones individuales
 export interface Measurement {
     percentage: string;
     idealUe: string;
@@ -13,17 +12,11 @@ export interface Measurement {
     errorPercentage: string;
 }
 
-// Props del componente
 interface TransmitterTableProps {
     measurements: Measurement[];
     onMeasurementsChange: (measurements: Measurement[]) => void;
-    outputUnit: 'mA' | 'Ω';
-    setOutputUnit: (unit: 'mA' | 'Ω') => void;
-    hasUeTransmitter: boolean;
-    setHasUeTransmitter: (value: boolean) => void;
 }
 
-// Sub-componente para los inputs de la tabla (Mantiene todo tu diseño)
 const InputField = ({ label, value, onChange, unit, isError = false, readOnly = false }: any) => (
     <div className="flex flex-col w-full">
         <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1 lg:hidden">
@@ -49,14 +42,9 @@ const InputField = ({ label, value, onChange, unit, isError = false, readOnly = 
     </div>
 );
 
-const TransmitterTable: React.FC<TransmitterTableProps> = ({ 
-    measurements, 
-    onMeasurementsChange,
-    outputUnit,
-    setOutputUnit,
-    hasUeTransmitter,
-    setHasUeTransmitter
-}) => {
+const TransmitterTable: React.FC<TransmitterTableProps> = ({ measurements, onMeasurementsChange }) => {
+    const [outputUnit, setOutputUnit] = useState<'mA' | 'Ω'>('mA');
+    const [hasUeTransmitter, setHasUeTransmitter] = useState<boolean>(true);
 
     const handleAddRow = () => {
         onMeasurementsChange([...measurements, { 
@@ -77,9 +65,8 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
         const maTransmitter = parseFloat(measurement.maTransmitter) || 0;
         
         const errorUe = ueTransmitter - patronUe; 
-        const errorMa = maTransmitter - idealMa;
+        const errorMa = maTransmitter - idealMa; // Invertido comúnmente en calibración (Medido - Ideal)
         
-        // El divisor cambia según la unidad (16 para el span de 4-20mA, 100 para Ω)
         const divisor = outputUnit === 'mA' ? 16 : 100; 
         const errorPercentage = (errorMa / divisor) * 100; 
         
@@ -95,7 +82,6 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
         const newMeasurements = [...measurements];
         newMeasurements[index] = { ...newMeasurements[index], [field]: value };
         
-        // Recalcular errores si cambian valores de entrada
         const relevantFields: (keyof Measurement)[] = ["patronUe", "ueTransmitter", "idealMa", "maTransmitter"];
         if (relevantFields.includes(field)) {
             newMeasurements[index] = calculateErrors(newMeasurements[index]);
@@ -104,34 +90,25 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
         onMeasurementsChange(newMeasurements);
     };
 
-    // Configuración de grid dinámica: 12 columnas si hay UE, 10 si no.
+    // Dinámico: 12 columnas si tiene UE (Input + Error), 10 si no.
     const gridConfig = hasUeTransmitter ? 'lg:grid-cols-12' : 'lg:grid-cols-10';
 
     return (
         <div className="mt-8 w-full max-w-full overflow-hidden">
-            {/* Header / Toolbar (Diseño Gradient Intacto) */}
             <div className="bg-gradient-to-r from-teal-600 to-emerald-600 rounded-t-xl px-4 py-4 sm:px-6">
                 <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                     <div className="flex flex-wrap items-center gap-4">
                         <div className="p-2 bg-white/20 rounded-lg">
                             <span className="text-white">⚙️</span>
                         </div>
-                        <h3 className="text-lg font-bold text-white uppercase tracking-tight">Mediciones del Transmisor</h3>
+                        <h3 className="text-lg font-bold text-white uppercase">Mediciones</h3>
                         
-                        {/* Selector de Unidades */}
                         <div className="flex bg-black/20 p-1 rounded-lg">
-                            <button 
-                                onClick={() => setOutputUnit('mA')} 
-                                className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${outputUnit === 'mA' ? 'bg-white text-teal-700 shadow' : 'text-white hover:bg-white/10'}`}
-                            >mA</button>
-                            <button 
-                                onClick={() => setOutputUnit('Ω')} 
-                                className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${outputUnit === 'Ω' ? 'bg-white text-teal-700 shadow' : 'text-white hover:bg-white/10'}`}
-                            >Ω</button>
+                            <button onClick={() => setOutputUnit('mA')} className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${outputUnit === 'mA' ? 'bg-white text-teal-700 shadow' : 'text-white hover:bg-white/10'}`}>mA</button>
+                            <button onClick={() => setOutputUnit('Ω')} className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${outputUnit === 'Ω' ? 'bg-white text-teal-700 shadow' : 'text-white hover:bg-white/10'}`}>Ω</button>
                         </div>
 
-                        {/* Switch de Aplicación de UE */}
-                        <label className="flex items-center cursor-pointer gap-2 bg-black/10 px-3 py-1.5 rounded-lg border border-white/10 hover:bg-black/20 transition-all">
+                        <label className="flex items-center cursor-pointer gap-2 bg-black/10 px-3 py-1.5 rounded-lg border border-white/10 transition-hover hover:bg-black/20">
                             <input 
                                 type="checkbox" 
                                 checked={hasUeTransmitter} 
@@ -142,26 +119,21 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                         </label>
                     </div>
                     
-                    <button 
-                        onClick={handleAddRow} 
-                        className="w-full md:w-auto px-4 py-2 bg-white text-teal-700 hover:bg-teal-50 font-bold rounded-lg transition-all shadow-md active:scale-95 text-sm"
-                    >
-                        + AGREGAR FILA
-                    </button>
+                    <button onClick={handleAddRow} className="w-full md:w-auto px-4 py-2 bg-white text-teal-700 hover:bg-teal-50 font-bold rounded-lg transition-all shadow-md active:scale-95 text-sm">+ FILA</button>
                 </div>
             </div>
 
             <div className="bg-gray-100 lg:bg-white rounded-b-xl shadow-lg border border-gray-200">
-                {/* Header para Desktop */}
+                {/* Header Desktop */}
                 <div className={`hidden lg:grid ${gridConfig} bg-gray-50 border-b border-gray-200 text-[10px] font-bold text-gray-600 uppercase`}>
                     <div className="px-1 py-4 text-center">Ideal UE</div>
                     <div className="px-1 py-4 text-center">Ideal {outputUnit}</div>
                     <div className="px-1 py-4 text-center">Patrón UE</div>
-                    {hasUeTransmitter && <div className="px-1 py-4 text-center text-teal-600 bg-teal-50/30">UE Trans.</div>}
+                    {hasUeTransmitter && <div className="px-1 py-4 text-center text-teal-600">UE Trans.</div>}
                     <div className="px-1 py-4 text-center">{outputUnit} Trans.</div>
                     <div className="px-1 py-4 text-center">% Rango</div>
                     
-                    {/* Columnas de Error (Fondo Rojo Suave) */}
+                    {/* Sección Errores */}
                     {hasUeTransmitter && <div className="px-1 py-4 text-center bg-red-50 text-red-700 border-l border-red-100">Err UE</div>}
                     <div className={`px-1 py-4 text-center bg-red-50 text-red-700 ${!hasUeTransmitter ? 'border-l border-red-100' : ''}`}>Err {outputUnit}</div>
                     <div className="px-1 py-4 text-center bg-red-50 text-red-700">Err %</div>
@@ -169,57 +141,31 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                     <div className="px-1 py-4 text-center col-span-2">Acción</div>
                 </div>
 
-                {/* Filas de la Tabla */}
                 <div className="p-4 lg:p-0 space-y-4 lg:space-y-0 lg:divide-y lg:divide-gray-200">
                     {measurements.map((m, index) => (
                         <div key={index} className={`bg-white p-4 lg:p-0 rounded-xl lg:rounded-none lg:grid ${gridConfig} lg:items-center hover:bg-gray-50 transition-colors`}>
                             <div className="grid grid-cols-2 md:grid-cols-3 lg:contents gap-3">
-                                <div className="lg:px-1 lg:py-3">
-                                    <InputField label="Ideal UE" unit="UE" value={m.idealUe} onChange={(e:any) => handleChange(index, 'idealUe', e.target.value)} />
-                                </div>
-                                <div className="lg:px-1 lg:py-3">
-                                    <InputField label={`Ideal ${outputUnit}`} unit={outputUnit} value={m.idealMa} onChange={(e:any) => handleChange(index, 'idealMa', e.target.value)} />
-                                </div>
-                                <div className="lg:px-1 lg:py-3">
-                                    <InputField label="Patrón UE" unit="UE" value={m.patronUe} onChange={(e:any) => handleChange(index, 'patronUe', e.target.value)} />
-                                </div>
+                                <div className="lg:px-1 lg:py-3"><InputField label="Ideal UE" unit="UE" value={m.idealUe} onChange={(e:any) => handleChange(index, 'idealUe', e.target.value)} /></div>
+                                <div className="lg:px-1 lg:py-3"><InputField label={`Ideal ${outputUnit}`} unit={outputUnit} value={m.idealMa} onChange={(e:any) => handleChange(index, 'idealMa', e.target.value)} /></div>
+                                <div className="lg:px-1 lg:py-3"><InputField label="Patrón UE" unit="UE" value={m.patronUe} onChange={(e:any) => handleChange(index, 'patronUe', e.target.value)} /></div>
 
                                 {hasUeTransmitter && (
-                                    <div className="lg:px-1 lg:py-3 border-teal-50 bg-teal-50/10">
-                                        <InputField label="UE Trans." unit="UE" value={m.ueTransmitter} onChange={(e:any) => handleChange(index, 'ueTransmitter', e.target.value)} />
-                                    </div>
+                                    <div className="lg:px-1 lg:py-3 border-teal-50 bg-teal-50/10"><InputField label="UE Trans." unit="UE" value={m.ueTransmitter} onChange={(e:any) => handleChange(index, 'ueTransmitter', e.target.value)} /></div>
                                 )}
 
-                                <div className="lg:px-1 lg:py-3">
-                                    <InputField label={`${outputUnit} Trans.`} unit={outputUnit} value={m.maTransmitter} onChange={(e:any) => handleChange(index, 'maTransmitter', e.target.value)} />
-                                </div>
-                                <div className="lg:px-1 lg:py-3">
-                                    <InputField label="% Rango" unit="%" value={m.percentage} onChange={(e:any) => handleChange(index, 'percentage', e.target.value)} />
-                                </div>
+                                <div className="lg:px-1 lg:py-3"><InputField label={`${outputUnit} Trans.`} unit={outputUnit} value={m.maTransmitter} onChange={(e:any) => handleChange(index, 'maTransmitter', e.target.value)} /></div>
+                                <div className="lg:px-1 lg:py-3"><InputField label="% Rango" unit="%" value={m.percentage} onChange={(e:any) => handleChange(index, 'percentage', e.target.value)} /></div>
 
-                                {/* Inputs de Solo Lectura (Errores) */}
+                                {/* Errores condicionales */}
                                 {hasUeTransmitter && (
-                                    <div className="lg:px-1 lg:py-3 lg:bg-red-50/20 border-l border-red-100">
-                                        <InputField label="Err UE" unit="UE" value={m.errorUe} isError readOnly />
-                                    </div>
+                                    <div className="lg:px-1 lg:py-3 lg:bg-red-50/20 border-l border-red-50"><InputField label="Err UE" unit="UE" value={m.errorUe} isError readOnly /></div>
                                 )}
-                                <div className={`lg:px-1 lg:py-3 lg:bg-red-50/20 ${!hasUeTransmitter ? 'border-l border-red-100' : ''}`}>
-                                    <InputField label={`Err ${outputUnit}`} unit={outputUnit} value={m.errorMa} isError readOnly />
-                                </div>
-                                <div className="lg:px-1 lg:py-3 lg:bg-red-50/20">
-                                    <InputField label="Err %" unit="%" value={m.errorPercentage} isError readOnly />
-                                </div>
+                                <div className={`lg:px-1 lg:py-3 lg:bg-red-50/20 ${!hasUeTransmitter ? 'border-l border-red-50' : ''}`}><InputField label={`Err ${outputUnit}`} unit={outputUnit} value={m.errorMa} isError readOnly /></div>
+                                <div className="lg:px-1 lg:py-3 lg:bg-red-50/20"><InputField label="Err %" unit="%" value={m.errorPercentage} isError readOnly /></div>
 
-                                {/* Botón Eliminar */}
                                 <div className="col-span-2 md:col-span-3 lg:col-span-2 flex justify-center py-2 lg:py-0">
-                                    <button 
-                                        onClick={() => handleDeleteRow(index)} 
-                                        className="p-2 text-red-500 hover:bg-red-100 rounded-full transition-all"
-                                        title="Eliminar fila"
-                                    >
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                        </svg>
+                                    <button onClick={() => handleDeleteRow(index)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                     </button>
                                 </div>
                             </div>
