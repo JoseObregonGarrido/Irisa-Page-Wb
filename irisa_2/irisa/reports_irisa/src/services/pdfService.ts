@@ -23,18 +23,19 @@ export interface ReportData {
     unity: string;
     deviceCode: string;
     observations: string;
-    hasUeTransmitter: boolean; 
-    outputUnit: 'mA' | 'Ω'; 
+    hasUeTransmitter?: boolean; 
+    outputUnit?: 'mA' | 'Ω'; 
     transmitterMeasurements?: any[];
 }
 
 export const generatePDFReport = async (data: ReportData, chartImages?: string[]): Promise<void> => {
     const pdf = new jsPDF();
     
-    // --- LÓGICA DE CONTROL ---
+    // --- LÓGICA DE CONTROL ESTRICTA ---
+    // Usamos el valor que viene de la interfaz. Si es undefined, asumimos false.
+    const hasUE = data.hasUeTransmitter === true;
     const unit = data.outputUnit || 'mA';
-    // Forzamos a que sea false si no viene explícitamente como true
-    const hasUE = data.hasUeTransmitter === true; 
+    const measurements = data.transmitterMeasurements || [];
 
     let yPos = 20;
     const colors = { risaraldaGreen: [119, 158, 79], lightGray: [245, 245, 245] };
@@ -74,11 +75,11 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         });
         yPos = (pdf as any).lastAutoTable.finalY + 15;
 
-        // Tabla de Mediciones
-        if (data.deviceType === 'transmitter' && data.transmitterMeasurements?.length) {
+        // Tabla de Mediciones (DINÁMICA SEGÚN COMPONENTE)
+        if (data.deviceType === 'transmitter' && measurements.length) {
             addHeader(`PRUEBA DE SALIDA (${unit})`);
 
-            // 1. Definir Headers dinámicamente
+            // Construcción de cabeceras idéntica al gridConfig de React
             const headers = [
                 'Ideal UE', 
                 `Ideal ${unit}`, 
@@ -91,20 +92,20 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 'Err %'
             ];
 
-            // 2. Definir Body dinámicamente
-            const body = data.transmitterMeasurements.map(m => {
+            // Construcción del cuerpo filtrando las columnas que no aplican
+            const body = measurements.map(m => {
                 const row = [
                     m.idealUe, 
                     m.idealMa, 
                     m.patronUe
                 ];
                 
-                if (hasUE) row.push(m.ueTransmitter); // Solo si aplica
+                if (hasUE) row.push(m.ueTransmitter); // Solo inserta si el checkbox está activo
                 
                 row.push(m.maTransmitter);
                 row.push(m.percentage);
                 
-                if (hasUE) row.push(m.errorUe); // Solo si aplica
+                if (hasUE) row.push(m.errorUe);      // Solo inserta si el checkbox está activo
                 
                 row.push(m.errorMa);
                 row.push(m.errorPercentage);
@@ -116,10 +117,11 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 startY: yPos,
                 head: [headers],
                 body: body,
-                headStyles: { fillColor: colors.risaraldaGreen, halign: 'center', fontSize: 7 },
-                styles: { fontSize: 7, halign: 'center', cellPadding: 1.5 },
+                headStyles: { fillColor: colors.risaraldaGreen, halign: 'center', fontSize: 7.5 },
+                styles: { fontSize: 7.5, halign: 'center', cellPadding: 2 },
                 didParseCell: (dataCell: any) => {
                     const headerText = headers[dataCell.column.index];
+                    // Colorear errores en rojo (estilo Tailwind bg-red-50 text-red-700)
                     if (dataCell.section === 'body' && headerText && headerText.startsWith('Err')) {
                         dataCell.cell.styles.fillColor = [254, 242, 242];
                         dataCell.cell.styles.textColor = [185, 28, 28];
