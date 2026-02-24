@@ -11,7 +11,7 @@ export const getAllReports = async (): Promise<ReportType[]> => {
     const token = user?.token;
     try {
         const response = await axios.get(API_URL, {
-            headers: { 'Authorization': `Bearer ${token}` }
+            headers: { 'Authorization': `Bearer ${token}` } 
         });
         return response.data;
     } catch (error) {
