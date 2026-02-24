@@ -43,7 +43,7 @@ const InputField = ({ label, value, onChange, unit, isError = false, readOnly = 
 );
 
 const TransmitterTable: React.FC<TransmitterTableProps> = ({ measurements, onMeasurementsChange }) => {
-    const [outputUnit, setOutputUnit] = useState<'mA' | 'Ω'>('mA');
+    const [outputUnit, setOutputUnit] = useState<'mA' | 'Sensor Temperatura'>('mA');
     // NUEVO: Estado para saber si aplica UE Transmisor
     const [hasUeTransmitter, setHasUeTransmitter] = useState<boolean>(true);
 
@@ -110,7 +110,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({ measurements, onMea
                         {/* Selector mA / Ohmios */}
                         <div className="flex bg-black/20 p-1 rounded-lg">
                             <button onClick={() => setOutputUnit('mA')} className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${outputUnit === 'mA' ? 'bg-white text-teal-700 shadow' : 'text-white hover:bg-white/10'}`}>mA</button>
-                            <button onClick={() => setOutputUnit('Ω')} className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${outputUnit === 'Ω' ? 'bg-white text-teal-700 shadow' : 'text-white hover:bg-white/10'}`}>Ω</button>
+                            <button onClick={() => setOutputUnit('Sensor Temperatura')} className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${outputUnit === 'Sensor Temperatura' ? 'bg-white text-teal-700 shadow' : 'text-white hover:bg-white/10'}`}>Sensor Temperatura</button>
                         </div>
 
                         {/* Switch Aplica UE */}
