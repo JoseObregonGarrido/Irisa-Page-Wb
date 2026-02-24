@@ -24,6 +24,7 @@ export interface ReportData {
   unity: string;
   deviceCode: string;
   observations: string;
+  hasUeTransmitter: boolean; // NUEVA PROPIEDAD: Viene del switch de la UI
   transmitterMeasurements?: Array<{
     percentage: string;
     idealUe: string;
@@ -91,8 +92,8 @@ export const generatePDFReport = async (
     const generalData = [
       ['Nombre del instrumentista', data.instrumentistName || 'N/A'],
       ['Orden de Trabajo', data.workOrder || 'N/A'],
-      // CORRECCIÓN: Se quitaron los paréntesis del equipo
-      ['Equipo', `${data.deviceName} - ${data.deviceCode}`],
+      // CORRECCIÓN: Limpieza total de paréntesis
+      ['Equipo', `${data.deviceName} - ${data.deviceCode}`], 
       ['Rango', `${data.deviceRange} ${data.unity}`],
       ['Fecha', data.reviewDate ? formatDate(data.reviewDate) : 'N/A'],
     ];
@@ -106,10 +107,10 @@ export const generatePDFReport = async (
     });
     yPosition = (pdf as any).lastAutoTable.finalY + 15;
 
-    // 3. Tablas de Mediciones (mA y Ohmnios)
+    // 3. Tablas de Mediciones
     if (data.deviceType === 'transmitter' && data.transmitterMeasurements?.length) {
       
-      // --- TABLA 1: SALIDA ANALÓGICA (mA) ---
+      // --- TABLA 1: SALIDA ANALÓGICA (mA) --- Siempre se muestra para transmisores
       addSectionHeader('PRUEBA DE SALIDA ANALÓGICA (mA)');
       const maTable = data.transmitterMeasurements.map(m => [
         m.percentage, m.idealMa, m.maTransmitter, m.errorMa, m.errorPercentage
@@ -123,19 +124,21 @@ export const generatePDFReport = async (
       });
       yPosition = (pdf as any).lastAutoTable.finalY + 15;
 
-      // --- TABLA 2: UNIDADES DE INGENIERÍA / RESISTENCIA (Ohmnios) ---
-      addSectionHeader('PRUEBA DE RESISTENCIA / UE (Ohmnios)');
-      const ohmTable = data.transmitterMeasurements.map(m => [
-        m.percentage, m.idealUe, m.patronUe, m.ueTransmitter, m.errorUe
-      ]);
-      autoTable(pdf, {
-        head: [['% Rango', 'Ideal UE', 'Patrón UE', 'Tx UE', 'Err UE']],
-        body: ohmTable,
-        startY: yPosition,
-        headStyles: { fillColor: [51, 122, 183] }, // Un azul para diferenciar
-        styles: { fontSize: typography.small.size, halign: 'center' }
-      });
-      yPosition = (pdf as any).lastAutoTable.finalY + 15;
+      // --- TABLA 2: UE / OHM --- SOLO SI EL SWITCH ESTÁ ACTIVO
+      if (data.hasUeTransmitter) {
+        addSectionHeader('PRUEBA DE UNIDADES DE INGENIERÍA / OHM');
+        const ohmTable = data.transmitterMeasurements.map(m => [
+          m.percentage, m.idealUe, m.patronUe, m.ueTransmitter, m.errorUe
+        ]);
+        autoTable(pdf, {
+          head: [['% Rango', 'Ideal UE', 'Patrón UE', 'Tx UE', 'Err UE']],
+          body: ohmTable,
+          startY: yPosition,
+          headStyles: { fillColor: [51, 122, 183] }, 
+          styles: { fontSize: typography.small.size, halign: 'center' }
+        });
+        yPosition = (pdf as any).lastAutoTable.finalY + 15;
+      }
     }
 
     // 4. SECCIÓN DE GRÁFICAS
@@ -177,7 +180,6 @@ export const generatePDFReport = async (
   }
 };
 
-// Auxiliares
 const getBase64ImageFromUrl = async (imageUrl: string): Promise<string> => {
   const response = await fetch(imageUrl);
   const blob = await response.blob();
