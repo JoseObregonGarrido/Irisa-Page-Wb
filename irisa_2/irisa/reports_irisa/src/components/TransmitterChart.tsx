@@ -23,7 +23,7 @@ interface TransmitterChartProps {
 
 type ChartView = 'response' | 'errors' | 'linearity' | 'percentage';
 
-const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements, data, outputUnit = 'mA' }, ref) => {
+const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements, data, outputUnit = '' }, ref) => {
     const chartData = measurements || data || [];
     const [activeView, setActiveView] = useState<ChartView>('response');
 
