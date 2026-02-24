@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 export interface Measurement {
     percentage: string;
@@ -17,7 +17,6 @@ interface TransmitterTableProps {
     onMeasurementsChange: (measurements: Measurement[]) => void;
 }
 
-// 1. COMPONENTE FUERA PARA EVITAR PERDER EL FOCO
 const InputField = ({ label, value, onChange, unit, isError = false, readOnly = false }: any) => (
     <div className="flex flex-col w-full">
         <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1 lg:hidden">
@@ -44,7 +43,9 @@ const InputField = ({ label, value, onChange, unit, isError = false, readOnly = 
 );
 
 const TransmitterTable: React.FC<TransmitterTableProps> = ({ measurements, onMeasurementsChange }) => {
-    
+    // NUEVO: Estado para controlar la unidad de salida (mA u Ohmios)
+    const [outputUnit, setOutputUnit] = useState<'mA' | 'Ω'>('mA');
+
     const handleAddRow = () => {
         onMeasurementsChange([...measurements, { 
             percentage: "", idealUe: "", patronUe: "", ueTransmitter: "", 
@@ -64,8 +65,12 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({ measurements, onMea
         const maTransmitter = parseFloat(measurement.maTransmitter) || 0;
         
         const errorUe = ueTransmitter - patronUe; 
-        const errorMa = idealMa - maTransmitter;    
-        const errorPercentage = (errorMa / 16) * 100; 
+        const errorMa = idealMa - maTransmitter; 
+        
+        // Si es mA el rango es 16 (20-4), si es Ohmios podrías necesitar un divisor distinto
+        // Por ahora mantenemos la lógica proporcional
+        const divisor = outputUnit === 'mA' ? 16 : 100; // Ejemplo: 100 para Ohmios si es RTD estándar
+        const errorPercentage = (errorMa / divisor) * 100; 
         
         return {
             ...measurement,
@@ -89,15 +94,32 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({ measurements, onMea
 
     return (
         <div className="mt-8 w-full max-w-full overflow-hidden">
+            {/* Header con Selector de Unidad */}
             <div className="bg-gradient-to-r from-teal-600 to-emerald-600 rounded-t-xl px-4 py-4 sm:px-6">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                    <div className="flex items-center">
-                        <div className="p-2 bg-white/20 rounded-lg mr-3">
+                    <div className="flex items-center gap-4">
+                        <div className="p-2 bg-white/20 rounded-lg">
                             <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                             </svg>
                         </div>
                         <h3 className="text-lg sm:text-xl font-bold text-white uppercase tracking-tight">Mediciones</h3>
+                        
+                        {/* Selector de Unidad (mA / Ohmios) */}
+                        <div className="flex bg-black/20 p-1 rounded-lg ml-2">
+                            <button 
+                                onClick={() => setOutputUnit('mA')}
+                                className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${outputUnit === 'mA' ? 'bg-white text-teal-700 shadow' : 'text-white hover:bg-white/10'}`}
+                            >
+                                mA
+                            </button>
+                            <button 
+                                onClick={() => setOutputUnit('Ω')}
+                                className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${outputUnit === 'Ω' ? 'bg-white text-teal-700 shadow' : 'text-white hover:bg-white/10'}`}
+                            >
+                                Ω
+                            </button>
+                        </div>
                     </div>
                     <button 
                         onClick={handleAddRow} 
@@ -109,15 +131,16 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({ measurements, onMea
             </div>
 
             <div className="bg-gray-100 lg:bg-white rounded-b-xl shadow-lg border border-gray-200">
+                {/* Header Table - Desktop */}
                 <div className="hidden lg:grid grid-cols-11 bg-gray-50 border-b border-gray-200 text-[10px] font-bold text-gray-600 uppercase tracking-wider">
                     <div className="px-2 py-4 text-center">Ideal UE</div>
-                    <div className="px-2 py-4 text-center">Ideal mA</div>
+                    <div className="px-2 py-4 text-center">Ideal {outputUnit}</div>
                     <div className="px-2 py-4 text-center">Patrón UE</div>
                     <div className="px-2 py-4 text-center">UE Trans.</div>
-                    <div className="px-2 py-4 text-center">mA Trans.</div>
+                    <div className="px-2 py-4 text-center">{outputUnit} Trans.</div>
                     <div className="px-2 py-4 text-center">% Rango</div>
                     <div className="px-2 py-4 text-center bg-red-50">Err UE</div>
-                    <div className="px-2 py-4 text-center bg-red-50">Err mA</div>
+                    <div className="px-2 py-4 text-center bg-red-50">Err {outputUnit}</div>
                     <div className="px-2 py-4 text-center bg-red-50">Err %</div>
                     <div className="px-2 py-4 text-center col-span-2">Acción</div>
                 </div>
@@ -130,7 +153,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({ measurements, onMea
                                     <InputField label="Ideal UE" unit="UE" value={m.idealUe} onChange={(e:any) => handleChange(index, 'idealUe', e.target.value)} />
                                 </div>
                                 <div className="lg:px-2 lg:py-3 text-center">
-                                    <InputField label="Ideal mA" unit="mA" value={m.idealMa} onChange={(e:any) => handleChange(index, 'idealMa', e.target.value)} />
+                                    <InputField label={`Ideal ${outputUnit}`} unit={outputUnit} value={m.idealMa} onChange={(e:any) => handleChange(index, 'idealMa', e.target.value)} />
                                 </div>
                                 <div className="lg:px-2 lg:py-3 text-center">
                                     <InputField label="Patrón UE" unit="UE" value={m.patronUe} onChange={(e:any) => handleChange(index, 'patronUe', e.target.value)} />
@@ -139,7 +162,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({ measurements, onMea
                                     <InputField label="UE Trans." unit="UE" value={m.ueTransmitter} onChange={(e:any) => handleChange(index, 'ueTransmitter', e.target.value)} />
                                 </div>
                                 <div className="lg:px-2 lg:py-3 text-center">
-                                    <InputField label="mA Trans." unit="mA" value={m.maTransmitter} onChange={(e:any) => handleChange(index, 'maTransmitter', e.target.value)} />
+                                    <InputField label={`${outputUnit} Trans.`} unit={outputUnit} value={m.maTransmitter} onChange={(e:any) => handleChange(index, 'maTransmitter', e.target.value)} />
                                 </div>
                                 <div className="lg:px-2 lg:py-3 text-center">
                                     <InputField label="% Rango" unit="%" value={m.percentage} onChange={(e:any) => handleChange(index, 'percentage', e.target.value)} />
@@ -148,7 +171,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({ measurements, onMea
                                     <InputField label="Err UE" unit="UE" value={m.errorUe} isError readOnly />
                                 </div>
                                 <div className="lg:px-2 lg:py-3 text-center lg:bg-red-50/30">
-                                    <InputField label="Err mA" unit="mA" value={m.errorMa} isError readOnly />
+                                    <InputField label={`Err ${outputUnit}`} unit={outputUnit} value={m.errorMa} isError readOnly />
                                 </div>
                                 <div className="lg:px-2 lg:py-3 text-center lg:bg-red-50/30">
                                     <InputField label="Err %" unit="%" value={m.errorPercentage} isError readOnly />
@@ -168,23 +191,6 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({ measurements, onMea
                         </div>
                     ))}
                 </div>
-
-                {measurements.length > 0 && (
-                    <div className="bg-gray-50 p-4 border-t border-gray-200">
-                        <div className="flex flex-wrap gap-4 text-xs font-bold uppercase text-gray-500 justify-around">
-                            <div className="flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full bg-teal-500"></span>
-                                Puntos: <span className="text-teal-700">{measurements.length}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                                Rango UE: <span className="text-blue-700">
-                                    {Math.min(...measurements.map(m => parseFloat(m.idealUe) || 0))} - {Math.max(...measurements.map(m => parseFloat(m.idealUe) || 0))}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                )}
             </div>
         </div>
     );

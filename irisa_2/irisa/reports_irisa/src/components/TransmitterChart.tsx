@@ -19,11 +19,13 @@ interface TransmitterChartProps {
     measurements?: Measurement[];
     data?: Measurement[];
     onChartsCapture?: React.MutableRefObject<any>;
+    // NUEVO: Prop para manejar la unidad dinamica
+    outputUnit?: 'mA' | 'Ω'; 
 }
 
 type ChartView = 'response' | 'errors' | 'linearity' | 'percentage';
 
-const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements, data }, ref) => {
+const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements, data, outputUnit = 'mA' }, ref) => {
     const chartData = measurements || data || [];
     const [activeView, setActiveView] = useState<ChartView>('response');
 
@@ -39,20 +41,16 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
             idealUe: parseFloat(measurement.idealUe) || 0,
             patronUe: parseFloat(measurement.patronUe) || 0,
             ueTransmitter: parseFloat(measurement.ueTransmitter) || 0,
-            idealMa: parseFloat(measurement.idealMa) || 0,
-            maTransmitter: parseFloat(measurement.maTransmitter) || 0,
+            idealValue: parseFloat(measurement.idealMa) || 0, // Mapeamos idealMa a un nombre genérico
+            measuredValue: parseFloat(measurement.maTransmitter) || 0, // Mapeamos maTransmitter a genérico
             errorUe: parseFloat(measurement.errorUe) || 0,
-            errorMa: parseFloat(measurement.errorMa) || 0,
+            errorValue: parseFloat(measurement.errorMa) || 0, // Error en mA o Ohmios
             errorPercentage: parseFloat(measurement.errorPercentage) || 0,
         })).sort((a, b) => a.percentage - b.percentage);
     };
 
     const processedData = processDataForChart();
 
-    /**
-     * Función expuesta para capturar todos los gráficos a la vez.
-     * Optimizado para mejorar la calidad del PDF y asegurar el renderizado de los SVG.
-     */
     const captureAllCharts = async () => {
         const captures: string[] = [];
         const refs = [responseRef, errorsRef, linearityRef, percentageRef];
@@ -60,11 +58,10 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
         for (const chartRef of refs) {
             if (chartRef.current) {
                 try {
-                    // Generamos la imagen con pixelRatio alto para que no se vea pixeleada en el PDF
                     const dataUrl = await toPng(chartRef.current, { 
                         backgroundColor: '#ffffff',
                         pixelRatio: 2, 
-                        cacheBust: true, // Ayuda con problemas de renderizado de fuentes/iconos
+                        cacheBust: true,
                     });
                     captures.push(dataUrl);
                 } catch (err) {
@@ -79,7 +76,7 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
         captureAllCharts
     }));
 
-    // --- Funciones de Renderizado Individuales ---
+    // --- Renderizado con Unidades Dinámicas ---
 
     const renderResponseChart = () => (
         <div className="h-96 w-full bg-white p-4">
@@ -88,11 +85,11 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
                 <LineChart data={processedData} margin={{ top: 5, right: 30, left: 20, bottom: 25 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis dataKey="percentage" label={{ value: '% Rango', position: 'insideBottom', offset: -10 }} />
-                    <YAxis label={{ value: 'Valores', angle: -90, position: 'insideLeft' }} />
+                    <YAxis label={{ value: `Unidades (${outputUnit}/UE)`, angle: -90, position: 'insideLeft' }} />
                     <Tooltip />
                     <Legend verticalAlign="top" />
-                    <Line type="monotone" dataKey="idealMa" stroke="#3b82f6" name="Ideal mA" strokeWidth={2} isAnimationActive={false} />
-                    <Line type="monotone" dataKey="maTransmitter" stroke="#ef4444" name="Medido mA" strokeWidth={2} isAnimationActive={false} />
+                    <Line type="monotone" dataKey="idealValue" stroke="#3b82f6" name={`Ideal ${outputUnit}`} strokeWidth={2} isAnimationActive={false} />
+                    <Line type="monotone" dataKey="measuredValue" stroke="#ef4444" name={`Medido ${outputUnit}`} strokeWidth={2} isAnimationActive={false} />
                     <Line type="monotone" dataKey="idealUe" stroke="#10b981" name="Ideal UE" strokeDasharray="5 5" isAnimationActive={false} />
                     <Line type="monotone" dataKey="ueTransmitter" stroke="#f59e0b" name="UE Transmisor" strokeDasharray="5 5" isAnimationActive={false} />
                 </LineChart>
@@ -111,7 +108,7 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
                     <Tooltip formatter={(val: number) => val.toFixed(4)} />
                     <Legend verticalAlign="top" />
                     <Line type="monotone" dataKey="errorUe" stroke="#dc2626" name="Error UE" strokeWidth={2} isAnimationActive={false} />
-                    <Line type="monotone" dataKey="errorMa" stroke="#ea580c" name="Error mA" strokeWidth={2} isAnimationActive={false} />
+                    <Line type="monotone" dataKey="errorValue" stroke="#ea580c" name={`Error ${outputUnit}`} strokeWidth={2} isAnimationActive={false} />
                 </LineChart>
             </ResponsiveContainer>
         </div>
@@ -123,8 +120,8 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
             <ResponsiveContainer width="100%" height="100%">
                 <ScatterChart margin={{ top: 20, right: 30, left: 20, bottom: 25 }}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" dataKey="idealMa" name="Ideal" unit="mA" label={{ value: 'Ideal mA', position: 'insideBottom', offset: -10 }} />
-                    <YAxis type="number" dataKey="maTransmitter" name="Medido" unit="mA" label={{ value: 'Medido mA', angle: -90, position: 'insideLeft' }} />
+                    <XAxis type="number" dataKey="idealValue" name="Ideal" unit={outputUnit} label={{ value: `Ideal ${outputUnit}`, position: 'insideBottom', offset: -10 }} />
+                    <YAxis type="number" dataKey="measuredValue" name="Medido" unit={outputUnit} label={{ value: `Medido ${outputUnit}`, angle: -90, position: 'insideLeft' }} />
                     <Tooltip cursor={{ strokeDasharray: '3 3' }} />
                     <Scatter name="Puntos" data={processedData} fill="#8884d8" isAnimationActive={false} />
                 </ScatterChart>
@@ -149,20 +146,22 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
 
     const chartViews = [
         { id: 'response' as ChartView, name: 'Respuesta', icon: '📈', description: 'Valores ideales vs medidos' },
-        { id: 'errors' as ChartView, name: 'Errores', icon: '⚠️', description: 'Desviaciones en UE y mA' },
+        { id: 'errors' as ChartView, name: 'Errores', icon: '⚠️', description: `Desviaciones en UE y ${outputUnit}` },
         { id: 'linearity' as ChartView, name: 'Linealidad', icon: '📊', description: 'Análisis de regresión simple' },
         { id: 'percentage' as ChartView, name: 'Error %', icon: '%', description: 'Errores como porcentaje del SPAN' }
     ];
 
     return (
         <div className="mt-8">
-            {/* Header */}
+            {/* Header con indicador de unidad */}
             <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-t-xl px-6 py-4 text-white">
-                <div className="flex items-center gap-3">
-                    <span className="text-2xl">📊</span>
-                    <div>
-                        <h3 className="text-xl font-bold">Análisis del Transmisor</h3>
-                        <p className="text-blue-100 text-sm">Comportamiento dinámico del instrumento</p>
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <span className="text-2xl">📊</span>
+                        <div>
+                            <h3 className="text-xl font-bold">Análisis del Transmisor</h3>
+                            <p className="text-blue-100 text-sm">Comportamiento dinámico ({outputUnit})</p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -173,7 +172,7 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
                     <button
                         key={view.id}
                         onClick={() => setActiveView(view.id)}
-                        className={`px-6 py-3 text-sm font-medium transition-all border-b-2 ${
+                        className={`px-6 py-3 text-sm font-medium transition-all border-b-2 whitespace-nowrap ${
                             activeView === view.id ? 'border-blue-500 text-blue-600 bg-blue-50' : 'border-transparent text-gray-500 hover:bg-gray-50'
                         }`}
                     >
@@ -199,7 +198,6 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
                         {activeView === 'linearity' && renderLinearityChart()}
                         {activeView === 'percentage' && renderPercentageChart()}
 
-                        {/* Contenedores ocultos para la captura PDF/Imagen */}
                         <div style={{ position: 'absolute', left: '-9999px', top: 0, width: '800px' }}>
                             <div ref={responseRef}>{renderResponseChart()}</div>
                             <div ref={errorsRef}>{renderErrorsChart()}</div>
