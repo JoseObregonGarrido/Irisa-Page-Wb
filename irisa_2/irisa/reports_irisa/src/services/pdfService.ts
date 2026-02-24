@@ -1,180 +1,153 @@
-import React, { useState } from 'react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import logo from '../assets/logo_slogan_2.png';
 
-export interface Measurement {
-    percentage: string;
-    idealUe: string;
-    patronUe: string;
-    ueTransmitter: string;
-    idealMa: string;
-    maTransmitter: string;
-    errorUe: string;
-    errorMa: string;
-    errorPercentage: string;
+declare module 'jspdf' {
+  interface jsPDF {
+    autoTable: (options: any) => jsPDF;
+  }
 }
 
-interface TransmitterTableProps {
-    measurements: Measurement[];
-    onMeasurementsChange: (measurements: Measurement[]) => void;
+export interface ReportData {
+    instrumentistName: string;
+    instrumentistCode: string;
+    deviceType: string;
+    workOrder: string;
+    instrumentArea: string;
+    reviewDate: string;
+    deviceName: string;
+    deviceBrand: string;
+    deviceModel: string;
+    deviceSerial: string;
+    deviceRange: string;
+    unity: string;
+    deviceCode: string;
+    observations: string;
+    hasUeTransmitter: boolean; 
+    outputUnit: 'mA' | 'Ω'; 
+    transmitterMeasurements?: any[];
 }
 
-const InputField = ({ label, value, onChange, unit, isError = false, readOnly = false }: any) => (
-    <div className="flex flex-col w-full">
-        <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1 lg:hidden">
-            {label}
-        </label>
-        <div className="relative w-full">
-            <input
-                type="text"
-                value={value}
-                onChange={onChange}
-                readOnly={readOnly}
-                className={`w-full px-2 py-2 pr-8 text-sm border rounded-lg focus:outline-none focus:ring-2 
-                    ${isError 
-                        ? 'border-red-200 bg-red-50 focus:ring-red-500' 
-                        : 'border-gray-300 bg-white focus:ring-teal-500'
-                    } ${readOnly ? 'bg-gray-50 cursor-not-allowed text-gray-600' : ''}`}
-                placeholder="0.00"
-            />
-            <span className={`absolute right-2 top-2 text-[10px] font-bold ${isError ? 'text-red-400' : 'text-gray-400'}`}>
-                {unit}
-            </span>
-        </div>
-    </div>
-);
+export const generatePDFReport = async (data: ReportData, chartImages?: string[]): Promise<void> => {
+    const pdf = new jsPDF();
+    const unit = data.outputUnit || 'mA';
+    const hasUE = !!data.hasUeTransmitter;
+    let yPos = 20;
 
-const TransmitterTable: React.FC<TransmitterTableProps> = ({ measurements, onMeasurementsChange }) => {
-    const [outputUnit, setOutputUnit] = useState<'mA' | 'Ω'>('mA');
-    const [hasUeTransmitter, setHasUeTransmitter] = useState<boolean>(true);
+    const colors = { risaraldaGreen: [119, 158, 79], lightGray: [245, 245, 245] };
 
-    const handleAddRow = () => {
-        onMeasurementsChange([...measurements, { 
-            percentage: "", idealUe: "", patronUe: "", ueTransmitter: "", 
-            idealMa:"", maTransmitter: "", errorUe: "", errorMa: "", errorPercentage: "" 
-        }]);
+    const addHeader = (title: string) => {
+        if (yPos + 30 > 275) { pdf.addPage(); yPos = 20; }
+        pdf.setDrawColor(...colors.risaraldaGreen).setLineWidth(0.8).line(20, yPos, 190, yPos);
+        yPos += 10;
+        pdf.setFontSize(12).setFont('helvetica', 'bold').setTextColor(0).text(title, 20, yPos);
+        yPos += 10;
     };
 
-    const handleDeleteRow = (indexToDelete: number) => {
-        const newMeasurements = measurements.filter((_, index) => index !== indexToDelete);
-        onMeasurementsChange(newMeasurements);
-    };
+    try {
+        // Logo y Título
+        try {
+            const b64Logo = await getBase64ImageFromUrl(logo);
+            pdf.addImage(b64Logo, 'PNG', 20, 15, 55, 22);
+        } catch { console.warn("Logo fail"); }
+        
+        pdf.setFontSize(18).setFont('helvetica', 'bold').text('REPORTE DE INSTRUMENTACIÓN', 85, 28);
+        yPos = 50;
 
-    const calculateErrors = (measurement: Measurement) => {
-        const patronUe = parseFloat(measurement.patronUe) || 0;
-        const ueTransmitter = parseFloat(measurement.ueTransmitter) || 0;
-        const idealMa = parseFloat(measurement.idealMa) || 0;
-        const maTransmitter = parseFloat(measurement.maTransmitter) || 0;
-        
-        const errorUe = ueTransmitter - patronUe; 
-        const errorMa = maTransmitter - idealMa; // Invertido comúnmente en calibración (Medido - Ideal)
-        
-        const divisor = outputUnit === 'mA' ? 16 : 100; 
-        const errorPercentage = (errorMa / divisor) * 100; 
-        
-        return {
-            ...measurement,
-            errorUe: errorUe.toFixed(3),
-            errorMa: errorMa.toFixed(3),
-            errorPercentage: errorPercentage.toFixed(2)
-        };
-    };
+        // Info General
+        addHeader('INFORMACIÓN GENERAL');
+        autoTable(pdf, {
+            startY: yPos,
+            margin: { left: 20 },
+            body: [
+                ['Instrumentista', data.instrumentistName],
+                ['Orden de Trabajo', data.workOrder],
+                ['Equipo', `${data.deviceName} [${data.deviceCode}]`],
+                ['Rango', `${data.deviceRange} ${data.unity}`],
+                ['Fecha', data.reviewDate ? new Date(data.reviewDate).toLocaleDateString() : 'N/A']
+            ],
+            styles: { fontSize: 10 },
+            columnStyles: { 0: { fontStyle: 'bold', fillColor: colors.lightGray, cellWidth: 50 } }
+        });
+        yPos = (pdf as any).lastAutoTable.finalY + 15;
 
-    const handleChange = (index: number, field: keyof Measurement, value: string) => {
-        const newMeasurements = [...measurements];
-        newMeasurements[index] = { ...newMeasurements[index], [field]: value };
-        
-        const relevantFields: (keyof Measurement)[] = ["patronUe", "ueTransmitter", "idealMa", "maTransmitter"];
-        if (relevantFields.includes(field)) {
-            newMeasurements[index] = calculateErrors(newMeasurements[index]);
+        // Tabla de Mediciones Dinámica (Basada en TransmitterTable)
+        if (data.deviceType === 'transmitter' && data.transmitterMeasurements?.length) {
+            addHeader(`PRUEBA DE SALIDA (${unit})`);
+
+            // Construcción dinámica de cabeceras igual que en el componente React
+            const headers = [
+                'Ideal UE', 
+                `Ideal ${unit}`, 
+                'Patrón UE', 
+                ...(hasUE ? ['UE Trans.'] : []), 
+                `${unit} Trans.`, 
+                '% Rango', 
+                ...(hasUE ? ['Err UE'] : []), 
+                `Err ${unit}`, 
+                'Err %'
+            ];
+
+            // Mapeo de datos respetando las columnas activas
+            const body = data.transmitterMeasurements.map(m => [
+                m.idealUe, 
+                m.idealMa, 
+                m.patronUe,
+                ...(hasUE ? [m.ueTransmitter] : []),
+                m.maTransmitter, 
+                m.percentage,
+                ...(hasUE ? [m.errorUe] : []),
+                m.errorMa, 
+                m.errorPercentage
+            ]);
+
+            autoTable(pdf, {
+                startY: yPos,
+                head: [headers],
+                body: body,
+                headStyles: { fillColor: colors.risaraldaGreen, halign: 'center', fontSize: 8 },
+                styles: { fontSize: 7.5, halign: 'center', cellPadding: 2 },
+                // Estilo especial para columnas de error (Fondo rojo suave como en la web)
+                didParseCell: (dataCell: any) => {
+                    const errorHeaders = ['Err UE', `Err ${unit}`, 'Err %'];
+                    if (dataCell.section === 'body' && errorHeaders.includes(headers[dataCell.column.index])) {
+                        dataCell.cell.styles.fillColor = [254, 242, 242]; // Red-50
+                        dataCell.cell.styles.textColor = [185, 28, 28];  // Red-700
+                    }
+                }
+            });
+            yPos = (pdf as any).lastAutoTable.finalY + 15;
         }
-        
-        onMeasurementsChange(newMeasurements);
-    };
 
-    // Dinámico: 12 columnas si tiene UE (Input + Error), 10 si no.
-    const gridConfig = hasUeTransmitter ? 'lg:grid-cols-12' : 'lg:grid-cols-10';
+        // Gráficos
+        if (chartImages?.length) {
+            chartImages.forEach((img, i) => {
+                const titles = ['Curva de Respuesta', 'Errores Absolutos', 'Linealidad', 'Error Porcentual'];
+                addHeader(`ANÁLISIS: ${titles[i] || 'Gráfico'}`);
+                pdf.addImage(img, 'PNG', 25, yPos, 160, 75);
+                yPos += 85;
+            });
+        }
 
-    return (
-        <div className="mt-8 w-full max-w-full overflow-hidden">
-            <div className="bg-gradient-to-r from-teal-600 to-emerald-600 rounded-t-xl px-4 py-4 sm:px-6">
-                <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-                    <div className="flex flex-wrap items-center gap-4">
-                        <div className="p-2 bg-white/20 rounded-lg">
-                            <span className="text-white">⚙️</span>
-                        </div>
-                        <h3 className="text-lg font-bold text-white uppercase">Mediciones</h3>
-                        
-                        <div className="flex bg-black/20 p-1 rounded-lg">
-                            <button onClick={() => setOutputUnit('mA')} className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${outputUnit === 'mA' ? 'bg-white text-teal-700 shadow' : 'text-white hover:bg-white/10'}`}>mA</button>
-                            <button onClick={() => setOutputUnit('Ω')} className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${outputUnit === 'Ω' ? 'bg-white text-teal-700 shadow' : 'text-white hover:bg-white/10'}`}>Ω</button>
-                        </div>
+        // Observaciones
+        if (data.observations) {
+            addHeader('OBSERVACIONES');
+            const splitText = pdf.splitTextToSize(data.observations, 165);
+            pdf.setFontSize(10).setFont('helvetica', 'normal').text(splitText, 20, yPos);
+        }
 
-                        <label className="flex items-center cursor-pointer gap-2 bg-black/10 px-3 py-1.5 rounded-lg border border-white/10 transition-hover hover:bg-black/20">
-                            <input 
-                                type="checkbox" 
-                                checked={hasUeTransmitter} 
-                                onChange={(e) => setHasUeTransmitter(e.target.checked)}
-                                className="w-4 h-4 accent-emerald-400"
-                            />
-                            <span className="text-[10px] font-bold text-white uppercase">Aplica UE Trans.</span>
-                        </label>
-                    </div>
-                    
-                    <button onClick={handleAddRow} className="w-full md:w-auto px-4 py-2 bg-white text-teal-700 hover:bg-teal-50 font-bold rounded-lg transition-all shadow-md active:scale-95 text-sm">+ FILA</button>
-                </div>
-            </div>
+        pdf.save(`Reporte_${data.workOrder || 'Instrumentacion'}.pdf`);
+    } catch (e) { 
+        console.error("PDF Error:", e); 
+    }
+};
 
-            <div className="bg-gray-100 lg:bg-white rounded-b-xl shadow-lg border border-gray-200">
-                {/* Header Desktop */}
-                <div className={`hidden lg:grid ${gridConfig} bg-gray-50 border-b border-gray-200 text-[10px] font-bold text-gray-600 uppercase`}>
-                    <div className="px-1 py-4 text-center">Ideal UE</div>
-                    <div className="px-1 py-4 text-center">Ideal {outputUnit}</div>
-                    <div className="px-1 py-4 text-center">Patrón UE</div>
-                    {hasUeTransmitter && <div className="px-1 py-4 text-center text-teal-600">UE Trans.</div>}
-                    <div className="px-1 py-4 text-center">{outputUnit} Trans.</div>
-                    <div className="px-1 py-4 text-center">% Rango</div>
-                    
-                    {/* Sección Errores */}
-                    {hasUeTransmitter && <div className="px-1 py-4 text-center bg-red-50 text-red-700 border-l border-red-100">Err UE</div>}
-                    <div className={`px-1 py-4 text-center bg-red-50 text-red-700 ${!hasUeTransmitter ? 'border-l border-red-100' : ''}`}>Err {outputUnit}</div>
-                    <div className="px-1 py-4 text-center bg-red-50 text-red-700">Err %</div>
-                    
-                    <div className="px-1 py-4 text-center col-span-2">Acción</div>
-                </div>
-
-                <div className="p-4 lg:p-0 space-y-4 lg:space-y-0 lg:divide-y lg:divide-gray-200">
-                    {measurements.map((m, index) => (
-                        <div key={index} className={`bg-white p-4 lg:p-0 rounded-xl lg:rounded-none lg:grid ${gridConfig} lg:items-center hover:bg-gray-50 transition-colors`}>
-                            <div className="grid grid-cols-2 md:grid-cols-3 lg:contents gap-3">
-                                <div className="lg:px-1 lg:py-3"><InputField label="Ideal UE" unit="UE" value={m.idealUe} onChange={(e:any) => handleChange(index, 'idealUe', e.target.value)} /></div>
-                                <div className="lg:px-1 lg:py-3"><InputField label={`Ideal ${outputUnit}`} unit={outputUnit} value={m.idealMa} onChange={(e:any) => handleChange(index, 'idealMa', e.target.value)} /></div>
-                                <div className="lg:px-1 lg:py-3"><InputField label="Patrón UE" unit="UE" value={m.patronUe} onChange={(e:any) => handleChange(index, 'patronUe', e.target.value)} /></div>
-
-                                {hasUeTransmitter && (
-                                    <div className="lg:px-1 lg:py-3 border-teal-50 bg-teal-50/10"><InputField label="UE Trans." unit="UE" value={m.ueTransmitter} onChange={(e:any) => handleChange(index, 'ueTransmitter', e.target.value)} /></div>
-                                )}
-
-                                <div className="lg:px-1 lg:py-3"><InputField label={`${outputUnit} Trans.`} unit={outputUnit} value={m.maTransmitter} onChange={(e:any) => handleChange(index, 'maTransmitter', e.target.value)} /></div>
-                                <div className="lg:px-1 lg:py-3"><InputField label="% Rango" unit="%" value={m.percentage} onChange={(e:any) => handleChange(index, 'percentage', e.target.value)} /></div>
-
-                                {/* Errores condicionales */}
-                                {hasUeTransmitter && (
-                                    <div className="lg:px-1 lg:py-3 lg:bg-red-50/20 border-l border-red-50"><InputField label="Err UE" unit="UE" value={m.errorUe} isError readOnly /></div>
-                                )}
-                                <div className={`lg:px-1 lg:py-3 lg:bg-red-50/20 ${!hasUeTransmitter ? 'border-l border-red-50' : ''}`}><InputField label={`Err ${outputUnit}`} unit={outputUnit} value={m.errorMa} isError readOnly /></div>
-                                <div className="lg:px-1 lg:py-3 lg:bg-red-50/20"><InputField label="Err %" unit="%" value={m.errorPercentage} isError readOnly /></div>
-
-                                <div className="col-span-2 md:col-span-3 lg:col-span-2 flex justify-center py-2 lg:py-0">
-                                    <button onClick={() => handleDeleteRow(index)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors">
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        </div>
-    );
-}
-
-export default TransmitterTable;
+const getBase64ImageFromUrl = async (url: string): Promise<string> => {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    return new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
+    });
+};
