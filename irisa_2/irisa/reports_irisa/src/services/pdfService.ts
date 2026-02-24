@@ -98,7 +98,7 @@ export const generatePDFReport = async (
     const generalData = [
       ['Nombre del instrumentista', data.instrumentistName || 'N/A'],
       ['Orden de Trabajo', data.workOrder || 'N/A'],
-      ['Equipo', `${data.deviceName} (${data.deviceCode})`],
+      ['Equipo', `${data.deviceName} (${data.deviceCode}`],
       ['Rango', `${data.deviceRange} ${data.unity}`],
       ['Fecha', data.reviewDate ? formatDate(data.reviewDate) : 'N/A'],
     ];
@@ -128,7 +128,7 @@ export const generatePDFReport = async (
       yPosition = (pdf as any).lastAutoTable.finalY + 15;
     }
 
-    // 4. SECCIÓN DE GRÁFICAS (Aquí integramos lo que pediste)
+    // 4. SECCIÓN DE GRÁFICAS (Aquí integramos)
     if (chartImages && chartImages.length > 0) {
       const chartTitles = ['Curva de Respuesta', 'Errores Absolutos', 'Análisis de Linealidad', 'Error Porcentual'];
       
