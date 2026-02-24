@@ -19,7 +19,7 @@ interface TransmitterChartProps {
     measurements?: Measurement[];
     data?: Measurement[];
     onChartsCapture?: React.MutableRefObject<any>;
-    // NUEVO: Prop para manejar la unidad dinamica
+    // Prop que viene del padre para sincronizar con la tabla
     outputUnit?: 'mA' | 'Ω'; 
 }
 
@@ -35,16 +35,17 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
     const linearityRef = useRef<HTMLDivElement>(null);
     const percentageRef = useRef<HTMLDivElement>(null);
 
+    // Procesamos los datos mapeando idealMa/maTransmitter a nombres genéricos para la gráfica
     const processDataForChart = () => {
         return chartData.map((measurement) => ({
             percentage: parseFloat(measurement.percentage) || 0,
             idealUe: parseFloat(measurement.idealUe) || 0,
             patronUe: parseFloat(measurement.patronUe) || 0,
             ueTransmitter: parseFloat(measurement.ueTransmitter) || 0,
-            idealValue: parseFloat(measurement.idealMa) || 0, // Mapeamos idealMa a un nombre genérico
-            measuredValue: parseFloat(measurement.maTransmitter) || 0, // Mapeamos maTransmitter a genérico
+            idealValue: parseFloat(measurement.idealMa) || 0, 
+            measuredValue: parseFloat(measurement.maTransmitter) || 0, 
             errorUe: parseFloat(measurement.errorUe) || 0,
-            errorValue: parseFloat(measurement.errorMa) || 0, // Error en mA o Ohmios
+            errorValue: parseFloat(measurement.errorMa) || 0, 
             errorPercentage: parseFloat(measurement.errorPercentage) || 0,
         })).sort((a, b) => a.percentage - b.percentage);
     };
@@ -82,10 +83,14 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
         <div className="h-96 w-full bg-white p-4">
             <h4 className="text-lg font-semibold text-gray-700 mb-4 text-center">Curva de Respuesta</h4>
             <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={processedData} margin={{ top: 5, right: 30, left: 20, bottom: 25 }}>
+                <LineChart 
+                    key={`res-${outputUnit}`} // Forzamos re-render al cambiar unidad
+                    data={processedData} 
+                    margin={{ top: 5, right: 30, left: 20, bottom: 25 }}
+                >
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis dataKey="percentage" label={{ value: '% Rango', position: 'insideBottom', offset: -10 }} />
-                    <YAxis label={{ value: `Unidades (${outputUnit}/UE)`, angle: -90, position: 'insideLeft' }} />
+                    <YAxis label={{ value: `Unidades (${outputUnit})`, angle: -90, position: 'insideLeft' }} />
                     <Tooltip />
                     <Legend verticalAlign="top" />
                     <Line type="monotone" dataKey="idealValue" stroke="#3b82f6" name={`Ideal ${outputUnit}`} strokeWidth={2} isAnimationActive={false} />
@@ -101,10 +106,14 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
         <div className="h-96 w-full bg-white p-4">
             <h4 className="text-lg font-semibold text-gray-700 mb-4 text-center">Errores Absolutos</h4>
             <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={processedData} margin={{ top: 5, right: 30, left: 20, bottom: 25 }}>
+                <LineChart 
+                    key={`err-${outputUnit}`}
+                    data={processedData} 
+                    margin={{ top: 5, right: 30, left: 20, bottom: 25 }}
+                >
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="percentage" label={{ value: '% Rango', position: 'insideBottom', offset: -10 }} />
-                    <YAxis />
+                    <YAxis label={{ value: `Error (${outputUnit})`, angle: -90, position: 'insideLeft' }} />
                     <Tooltip formatter={(val: number) => val.toFixed(4)} />
                     <Legend verticalAlign="top" />
                     <Line type="monotone" dataKey="errorUe" stroke="#dc2626" name="Error UE" strokeWidth={2} isAnimationActive={false} />
@@ -118,7 +127,10 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
         <div className="h-96 w-full bg-white p-4">
             <h4 className="text-lg font-semibold text-gray-700 mb-4 text-center">Análisis de Linealidad</h4>
             <ResponsiveContainer width="100%" height="100%">
-                <ScatterChart margin={{ top: 20, right: 30, left: 20, bottom: 25 }}>
+                <ScatterChart 
+                    key={`lin-${outputUnit}`}
+                    margin={{ top: 20, right: 30, left: 20, bottom: 25 }}
+                >
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis type="number" dataKey="idealValue" name="Ideal" unit={outputUnit} label={{ value: `Ideal ${outputUnit}`, position: 'insideBottom', offset: -10 }} />
                     <YAxis type="number" dataKey="measuredValue" name="Medido" unit={outputUnit} label={{ value: `Medido ${outputUnit}`, angle: -90, position: 'insideLeft' }} />
@@ -153,7 +165,6 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
 
     return (
         <div className="mt-8">
-            {/* Header con indicador de unidad */}
             <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-t-xl px-6 py-4 text-white">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -166,7 +177,6 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
                 </div>
             </div>
 
-            {/* Tabs */}
             <div className="bg-white border-b flex overflow-x-auto">
                 {chartViews.map((view) => (
                     <button
@@ -181,7 +191,6 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
                 ))}
             </div>
 
-            {/* Main Content */}
             <div className="bg-white rounded-b-xl shadow-md p-6">
                 {chartData.length === 0 ? (
                     <div className="py-20 text-center text-gray-400">
@@ -198,6 +207,7 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
                         {activeView === 'linearity' && renderLinearityChart()}
                         {activeView === 'percentage' && renderPercentageChart()}
 
+                        {/* Captura oculta */}
                         <div style={{ position: 'absolute', left: '-9999px', top: 0, width: '800px' }}>
                             <div ref={responseRef}>{renderResponseChart()}</div>
                             <div ref={errorsRef}>{renderErrorsChart()}</div>
