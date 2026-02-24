@@ -32,7 +32,7 @@ const InputField = ({ label, value, onChange, unit, isError = false, readOnly = 
                     ${isError 
                         ? 'border-red-200 bg-red-50 focus:ring-red-500' 
                         : 'border-gray-300 bg-white focus:ring-teal-500'
-                    } ${readOnly ? 'cursor-not-allowed' : ''}`}
+                    } ${readOnly ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                 placeholder="0.00"
             />
             <span className={`absolute right-2 top-2 text-[10px] font-bold ${isError ? 'text-red-400' : 'text-gray-400'}`}>
@@ -43,8 +43,9 @@ const InputField = ({ label, value, onChange, unit, isError = false, readOnly = 
 );
 
 const TransmitterTable: React.FC<TransmitterTableProps> = ({ measurements, onMeasurementsChange }) => {
-    // NUEVO: Estado para controlar la unidad de salida (mA u Ohmios)
     const [outputUnit, setOutputUnit] = useState<'mA' | 'Ω'>('mA');
+    // NUEVO: Estado para saber si aplica UE Transmisor
+    const [hasUeTransmitter, setHasUeTransmitter] = useState<boolean>(true);
 
     const handleAddRow = () => {
         onMeasurementsChange([...measurements, { 
@@ -67,9 +68,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({ measurements, onMea
         const errorUe = ueTransmitter - patronUe; 
         const errorMa = idealMa - maTransmitter; 
         
-        // Si es mA el rango es 16 (20-4), si es Ohmios podrías necesitar un divisor distinto
-        // Por ahora mantenemos la lógica proporcional
-        const divisor = outputUnit === 'mA' ? 16 : 100; // Ejemplo: 100 para Ohmios si es RTD estándar
+        const divisor = outputUnit === 'mA' ? 16 : 100; 
         const errorPercentage = (errorMa / divisor) * 100; 
         
         return {
@@ -92,99 +91,117 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({ measurements, onMea
         onMeasurementsChange(newMeasurements);
     };
 
+    // Definimos las columnas dinámicamente para el grid de Tailwind
+    const gridConfig = hasUeTransmitter ? 'lg:grid-cols-12' : 'lg:grid-cols-11';
+
     return (
         <div className="mt-8 w-full max-w-full overflow-hidden">
-            {/* Header con Selector de Unidad */}
+            {/* Header con Selector de Unidad y Configuración */}
             <div className="bg-gradient-to-r from-teal-600 to-emerald-600 rounded-t-xl px-4 py-4 sm:px-6">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div className="flex flex-wrap items-center gap-4">
                         <div className="p-2 bg-white/20 rounded-lg">
                             <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                             </svg>
                         </div>
-                        <h3 className="text-lg sm:text-xl font-bold text-white uppercase tracking-tight">Mediciones</h3>
+                        <h3 className="text-lg font-bold text-white uppercase tracking-tight">Mediciones</h3>
                         
-                        {/* Selector de Unidad (mA / Ohmios) */}
-                        <div className="flex bg-black/20 p-1 rounded-lg ml-2">
-                            <button 
-                                onClick={() => setOutputUnit('mA')}
-                                className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${outputUnit === 'mA' ? 'bg-white text-teal-700 shadow' : 'text-white hover:bg-white/10'}`}
-                            >
-                                mA
-                            </button>
-                            <button 
-                                onClick={() => setOutputUnit('Ω')}
-                                className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${outputUnit === 'Ω' ? 'bg-white text-teal-700 shadow' : 'text-white hover:bg-white/10'}`}
-                            >
-                                Ω
-                            </button>
+                        {/* Selector mA / Ohmios */}
+                        <div className="flex bg-black/20 p-1 rounded-lg">
+                            <button onClick={() => setOutputUnit('mA')} className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${outputUnit === 'mA' ? 'bg-white text-teal-700 shadow' : 'text-white hover:bg-white/10'}`}>mA</button>
+                            <button onClick={() => setOutputUnit('Ω')} className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${outputUnit === 'Ω' ? 'bg-white text-teal-700 shadow' : 'text-white hover:bg-white/10'}`}>Ω</button>
                         </div>
+
+                        {/* Switch Aplica UE */}
+                        <label className="flex items-center cursor-pointer gap-2 bg-black/10 px-3 py-1.5 rounded-lg border border-white/10">
+                            <input 
+                                type="checkbox" 
+                                checked={hasUeTransmitter} 
+                                onChange={(e) => setHasUeTransmitter(e.target.checked)}
+                                className="w-4 h-4 accent-emerald-400"
+                            />
+                            <span className="text-[10px] font-bold text-white uppercase">Aplica UE Trans.</span>
+                        </label>
                     </div>
+                    
                     <button 
                         onClick={handleAddRow} 
-                        className="w-full sm:w-auto flex items-center justify-center px-4 py-2 bg-white text-teal-700 hover:bg-teal-50 font-bold rounded-lg transition-all shadow-md active:scale-95"
+                        className="w-full md:w-auto px-4 py-2 bg-white text-teal-700 hover:bg-teal-50 font-bold rounded-lg transition-all shadow-md active:scale-95 text-sm"
                     >
-                        NUEVA FILA
+                        + NUEVA FILA
                     </button>
                 </div>
             </div>
 
             <div className="bg-gray-100 lg:bg-white rounded-b-xl shadow-lg border border-gray-200">
-                {/* Header Table - Desktop */}
-                <div className="hidden lg:grid grid-cols-11 bg-gray-50 border-b border-gray-200 text-[10px] font-bold text-gray-600 uppercase tracking-wider">
-                    <div className="px-2 py-4 text-center">Ideal UE</div>
-                    <div className="px-2 py-4 text-center">Ideal {outputUnit}</div>
-                    <div className="px-2 py-4 text-center">Patrón UE</div>
-                    <div className="px-2 py-4 text-center">UE Trans.</div>
-                    <div className="px-2 py-4 text-center">{outputUnit} Trans.</div>
-                    <div className="px-2 py-4 text-center">% Rango</div>
-                    <div className="px-2 py-4 text-center bg-red-50">Err UE</div>
-                    <div className="px-2 py-4 text-center bg-red-50">Err {outputUnit}</div>
-                    <div className="px-2 py-4 text-center bg-red-50">Err %</div>
-                    <div className="px-2 py-4 text-center col-span-2">Acción</div>
+                {/* Header Table - Desktop dinámico */}
+                <div className={`hidden lg:grid ${gridConfig} bg-gray-50 border-b border-gray-200 text-[10px] font-bold text-gray-600 uppercase tracking-wider`}>
+                    <div className="px-1 py-4 text-center">Ideal UE</div>
+                    <div className="px-1 py-4 text-center">Ideal {outputUnit}</div>
+                    <div className="px-1 py-4 text-center">Patrón UE</div>
+                    
+                    {/* Columna condicional */}
+                    {hasUeTransmitter && <div className="px-1 py-4 text-center text-teal-600">UE Trans.</div>}
+                    
+                    <div className="px-1 py-4 text-center">{outputUnit} Trans.</div>
+                    <div className="px-1 py-4 text-center">% Rango</div>
+                    <div className="px-1 py-4 text-center bg-red-50">Err UE</div>
+                    <div className="px-1 py-4 text-center bg-red-50 text-red-700">Err {outputUnit}</div>
+                    <div className="px-1 py-4 text-center bg-red-50 text-red-700">Err %</div>
+                    <div className="px-1 py-4 text-center col-span-2">Acción</div>
                 </div>
 
+                {/* Filas */}
                 <div className="p-4 lg:p-0 space-y-4 lg:space-y-0 lg:divide-y lg:divide-gray-200">
                     {measurements.map((m, index) => (
-                        <div key={index} className="bg-white p-4 lg:p-0 rounded-xl lg:rounded-none shadow-sm lg:shadow-none border lg:border-none border-gray-200 lg:grid lg:grid-cols-11 lg:items-center hover:bg-gray-50 transition-colors">
+                        <div key={index} className={`bg-white p-4 lg:p-0 rounded-xl lg:rounded-none shadow-sm lg:shadow-none border lg:border-none border-gray-200 lg:grid ${gridConfig} lg:items-center hover:bg-gray-50 transition-colors`}>
                             <div className="grid grid-cols-2 md:grid-cols-3 lg:contents gap-3">
-                                <div className="lg:px-2 lg:py-3 text-center">
+                                <div className="lg:px-1 lg:py-3 text-center">
                                     <InputField label="Ideal UE" unit="UE" value={m.idealUe} onChange={(e:any) => handleChange(index, 'idealUe', e.target.value)} />
                                 </div>
-                                <div className="lg:px-2 lg:py-3 text-center">
+                                <div className="lg:px-1 lg:py-3 text-center">
                                     <InputField label={`Ideal ${outputUnit}`} unit={outputUnit} value={m.idealMa} onChange={(e:any) => handleChange(index, 'idealMa', e.target.value)} />
                                 </div>
-                                <div className="lg:px-2 lg:py-3 text-center">
+                                <div className="lg:px-1 lg:py-3 text-center">
                                     <InputField label="Patrón UE" unit="UE" value={m.patronUe} onChange={(e:any) => handleChange(index, 'patronUe', e.target.value)} />
                                 </div>
-                                <div className="lg:px-2 lg:py-3 text-center">
-                                    <InputField label="UE Trans." unit="UE" value={m.ueTransmitter} onChange={(e:any) => handleChange(index, 'ueTransmitter', e.target.value)} />
-                                </div>
-                                <div className="lg:px-2 lg:py-3 text-center">
+
+                                {/* Campo condicional UE Trans. */}
+                                {hasUeTransmitter && (
+                                    <div className="lg:px-1 lg:py-3 text-center">
+                                        <InputField label="UE Trans." unit="UE" value={m.ueTransmitter} onChange={(e:any) => handleChange(index, 'ueTransmitter', e.target.value)} />
+                                    </div>
+                                )}
+
+                                <div className="lg:px-1 lg:py-3 text-center">
                                     <InputField label={`${outputUnit} Trans.`} unit={outputUnit} value={m.maTransmitter} onChange={(e:any) => handleChange(index, 'maTransmitter', e.target.value)} />
                                 </div>
-                                <div className="lg:px-2 lg:py-3 text-center">
+                                <div className="lg:px-1 lg:py-3 text-center">
                                     <InputField label="% Rango" unit="%" value={m.percentage} onChange={(e:any) => handleChange(index, 'percentage', e.target.value)} />
                                 </div>
-                                <div className="lg:px-2 lg:py-3 text-center lg:bg-red-50/30">
+
+                                {/* Errores (Sombreados en rojo suave) */}
+                                <div className="lg:px-1 lg:py-3 text-center lg:bg-red-50/20">
                                     <InputField label="Err UE" unit="UE" value={m.errorUe} isError readOnly />
                                 </div>
-                                <div className="lg:px-2 lg:py-3 text-center lg:bg-red-50/30">
+                                <div className="lg:px-1 lg:py-3 text-center lg:bg-red-50/20">
                                     <InputField label={`Err ${outputUnit}`} unit={outputUnit} value={m.errorMa} isError readOnly />
                                 </div>
-                                <div className="lg:px-2 lg:py-3 text-center lg:bg-red-50/30">
+                                <div className="lg:px-1 lg:py-3 text-center lg:bg-red-50/20">
                                     <InputField label="Err %" unit="%" value={m.errorPercentage} isError readOnly />
                                 </div>
+
+                                {/* Botón Eliminar */}
                                 <div className="col-span-2 md:col-span-3 lg:col-span-2 flex justify-center items-center py-2 lg:py-0">
                                     <button
                                         onClick={() => handleDeleteRow(index)}
-                                        className="w-full lg:w-auto flex items-center justify-center px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg border border-red-100 lg:border-none transition-colors"
+                                        className="w-full lg:w-auto flex items-center justify-center px-3 py-2 text-red-500 hover:bg-red-50 rounded-lg border border-red-100 lg:border-none transition-colors"
                                     >
                                         <svg className="w-5 h-5 lg:w-4 lg:h-4 mr-2 lg:mr-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                         </svg>
-                                        <span className="lg:hidden font-bold text-sm uppercase">Eliminar Medición</span>
+                                        <span className="lg:hidden font-bold text-xs uppercase">Borrar</span>
                                     </button>
                                 </div>
                             </div>
