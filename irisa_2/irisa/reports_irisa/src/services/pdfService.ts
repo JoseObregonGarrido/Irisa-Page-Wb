@@ -23,24 +23,18 @@ export interface ReportData {
     unity: string;
     deviceCode: string;
     observations: string;
-    hasUeTransmitter?: boolean; // Opcional
-    outputUnit?: 'mA' | 'Ω';    // Opcional
+    hasUeTransmitter: boolean; 
+    outputUnit: 'mA' | 'Ω'; 
     transmitterMeasurements?: any[];
 }
 
 export const generatePDFReport = async (data: ReportData, chartImages?: string[]): Promise<void> => {
     const pdf = new jsPDF();
     
-    // --- LÓGICA DE DETECCIÓN AUTOMÁTICA ---
-    // Si no vienen de la DB, los deducimos de las mediciones
-    const measurements = data.transmitterMeasurements || [];
-    
-    // 1. Detectar si hay datos en UE Transmiter (si al menos uno no está vacío)
-    const hasUE = data.hasUeTransmitter ?? measurements.some(m => m.ueTransmitter && m.ueTransmitter !== "");
-    
-    // 2. Detectar unidad (si no viene, intentamos ver si el dispositivo es de temperatura/resistencia o mA)
-    // Por defecto usamos lo que venga en data.outputUnit, si no, mA.
+    // --- LÓGICA DE CONTROL ---
     const unit = data.outputUnit || 'mA';
+    // Forzamos a que sea false si no viene explícitamente como true
+    const hasUE = data.hasUeTransmitter === true; 
 
     let yPos = 20;
     const colors = { risaraldaGreen: [119, 158, 79], lightGray: [245, 245, 245] };
@@ -81,9 +75,10 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         yPos = (pdf as any).lastAutoTable.finalY + 15;
 
         // Tabla de Mediciones
-        if (data.deviceType === 'transmitter' && measurements.length) {
+        if (data.deviceType === 'transmitter' && data.transmitterMeasurements?.length) {
             addHeader(`PRUEBA DE SALIDA (${unit})`);
 
+            // 1. Definir Headers dinámicamente
             const headers = [
                 'Ideal UE', 
                 `Ideal ${unit}`, 
@@ -96,31 +91,38 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 'Err %'
             ];
 
-            const body = measurements.map(m => [
-                m.idealUe, 
-                m.idealMa, 
-                m.patronUe,
-                ...(hasUE ? [m.ueTransmitter] : []),
-                m.maTransmitter, 
-                m.percentage,
-                ...(hasUE ? [m.errorUe] : []),
-                m.errorMa, 
-                m.errorPercentage
-            ]);
+            // 2. Definir Body dinámicamente
+            const body = data.transmitterMeasurements.map(m => {
+                const row = [
+                    m.idealUe, 
+                    m.idealMa, 
+                    m.patronUe
+                ];
+                
+                if (hasUE) row.push(m.ueTransmitter); // Solo si aplica
+                
+                row.push(m.maTransmitter);
+                row.push(m.percentage);
+                
+                if (hasUE) row.push(m.errorUe); // Solo si aplica
+                
+                row.push(m.errorMa);
+                row.push(m.errorPercentage);
+                
+                return row;
+            });
 
             autoTable(pdf, {
                 startY: yPos,
                 head: [headers],
                 body: body,
-                headStyles: { fillColor: colors.risaraldaGreen, halign: 'center', fontSize: 7.5 },
-                styles: { fontSize: 7.5, halign: 'center', cellPadding: 2 },
+                headStyles: { fillColor: colors.risaraldaGreen, halign: 'center', fontSize: 7 },
+                styles: { fontSize: 7, halign: 'center', cellPadding: 1.5 },
                 didParseCell: (dataCell: any) => {
                     const headerText = headers[dataCell.column.index];
-                    if (dataCell.section === 'body' && (headerText.startsWith('Err') || headerText === '% Rango')) {
-                        if (headerText.startsWith('Err')) {
-                            dataCell.cell.styles.fillColor = [254, 242, 242];
-                            dataCell.cell.styles.textColor = [185, 28, 28];
-                        }
+                    if (dataCell.section === 'body' && headerText && headerText.startsWith('Err')) {
+                        dataCell.cell.styles.fillColor = [254, 242, 242];
+                        dataCell.cell.styles.textColor = [185, 28, 28];
                     }
                 }
             });
