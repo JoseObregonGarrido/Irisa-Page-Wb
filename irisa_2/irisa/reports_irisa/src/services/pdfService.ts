@@ -24,7 +24,8 @@ export interface ReportData {
   unity: string;
   deviceCode: string;
   observations: string;
-  hasUeTransmitter: boolean; // NUEVA PROPIEDAD: Viene del switch de la UI
+  hasUeTransmitter: boolean; 
+  outputUnit: 'mA' | 'Ω'; // NUEVA: Para saber si es tabla de corriente o resistencia
   transmitterMeasurements?: Array<{
     percentage: string;
     idealUe: string;
@@ -47,18 +48,16 @@ export const generatePDFReport = async (
 
   const colors = {
     black: [0, 0, 0],
-    darkGray: [51, 51, 51],
     risaraldaGreen: [119, 158, 79],
     lightGray: [249, 249, 249]
   };
 
   const PAGE_MARGINS = { top: 20, bottom: 30, maxContentY: 275 };
-
   const typography = {
-    title: { size: 18, weight: 'bold' as const },
-    section: { size: 12, weight: 'bold' as const },
-    body: { size: 10, weight: 'normal' as const },
-    small: { size: 8, weight: 'normal' as const }
+    title: { size: 18 },
+    section: { size: 12 },
+    body: { size: 10 },
+    small: { size: 8 }
   };
 
   const addSectionHeader = (title: string) => {
@@ -92,7 +91,6 @@ export const generatePDFReport = async (
     const generalData = [
       ['Nombre del instrumentista', data.instrumentistName || 'N/A'],
       ['Orden de Trabajo', data.workOrder || 'N/A'],
-      // CORRECCIÓN: Limpieza total de paréntesis
       ['Equipo', `${data.deviceName} - ${data.deviceCode}`], 
       ['Rango', `${data.deviceRange} ${data.unity}`],
       ['Fecha', data.reviewDate ? formatDate(data.reviewDate) : 'N/A'],
@@ -107,38 +105,40 @@ export const generatePDFReport = async (
     });
     yPosition = (pdf as any).lastAutoTable.finalY + 15;
 
-    // 3. Tablas de Mediciones
+    // 3. Tabla Única Dinámica (Basada en tus requerimientos)
     if (data.deviceType === 'transmitter' && data.transmitterMeasurements?.length) {
       
-      // --- TABLA 1: SALIDA ANALÓGICA (mA) --- Siempre se muestra para transmisores
-      addSectionHeader('PRUEBA DE SALIDA ANALÓGICA (mA)');
-      const maTable = data.transmitterMeasurements.map(m => [
-        m.percentage, m.idealMa, m.maTransmitter, m.errorMa, m.errorPercentage
-      ]);
+      const unit = data.outputUnit; // 'mA' o 'Ω'
+      const hasUE = data.hasUeTransmitter;
+
+      addSectionHeader(`PRUEBA DE SALIDA (${unit})`);
+
+      // Configuración de Cabeceras
+      let headers = ['Ideal UE', `Ideal ${unit}`, 'Patrón UE'];
+      if (hasUE) headers.push(`UE Trans.`);
+      headers = [...headers, `${unit} Trans.`, '% Rango'];
+      if (hasUE) headers.push('Err UE');
+      headers = [...headers, `Err ${unit}`, 'Err %'];
+
+      // Configuración de Datos
+      const tableData = data.transmitterMeasurements.map(m => {
+        const row = [m.idealUe, m.idealMa, m.patronUe];
+        if (hasUE) row.push(m.ueTransmitter);
+        row.push(m.maTransmitter, m.percentage);
+        if (hasUE) row.push(m.errorUe);
+        row.push(m.errorMa, m.errorPercentage);
+        return row;
+      });
+
       autoTable(pdf, {
-        head: [['% Rango', 'Ideal mA', 'Tx mA', 'Err mA', 'Err %']],
-        body: maTable,
+        head: [headers],
+        body: tableData,
         startY: yPosition,
         headStyles: { fillColor: colors.risaraldaGreen },
-        styles: { fontSize: typography.small.size, halign: 'center' }
+        styles: { fontSize: 7, halign: 'center', cellPadding: 1.5 },
       });
+      
       yPosition = (pdf as any).lastAutoTable.finalY + 15;
-
-      // --- TABLA 2: UE / OHM --- SOLO SI EL SWITCH ESTÁ ACTIVO
-      if (data.hasUeTransmitter) {
-        addSectionHeader('PRUEBA DE UNIDADES DE INGENIERÍA / OHM');
-        const ohmTable = data.transmitterMeasurements.map(m => [
-          m.percentage, m.idealUe, m.patronUe, m.ueTransmitter, m.errorUe
-        ]);
-        autoTable(pdf, {
-          head: [['% Rango', 'Ideal UE', 'Patrón UE', 'Tx UE', 'Err UE']],
-          body: ohmTable,
-          startY: yPosition,
-          headStyles: { fillColor: [51, 122, 183] }, 
-          styles: { fontSize: typography.small.size, halign: 'center' }
-        });
-        yPosition = (pdf as any).lastAutoTable.finalY + 15;
-      }
     }
 
     // 4. SECCIÓN DE GRÁFICAS
@@ -159,12 +159,11 @@ export const generatePDFReport = async (
     // 5. Observaciones
     if (data.observations) {
       addSectionHeader('OBSERVACIONES');
-      pdf.setFontSize(typography.body.size).setFont('helvetica', 'normal').setTextColor(...colors.black);
+      pdf.setFontSize(typography.body.size).setFont('helvetica', 'normal');
       const lines = pdf.splitTextToSize(data.observations, 160);
       pdf.text(lines, 25, yPosition);
     }
 
-    // Enumeración de páginas
     const totalPages = pdf.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
       pdf.setPage(i);
