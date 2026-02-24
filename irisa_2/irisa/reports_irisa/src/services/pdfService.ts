@@ -23,19 +23,24 @@ export interface ReportData {
     unity: string;
     deviceCode: string;
     observations: string;
-    hasUeTransmitter?: boolean; 
-    outputUnit?: 'mA' | 'Ω'; 
+    hasUeTransmitter?: boolean; // Opcional
+    outputUnit?: 'mA' | 'Ω';    // Opcional
     transmitterMeasurements?: any[];
 }
 
 export const generatePDFReport = async (data: ReportData, chartImages?: string[]): Promise<void> => {
     const pdf = new jsPDF();
     
-    // --- LÓGICA DE CONTROL ESTRICTA ---
-    // Usamos el valor que viene de la interfaz. Si es undefined, asumimos false.
-    const hasUE = data.hasUeTransmitter === true;
-    const unit = data.outputUnit || 'mA';
+    // --- LÓGICA DE DETECCIÓN AUTOMÁTICA ---
+    // Si no vienen de la DB, los deducimos de las mediciones
     const measurements = data.transmitterMeasurements || [];
+    
+    // 1. Detectar si hay datos en UE Transmiter (si al menos uno no está vacío)
+    const hasUE = data.hasUeTransmitter ?? measurements.some(m => m.ueTransmitter && m.ueTransmitter !== "");
+    
+    // 2. Detectar unidad (si no viene, intentamos ver si el dispositivo es de temperatura/resistencia o mA)
+    // Por defecto usamos lo que venga en data.outputUnit, si no, mA.
+    const unit = data.outputUnit || 'mA';
 
     let yPos = 20;
     const colors = { risaraldaGreen: [119, 158, 79], lightGray: [245, 245, 245] };
@@ -66,7 +71,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             body: [
                 ['Instrumentista', data.instrumentistName],
                 ['Orden de Trabajo', data.workOrder],
-                ['Equipo', `${data.deviceName} [${data.deviceCode}]`],
+                ['Equipo', `${data.deviceName} ${data.deviceCode}`],
                 ['Rango', `${data.deviceRange} ${data.unity}`],
                 ['Fecha', data.reviewDate ? new Date(data.reviewDate).toLocaleDateString() : 'N/A']
             ],
@@ -75,11 +80,10 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         });
         yPos = (pdf as any).lastAutoTable.finalY + 15;
 
-        // Tabla de Mediciones (DINÁMICA SEGÚN COMPONENTE)
+        // Tabla de Mediciones
         if (data.deviceType === 'transmitter' && measurements.length) {
             addHeader(`PRUEBA DE SALIDA (${unit})`);
 
-            // Construcción de cabeceras idéntica al gridConfig de React
             const headers = [
                 'Ideal UE', 
                 `Ideal ${unit}`, 
@@ -92,26 +96,17 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 'Err %'
             ];
 
-            // Construcción del cuerpo filtrando las columnas que no aplican
-            const body = measurements.map(m => {
-                const row = [
-                    m.idealUe, 
-                    m.idealMa, 
-                    m.patronUe
-                ];
-                
-                if (hasUE) row.push(m.ueTransmitter); // Solo inserta si el checkbox está activo
-                
-                row.push(m.maTransmitter);
-                row.push(m.percentage);
-                
-                if (hasUE) row.push(m.errorUe);      // Solo inserta si el checkbox está activo
-                
-                row.push(m.errorMa);
-                row.push(m.errorPercentage);
-                
-                return row;
-            });
+            const body = measurements.map(m => [
+                m.idealUe, 
+                m.idealMa, 
+                m.patronUe,
+                ...(hasUE ? [m.ueTransmitter] : []),
+                m.maTransmitter, 
+                m.percentage,
+                ...(hasUE ? [m.errorUe] : []),
+                m.errorMa, 
+                m.errorPercentage
+            ]);
 
             autoTable(pdf, {
                 startY: yPos,
@@ -121,10 +116,11 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 styles: { fontSize: 7.5, halign: 'center', cellPadding: 2 },
                 didParseCell: (dataCell: any) => {
                     const headerText = headers[dataCell.column.index];
-                    // Colorear errores en rojo (estilo Tailwind bg-red-50 text-red-700)
-                    if (dataCell.section === 'body' && headerText && headerText.startsWith('Err')) {
-                        dataCell.cell.styles.fillColor = [254, 242, 242];
-                        dataCell.cell.styles.textColor = [185, 28, 28];
+                    if (dataCell.section === 'body' && (headerText.startsWith('Err') || headerText === '% Rango')) {
+                        if (headerText.startsWith('Err')) {
+                            dataCell.cell.styles.fillColor = [254, 242, 242];
+                            dataCell.cell.styles.textColor = [185, 28, 28];
+                        }
                     }
                 }
             });
