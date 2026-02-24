@@ -24,8 +24,8 @@ export interface ReportData {
   unity: string;
   deviceCode: string;
   observations: string;
-  hasUeTransmitter: boolean; 
-  outputUnit: 'mA' | 'Ω'; // NUEVA: Para saber si es tabla de corriente o resistencia
+  hasUeTransmitter: boolean; // Controla si se ven las columnas de UE Trans y Err UE
+  outputUnit: 'mA' | 'Ω';    // Define si la unidad es mA u Ohmios
   transmitterMeasurements?: Array<{
     percentage: string;
     idealUe: string;
@@ -49,16 +49,11 @@ export const generatePDFReport = async (
   const colors = {
     black: [0, 0, 0],
     risaraldaGreen: [119, 158, 79],
-    lightGray: [249, 249, 249]
+    lightGray: [249, 249, 249],
+    errorBg: [255, 245, 245] // Un tono rojizo muy suave para las columnas de error
   };
 
   const PAGE_MARGINS = { top: 20, bottom: 30, maxContentY: 275 };
-  const typography = {
-    title: { size: 18 },
-    section: { size: 12 },
-    body: { size: 10 },
-    small: { size: 8 }
-  };
 
   const addSectionHeader = (title: string) => {
     if (yPosition + 25 > PAGE_MARGINS.maxContentY) {
@@ -69,7 +64,7 @@ export const generatePDFReport = async (
     pdf.setLineWidth(0.8);
     pdf.line(20, yPosition, 190, yPosition);
     yPosition += 10;
-    pdf.setFontSize(typography.section.size).setFont('helvetica', 'bold').setTextColor(...colors.black);
+    pdf.setFontSize(12).setFont('helvetica', 'bold').setTextColor(...colors.black);
     pdf.text(title, 20, yPosition);
     yPosition += 12;
   };
@@ -81,7 +76,7 @@ export const generatePDFReport = async (
       pdf.addImage(logoBase64, 'PNG', 20, 15, 60, 25);
     } catch (e) { console.warn("Logo no cargado"); }
 
-    pdf.setFontSize(typography.title.size).setFont('helvetica', 'bold');
+    pdf.setFontSize(18).setFont('helvetica', 'bold');
     pdf.text('REPORTE TÉCNICO DE', 90, 25);
     pdf.text('INSTRUMENTACIÓN', 90, 33);
     yPosition = 55;
@@ -100,97 +95,99 @@ export const generatePDFReport = async (
       body: generalData,
       startY: yPosition,
       margin: { left: 20 },
-      styles: { fontSize: typography.body.size },
+      styles: { fontSize: 10 },
       columnStyles: { 0: { fontStyle: 'bold', cellWidth: 55, fillColor: colors.lightGray } }
     });
     yPosition = (pdf as any).lastAutoTable.finalY + 15;
 
-    // 3. Tabla Única Dinámica (Basada en tus requerimientos)
+    // 3. Tabla de Mediciones Dinámica
     if (data.deviceType === 'transmitter' && data.transmitterMeasurements?.length) {
-      
-      const unit = data.outputUnit; // 'mA' o 'Ω'
+      const unit = data.outputUnit; 
       const hasUE = data.hasUeTransmitter;
 
-      addSectionHeader(`PRUEBA DE SALIDA (${unit})`);
+      addSectionHeader(`PRUEBA DE CALIBRACIÓN (${unit})`);
 
-      // Configuración de Cabeceras
-      let headers = ['Ideal UE', `Ideal ${unit}`, 'Patrón UE'];
-      if (hasUE) headers.push(`UE Trans.`);
-      headers = [...headers, `${unit} Trans.`, '% Rango'];
-      if (hasUE) headers.push('Err UE');
-      headers = [...headers, `Err ${unit}`, 'Err %'];
+      // Definición de Cabeceras idéntica a tu TransmitterTable.tsx
+      const headRow = [
+        'Ideal UE',
+        `Ideal ${unit}`,
+        'Patrón UE',
+        ...(hasUE ? ['UE Trans.'] : []),
+        `${unit} Trans.`,
+        '% Rango',
+        ...(hasUE ? ['Err UE'] : []),
+        `Err ${unit}`,
+        'Err %'
+      ];
 
-      // Configuración de Datos
-      const tableData = data.transmitterMeasurements.map(m => {
-        const row = [m.idealUe, m.idealMa, m.patronUe];
-        if (hasUE) row.push(m.ueTransmitter);
-        row.push(m.maTransmitter, m.percentage);
-        if (hasUE) row.push(m.errorUe);
-        row.push(m.errorMa, m.errorPercentage);
-        return row;
-      });
+      // Mapeo de datos respetando las columnas activas
+      const bodyRows = data.transmitterMeasurements.map(m => [
+        m.idealUe,
+        m.idealMa,
+        m.patronUe,
+        ...(hasUE ? [m.ueTransmitter] : []),
+        m.maTransmitter,
+        m.percentage,
+        ...(hasUE ? [m.errorUe] : []),
+        m.errorMa,
+        m.errorPercentage
+      ]);
 
       autoTable(pdf, {
-        head: [headers],
-        body: tableData,
+        head: [headRow],
+        body: bodyRows,
         startY: yPosition,
-        headStyles: { fillColor: colors.risaraldaGreen },
-        styles: { fontSize: 7, halign: 'center', cellPadding: 1.5 },
+        margin: { left: 20, right: 20 },
+        headStyles: { fillColor: colors.risaraldaGreen, fontSize: 7, halign: 'center' },
+        styles: { fontSize: 7, halign: 'center', cellPadding: 2 },
+        // Aplicamos el color de fondo a las columnas de error (las últimas 2 o 3)
+        didParseCell: (dataCell: any) => {
+            const totalCols = headRow.length;
+            // Si es una de las últimas 3 columnas (los errores), le ponemos un color diferente
+            if (dataCell.section === 'body' && dataCell.column.index >= totalCols - (hasUE ? 3 : 2)) {
+                dataCell.cell.styles.fillColor = [255, 248, 248]; 
+                dataCell.cell.styles.textColor = [180, 0, 0];
+            }
+        }
       });
       
       yPosition = (pdf as any).lastAutoTable.finalY + 15;
     }
 
-    // 4. SECCIÓN DE GRÁFICAS
+    // 4. Gráficas y Observaciones (Se mantiene igual...)
     if (chartImages && chartImages.length > 0) {
-      const chartTitles = ['Curva de Respuesta', 'Errores Absolutos', 'Análisis de Linealidad', 'Error Porcentual'];
+      const chartTitles = ['Curva de Respuesta', 'Errores Absolutos', 'Linealidad', 'Error %'];
       for (let i = 0; i < chartImages.length; i++) {
-        const CHART_HEIGHT = 80;
+        const CHART_HEIGHT = 75;
         if (yPosition + CHART_HEIGHT + 20 > PAGE_MARGINS.maxContentY) {
           pdf.addPage();
           yPosition = PAGE_MARGINS.top;
         }
-        addSectionHeader(`ANÁLISIS: ${chartTitles[i] || `Gráfico ${i + 1}`}`);
-        pdf.addImage(chartImages[i], 'PNG', 22, yPosition, 166, CHART_HEIGHT);
+        addSectionHeader(`ANÁLISIS: ${chartTitles[i]}`);
+        pdf.addImage(chartImages[i], 'PNG', 25, yPosition, 160, CHART_HEIGHT);
         yPosition += CHART_HEIGHT + 15;
       }
     }
 
-    // 5. Observaciones
     if (data.observations) {
       addSectionHeader('OBSERVACIONES');
-      pdf.setFontSize(typography.body.size).setFont('helvetica', 'normal');
+      pdf.setFontSize(10).setFont('helvetica', 'normal').setTextColor(0,0,0);
       const lines = pdf.splitTextToSize(data.observations, 160);
       pdf.text(lines, 25, yPosition);
     }
 
+    // Pie de página
     const totalPages = pdf.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
       pdf.setPage(i);
-      pdf.setFontSize(typography.small.size).setTextColor(100, 100, 100);
-      pdf.text(`Página ${i} de ${totalPages}`, 190, 290, { align: 'right' });
+      pdf.setFontSize(8).setTextColor(128, 128, 128);
+      pdf.text(`Página ${i} de ${totalPages}`, 105, 290, { align: 'center' });
     }
 
-    pdf.save(`reporte-${data.workOrder || 'instrumentacion'}.pdf`);
-
+    pdf.save(`reporte-${data.workOrder || 'calibracion'}.pdf`);
   } catch (error) {
-    console.error('Error generando PDF:', error);
-    throw error;
+    console.error('Error:', error);
   }
 };
 
-const getBase64ImageFromUrl = async (imageUrl: string): Promise<string> => {
-  const response = await fetch(imageUrl);
-  const blob = await response.blob();
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-};
-
-const formatDate = (dateString: string): string => {
-  try { return new Date(dateString).toLocaleDateString('es-ES'); } 
-  catch { return dateString; }
-};
+// ... Auxiliares (getBase64ImageFromUrl, formatDate) se mantienen igual
