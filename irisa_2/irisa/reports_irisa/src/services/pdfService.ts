@@ -75,18 +75,28 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         if (data.deviceType === 'transmitter' && data.transmitterMeasurements?.length) {
             addHeader(`PRUEBA DE SALIDA (${unit})`);
 
-            const headers = ['Ideal UE', `Ideal ${unit}`, 'Patrón UE', 
-                             ...(hasUE ? ['UE Trans.'] : []), 
-                             `${unit} Trans.`, '% Rango', 
-                             ...(hasUE ? ['Err UE'] : []), 
-                             `Err ${unit}`, 'Err %'];
+            const headers = [
+                'Ideal UE', 
+                `Ideal ${unit}`, 
+                'Patrón UE', 
+                ...(hasUE ? ['UE Trans.'] : []), 
+                `${unit} Trans.`, 
+                '% Rango', 
+                ...(hasUE ? ['Err UE'] : []), 
+                `Err ${unit}`, 
+                'Err %'
+            ];
 
             const body = data.transmitterMeasurements.map(m => [
-                m.idealUe, m.idealMa, m.patronUe,
+                m.idealUe, 
+                m.idealMa, 
+                m.patronUe,
                 ...(hasUE ? [m.ueTransmitter] : []),
-                m.maTransmitter, m.percentage,
+                m.maTransmitter, 
+                m.percentage,
                 ...(hasUE ? [m.errorUe] : []),
-                m.errorMa, m.errorPercentage
+                m.errorMa, 
+                m.errorPercentage
             ]);
 
             autoTable(pdf, {
@@ -112,11 +122,14 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         // Observaciones
         if (data.observations) {
             addHeader('OBSERVACIONES');
-            pdf.setFontSize(10).setFont('helvetica', 'normal').text(pdf.splitTextToSize(data.observations, 165), 20, yPos);
+            const splitText = pdf.splitTextToSize(data.observations, 165);
+            pdf.setFontSize(10).setFont('helvetica', 'normal').text(splitText, 20, yPos);
         }
 
         pdf.save(`Reporte_${data.workOrder || 'Instrumentacion'}.pdf`);
-    } catch (e) { console.error("PDF Error:", e); }
+    } catch (e) { 
+        console.error("PDF Error:", e); 
+    }
 };
 
 const getBase64ImageFromUrl = async (url: string): Promise<string> => {
