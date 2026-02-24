@@ -23,18 +23,25 @@ export interface ReportData {
     unity: string;
     deviceCode: string;
     observations: string;
-    hasUeTransmitter: boolean; 
-    outputUnit: 'mA' | 'Ω'; 
+    hasUeTransmitter?: boolean; // Opcional
+    outputUnit?: 'mA' | 'Ω';    // Opcional
     transmitterMeasurements?: any[];
 }
 
 export const generatePDFReport = async (data: ReportData, chartImages?: string[]): Promise<void> => {
     const pdf = new jsPDF();
     
-    // CORRECCIÓN: Forzamos la lectura de la unidad y el estado de UE desde el objeto data
-    const unit = data.outputUnit || 'mA';
-    const hasUE = data.hasUeTransmitter === true; 
+    // --- LÓGICA DE DETECCIÓN AUTOMÁTICA ---
+    // Si no vienen de la DB, los deducimos de las mediciones
+    const measurements = data.transmitterMeasurements || [];
     
+    // 1. Detectar si hay datos en UE Transmiter (si al menos uno no está vacío)
+    const hasUE = data.hasUeTransmitter ?? measurements.some(m => m.ueTransmitter && m.ueTransmitter !== "");
+    
+    // 2. Detectar unidad (si no viene, intentamos ver si el dispositivo es de temperatura/resistencia o mA)
+    // Por defecto usamos lo que venga en data.outputUnit, si no, mA.
+    const unit = data.outputUnit || 'mA';
+
     let yPos = 20;
     const colors = { risaraldaGreen: [119, 158, 79], lightGray: [245, 245, 245] };
 
@@ -47,7 +54,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
     };
 
     try {
-        // --- Logo y Título ---
+        // Logo y Título
         try {
             const b64Logo = await getBase64ImageFromUrl(logo);
             pdf.addImage(b64Logo, 'PNG', 20, 15, 55, 22);
@@ -56,7 +63,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         pdf.setFontSize(18).setFont('helvetica', 'bold').text('REPORTE DE INSTRUMENTACIÓN', 85, 28);
         yPos = 50;
 
-        // --- Información General ---
+        // Info General
         addHeader('INFORMACIÓN GENERAL');
         autoTable(pdf, {
             startY: yPos,
@@ -73,11 +80,10 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         });
         yPos = (pdf as any).lastAutoTable.finalY + 15;
 
-        // --- Tabla de Mediciones (Dinamizada con Ω y UE) ---
-        if (data.deviceType === 'transmitter' && data.transmitterMeasurements?.length) {
+        // Tabla de Mediciones
+        if (data.deviceType === 'transmitter' && measurements.length) {
             addHeader(`PRUEBA DE SALIDA (${unit})`);
 
-            // Cabeceras dinámicas basadas en la unidad real (mA u Ω)
             const headers = [
                 'Ideal UE', 
                 `Ideal ${unit}`, 
@@ -90,7 +96,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 'Err %'
             ];
 
-            const body = data.transmitterMeasurements.map(m => [
+            const body = measurements.map(m => [
                 m.idealUe, 
                 m.idealMa, 
                 m.patronUe,
@@ -108,19 +114,20 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 body: body,
                 headStyles: { fillColor: colors.risaraldaGreen, halign: 'center', fontSize: 7.5 },
                 styles: { fontSize: 7.5, halign: 'center', cellPadding: 2 },
-                // Aplicamos el estilo rojo a las columnas de error como en la tabla web
                 didParseCell: (dataCell: any) => {
                     const headerText = headers[dataCell.column.index];
-                    if (dataCell.section === 'body' && headerText.startsWith('Err')) {
-                        dataCell.cell.styles.fillColor = [254, 242, 242]; // Red-50
-                        dataCell.cell.styles.textColor = [185, 28, 28];  // Red-700
+                    if (dataCell.section === 'body' && (headerText.startsWith('Err') || headerText === '% Rango')) {
+                        if (headerText.startsWith('Err')) {
+                            dataCell.cell.styles.fillColor = [254, 242, 242];
+                            dataCell.cell.styles.textColor = [185, 28, 28];
+                        }
                     }
                 }
             });
             yPos = (pdf as any).lastAutoTable.finalY + 15;
         }
 
-        // --- Gráficos ---
+        // Gráficos y Observaciones
         if (chartImages?.length) {
             chartImages.forEach((img, i) => {
                 const titles = ['Curva de Respuesta', 'Errores Absolutos', 'Linealidad', 'Error Porcentual'];
@@ -130,7 +137,6 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             });
         }
 
-        // --- Observaciones ---
         if (data.observations) {
             addHeader('OBSERVACIONES');
             const splitText = pdf.splitTextToSize(data.observations, 165);
