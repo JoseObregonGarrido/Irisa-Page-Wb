@@ -2,7 +2,6 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { toPng } from 'html-to-image';
 import React, { useState, useRef, useImperativeHandle, forwardRef } from 'react';
 
-// Interfaz de mediciones
 export interface Measurement {
     percentage: string;
     idealUe: string;
@@ -34,46 +33,36 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
     const percentageRef = useRef<HTMLDivElement>(null);
 
     const processDataForChart = () => {
-        return chartData.map((measurement) => ({
-            percentage: parseFloat(measurement.percentage) || 0,
-            idealUe: parseFloat(measurement.idealUe) || 0,
-            patronUe: parseFloat(measurement.patronUe) || 0,
-            ueTransmitter: parseFloat(measurement.ueTransmitter) || 0,
-            idealValue: parseFloat(measurement.idealMa) || 0, 
-            measuredValue: parseFloat(measurement.maTransmitter) || 0, 
-            errorUe: parseFloat(measurement.errorUe) || 0,
-            errorValue: parseFloat(measurement.errorMa) || 0, 
-            errorPercentage: parseFloat(measurement.errorPercentage) || 0,
+        return chartData.map((m) => ({
+            percentage: parseFloat(m.percentage) || 0,
+            idealUe: parseFloat(m.idealUe) || 0,
+            patronUe: parseFloat(m.patronUe) || 0,
+            ueTransmitter: parseFloat(m.ueTransmitter) || 0,
+            idealValue: parseFloat(m.idealMa) || 0, 
+            measuredValue: parseFloat(m.maTransmitter) || 0, 
+            errorUe: parseFloat(m.errorUe) || 0,
+            errorValue: parseFloat(m.errorMa) || 0, 
+            errorPercentage: parseFloat(m.errorPercentage) || 0,
         })).sort((a, b) => a.percentage - b.percentage);
     };
 
     const processedData = processDataForChart();
 
-    const captureAllCharts = async () => {
-        const captures: string[] = [];
-        const refs = [responseRef, errorsRef, linearityRef, percentageRef];
-        for (const chartRef of refs) {
-            if (chartRef.current) {
-                try {
-                    const dataUrl = await toPng(chartRef.current, { 
-                        backgroundColor: '#ffffff',
-                        pixelRatio: 2, 
-                        cacheBust: true,
-                    });
+    useImperativeHandle(ref, () => ({
+        captureAllCharts: async () => {
+            const captures: string[] = [];
+            const refs = [responseRef, errorsRef, linearityRef, percentageRef];
+            for (const chartRef of refs) {
+                if (chartRef.current) {
+                    const dataUrl = await toPng(chartRef.current, { backgroundColor: '#ffffff', pixelRatio: 2 });
                     captures.push(dataUrl);
-                } catch (err) {
-                    console.error("Error capturando gráfico:", err);
                 }
             }
+            return captures;
         }
-        return captures;
-    };
-
-    useImperativeHandle(ref, () => ({
-        captureAllCharts
     }));
 
-    // --- Renders con Corrección de Etiquetas ---
+    // --- Renders con nombres de variables dinámicos ---
 
     const renderResponseChart = () => (
         <div className="h-96 w-full bg-white p-4">
@@ -85,7 +74,7 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
                     <YAxis label={{ value: `Unidades (${outputUnit})`, angle: -90, position: 'insideLeft' }} />
                     <Tooltip />
                     <Legend verticalAlign="top" />
-                    {/* CAMBIO AQUÍ: name dinámico */}
+                    {/* Aquí los nombres cambian según la unidad seleccionada */}
                     <Line type="monotone" dataKey="idealValue" stroke="#3b82f6" name={`Ideal ${outputUnit}`} strokeWidth={2} isAnimationActive={false} />
                     <Line type="monotone" dataKey="measuredValue" stroke="#ef4444" name={`Medido ${outputUnit}`} strokeWidth={2} isAnimationActive={false} />
                     <Line type="monotone" dataKey="idealUe" stroke="#10b981" name="Ideal UE" strokeDasharray="5 5" isAnimationActive={false} />
@@ -101,12 +90,11 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
             <ResponsiveContainer width="100%" height="100%">
                 <LineChart key={`err-${outputUnit}`} data={processedData} margin={{ top: 5, right: 30, left: 20, bottom: 25 }}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="percentage" label={{ value: '% Rango', position: 'insideBottom', offset: -10 }} />
+                    <XAxis dataKey="percentage" />
                     <YAxis label={{ value: `Error (${outputUnit})`, angle: -90, position: 'insideLeft' }} />
                     <Tooltip formatter={(val: number) => val.toFixed(4)} />
                     <Legend verticalAlign="top" />
                     <Line type="monotone" dataKey="errorUe" stroke="#dc2626" name="Error UE" strokeWidth={2} isAnimationActive={false} />
-                    {/* CAMBIO AQUÍ: name dinámico */}
                     <Line type="monotone" dataKey="errorValue" stroke="#ea580c" name={`Error ${outputUnit}`} strokeWidth={2} isAnimationActive={false} />
                 </LineChart>
             </ResponsiveContainer>
@@ -121,8 +109,8 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
                 <ResponsiveContainer width="100%" height="100%">
                     <ScatterChart key={`lin-${outputUnit}`} margin={{ top: 20, right: 30, left: 20, bottom: 25 }}>
                         <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis type="number" dataKey="idealValue" name={`Ideal ${outputUnit}`} unit={outputUnit} domain={domain} label={{ value: `Ideal ${outputUnit}`, position: 'insideBottom', offset: -10 }} />
-                        <YAxis type="number" dataKey="measuredValue" name={`Medido ${outputUnit}`} unit={outputUnit} domain={domain} label={{ value: `Medido ${outputUnit}`, angle: -90, position: 'insideLeft' }} />
+                        <XAxis type="number" dataKey="idealValue" name={`Ideal ${outputUnit}`} unit={outputUnit} domain={domain} />
+                        <YAxis type="number" dataKey="measuredValue" name={`Medido ${outputUnit}`} unit={outputUnit} domain={domain} />
                         <Tooltip cursor={{ strokeDasharray: '3 3' }} />
                         <Legend verticalAlign="top" />
                         <Scatter name={`Puntos (${outputUnit})`} data={processedData} fill="#8884d8" isAnimationActive={false} />
@@ -138,79 +126,61 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
             <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={processedData} margin={{ top: 5, right: 30, left: 20, bottom: 25 }}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="percentage" label={{ value: '% Rango', position: 'insideBottom', offset: -10 }} />
+                    <XAxis dataKey="percentage" />
                     <YAxis label={{ value: '% Error', angle: -90, position: 'insideLeft' }} />
                     <Tooltip formatter={(val: number) => `${val.toFixed(3)}%`} />
-                    <Line type="monotone" dataKey="errorPercentage" stroke="#7c3aed" name="% Error" strokeWidth={3} dot={{ r: 6 }} isAnimationActive={false} />
+                    <Line type="monotone" dataKey="errorPercentage" stroke="#7c3aed" name="% Error" strokeWidth={3} isAnimationActive={false} />
                 </LineChart>
             </ResponsiveContainer>
         </div>
     );
 
-    const chartViews = [
-        { id: 'response' as ChartView, name: 'Respuesta', icon: '📈', description: 'Valores ideales vs medidos' },
-        { id: 'errors' as ChartView, name: 'Errores', icon: '⚠️', description: `Desviaciones en UE y ${outputUnit}` },
-        { id: 'linearity' as ChartView, name: 'Linealidad', icon: '📊', description: 'Análisis de regresión simple' },
-        { id: 'percentage' as ChartView, name: 'Error %', icon: '%', description: 'Errores como porcentaje del SPAN' }
-    ];
-
     return (
-        <div className="mt-8">
-            {/* Cabecera con Gradiente Preservado */}
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-t-xl px-6 py-4 text-white">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <span className="text-2xl">📊</span>
-                        <div>
-                            {/* CAMBIO AQUÍ: Título dinámico */}
-                            <h3 className="text-xl font-bold">Análisis del Transmisor ({outputUnit})</h3>
-                            <p className="text-blue-100 text-sm">Comportamiento dinámico</p>
-                        </div>
+        <div className="mt-8 shadow-lg rounded-xl overflow-hidden border border-gray-100">
+            {/* Cabecera con Gradiente dinámico */}
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-5 text-white">
+                <div className="flex items-center gap-4">
+                    <span className="text-3xl">📊</span>
+                    <div>
+                        <h3 className="text-xl font-bold">Análisis del Transmisor ({outputUnit})</h3>
+                        <p className="text-blue-100 text-sm opacity-90">Visualización de datos de calibración</p>
                     </div>
                 </div>
             </div>
 
-            {/* Pestañas de Navegación */}
-            <div className="bg-white border-b flex overflow-x-auto">
-                {chartViews.map((view) => (
+            {/* Pestañas */}
+            <div className="bg-gray-50 border-b flex overflow-x-auto shadow-inner">
+                {[
+                    { id: 'response', name: 'Respuesta', icon: '📈' },
+                    { id: 'errors', name: 'Errores', icon: '⚠️' },
+                    { id: 'linearity', name: 'Linealidad', icon: '📊' },
+                    { id: 'percentage', name: 'Error %', icon: '%' }
+                ].map((view) => (
                     <button
                         key={view.id}
-                        onClick={() => setActiveView(view.id)}
-                        className={`px-6 py-3 text-sm font-medium transition-all border-b-2 whitespace-nowrap ${
-                            activeView === view.id ? 'border-blue-500 text-blue-600 bg-blue-50' : 'border-transparent text-gray-500 hover:bg-gray-50'
+                        onClick={() => setActiveView(view.id as ChartView)}
+                        className={`px-6 py-4 text-sm font-semibold transition-all border-b-2 whitespace-nowrap flex items-center gap-2 ${
+                            activeView === view.id ? 'border-blue-600 text-blue-700 bg-white' : 'border-transparent text-gray-500 hover:bg-gray-100'
                         }`}
                     >
-                        {view.icon} {view.name}
+                        <span>{view.icon}</span> {view.name}
                     </button>
                 ))}
             </div>
 
-            {/* Contenedor Principal */}
-            <div className="bg-white rounded-b-xl shadow-md p-6">
-                {chartData.length === 0 ? (
-                    <div className="py-20 text-center text-gray-400">
-                        <p>No hay datos suficientes para graficar</p>
-                    </div>
-                ) : (
-                    <>
-                        <div className="mb-4 p-3 bg-blue-50 rounded-lg border-l-4 border-blue-400 text-sm text-blue-700">
-                            {chartViews.find(v => v.id === activeView)?.description}
-                        </div>
-                        
-                        {activeView === 'response' && renderResponseChart()}
-                        {activeView === 'errors' && renderErrorsChart()}
-                        {activeView === 'linearity' && renderLinearityChart()}
-                        {activeView === 'percentage' && renderPercentageChart()}
+            <div className="p-6 bg-white">
+                {activeView === 'response' && renderResponseChart()}
+                {activeView === 'errors' && renderErrorsChart()}
+                {activeView === 'linearity' && renderLinearityChart()}
+                {activeView === 'percentage' && renderPercentageChart()}
 
-                        {/* Captura oculta (mantiene diseño para el PDF) */}
-                        <div style={{ position: 'absolute', left: '-9999px', top: 0, width: '800px' }}>
-                            <div ref={responseRef}>{renderResponseChart()}</div>
-                            <div ref={errorsRef}>{renderErrorsChart()}</div>
-                            <div ref={linearityRef}>{renderLinearityChart()}</div>
-                            <div ref={percentageRef}>{renderPercentageChart()}</div>
-                        </div>
-                    </>
-                )}
+                {/* Capturas ocultas */}
+                <div style={{ position: 'absolute', left: '-9999px', top: 0, width: '800px' }}>
+                    <div ref={responseRef}>{renderResponseChart()}</div>
+                    <div ref={errorsRef}>{renderErrorsChart()}</div>
+                    <div ref={linearityRef}>{renderLinearityChart()}</div>
+                    <div ref={percentageRef}>{renderPercentageChart()}</div>
+                </div>
             </div>
         </div>
     );
