@@ -7,7 +7,7 @@ export interface Measurement {
     idealUe: string;
     patronUe: string;
     ueTransmitter: string;
-    idealMa: string;
+    idealmA: string;
     maTransmitter: string;
     errorUe: string;
     errorMa: string;
@@ -46,7 +46,7 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
             idealUe: parseFloat(m.idealUe) || 0,
             patronUe: parseFloat(m.patronUe) || 0,
             ueTransmitter: parseFloat(m.ueTransmitter) || 0,
-            idealValue: parseFloat(m.idealMa) || 0, 
+            idealValue: parseFloat(m.idealmA) || 0, 
             measuredValue: parseFloat(m.maTransmitter) || 0, 
             errorUe: parseFloat(m.errorUe) || 0,
             errorValue: parseFloat(m.errorMa) || 0, 

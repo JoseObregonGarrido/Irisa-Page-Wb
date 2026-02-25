@@ -5,7 +5,7 @@ export interface Measurement {
     idealUe: string;
     patronUe: string;
     ueTransmitter: string;
-    idealMa: string;
+    idealmA: string;
     maTransmitter: string;
     errorUe: string;
     errorMa: string;
@@ -58,7 +58,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
     const handleAddRow = () => {
         onMeasurementsChange([...measurements, { 
             percentage: "", idealUe: "", patronUe: "", ueTransmitter: "", 
-            idealMa:"", maTransmitter: "", errorUe: "", errorMa: "", errorPercentage: "" 
+            idealmA:"", maTransmitter: "", errorUe: "", errorMa: "", errorPercentage: "" 
         }]);
     };
 
@@ -70,11 +70,11 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
     const calculateErrors = (measurement: Measurement) => {
         const patronUe = parseFloat(measurement.patronUe) || 0;
         const ueTransmitter = parseFloat(measurement.ueTransmitter) || 0;
-        const idealMa = parseFloat(measurement.idealMa) || 0;
+        const idealmA = parseFloat(measurement.idealmA) || 0;
         const maTransmitter = parseFloat(measurement.maTransmitter) || 0;
         
         const errorUe = ueTransmitter - patronUe; 
-        const errorMa = maTransmitter - idealMa;    
+        const errorMa = maTransmitter - idealmA;    
         
         // Ajuste de divisor según unidad (16 para mA, 100 para Ohmios/Otros)
         const divisor = outputUnit === 'mA' ? 16 : 100;
@@ -92,7 +92,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
         const newMeasurements = [...measurements];
         newMeasurements[index] = { ...newMeasurements[index], [field]: value };
         
-        const relevantFields: (keyof Measurement)[] = ["patronUe", "ueTransmitter", "idealMa", "maTransmitter"];
+        const relevantFields: (keyof Measurement)[] = ["patronUe", "ueTransmitter", "idealmA", "maTransmitter"];
         if (relevantFields.includes(field)) {
             newMeasurements[index] = calculateErrors(newMeasurements[index]);
         }
@@ -182,7 +182,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                                     <InputField label="Ideal UE" unit="UE" value={m.idealUe} onChange={(e:any) => handleChange(index, 'idealUe', e.target.value)} />
                                 </div>
                                 <div className="lg:px-2 lg:py-3 text-center">
-                                    <InputField label={`Ideal ${outputUnit}`} unit={outputUnit} value={m.idealMa} onChange={(e:any) => handleChange(index, 'idealMa', e.target.value)} />
+                                    <InputField label={`Ideal ${outputUnit}`} unit={outputUnit} value={m.idealmA} onChange={(e:any) => handleChange(index, 'idealmA', e.target.value)} />
                                 </div>
                                 <div className="lg:px-2 lg:py-3 text-center">
                                     <InputField label="Patrón UE" unit="UE" value={m.patronUe} onChange={(e:any) => handleChange(index, 'patronUe', e.target.value)} />
@@ -195,7 +195,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                                 )}
 
                                 <div className="lg:px-2 lg:py-3 text-center">
-                                    <InputField label={`${outputUnit} Trans.`} unit={outputUnit} value={m.maTransmitter} onChange={(e:any) => handleChange(index, 'maTransmitter', e.target.value)} />
+                                    <InputField label={`${outputUnit} Transmisor.`} unit={outputUnit} value={m.maTransmitter} onChange={(e:any) => handleChange(index, 'maTransmitter', e.target.value)} />
                                 </div>
                                 <div className="lg:px-2 lg:py-3 text-center">
                                     <InputField label="% Rango" unit="%" value={m.percentage} onChange={(e:any) => handleChange(index, 'percentage', e.target.value)} />
