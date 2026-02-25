@@ -42,8 +42,8 @@ const HomePage: React.FC = () => {
     const [pressureSwitchTests, setPressureSwitchTests] = useLocalStorage<PressureSwitchTest[]>('ir_table_press', []);
     const [thermostatTests, setThermostatTests] = useLocalStorage<ThermostatTest[]>('ir_table_therm', []);
 
-    // --- NUEVOS ESTADOS PARA TRANSMISORES ---
-    const [outputUnit, setOutputUnit] = useLocalStorage<'mA' | 'Ω'>('ir_output_unit', 'mA');
+    // --- ESTADOS PARA TRANSMISORES (Sincronizados con pdfService) ---
+    const [outputUnit, setOutputUnit] = useLocalStorage<'mA' | 'ohm'>('ir_output_unit', 'mA');
     const [hasUeTransmitter, setHasUeTransmitter] = useLocalStorage<boolean>('ir_has_ue', false);
 
     const [showChart, setShowChart] = useState(false);
@@ -78,8 +78,8 @@ const HomePage: React.FC = () => {
             transmitterMeasurements,
             pressureSwitchTests,
             thermostatTests,
-            outputUnit, // Sincronizado con el switch de la tabla
-            hasUeTransmitter, // Sincronizado con el switch de la tabla
+            outputUnit, // 'mA' o 'ohm'
+            hasUeTransmitter, 
         };
 
         try {
@@ -123,7 +123,7 @@ const HomePage: React.FC = () => {
             setPressureSwitchTests([]);
             setThermostatTests([]);
             setOutputUnit('mA');
-            setHasUeTransmitter(false); // Resetear también el switch de UE
+            setHasUeTransmitter(false);
             setShowChart(false);
         }
     };
@@ -182,6 +182,7 @@ const HomePage: React.FC = () => {
 
                     <div className="p-8">
                         <form className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                            {/* Inputs del formulario */}
                             <div className="space-y-2">
                                 <label className="block text-sm font-semibold text-gray-700">Nombre del Instrumentista</label>
                                 <input type="text" value={instrumentistName} onChange={(e) => setInstrumentistName(e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none" placeholder="Ingrese el nombre completo" required />

@@ -15,9 +15,9 @@ export interface Measurement {
 interface TransmitterTableProps {
     measurements: Measurement[];
     onMeasurementsChange: (measurements: Measurement[]) => void;
-    outputUnit: 'mA' | 'Ω';
-    setOutputUnit: (unit: 'mA' | 'Ω') => void;
-    hasUeTransmitter: boolean; // Prop sincronizada con el PDF
+    outputUnit: 'mA' | 'ohm'; // Unificado con HomePage
+    setOutputUnit: (unit: 'mA' | 'ohm') => void;
+    hasUeTransmitter: boolean;
     setHasUeTransmitter: (show: boolean) => void;
 }
 
@@ -75,6 +75,8 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
         
         const errorUe = ueTransmitter - patronUe; 
         const errorMa = maTransmitter - idealMa;    
+        
+        // Ajuste de divisor según unidad (16 para mA, 100 para Ohmios/Otros)
         const divisor = outputUnit === 'mA' ? 16 : 100;
         const errorPercentage = (errorMa / divisor) * 100; 
         
@@ -98,7 +100,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
         onMeasurementsChange(newMeasurements);
     };
 
-    // Ajuste dinámico del grid: 11 columnas con UE Trans, 9 columnas sin él
+    // Grid dinámico: 11 columnas con UE, 9 sin él
     const gridCols = hasUeTransmitter ? 'lg:grid-cols-11' : 'lg:grid-cols-9';
 
     return (
@@ -118,20 +120,22 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                         {/* --- SWITCH DE UNIDADES --- */}
                         <div className="flex bg-black/20 p-1 rounded-lg border border-white/10">
                             <button
+                                type="button"
                                 onClick={() => setOutputUnit('mA')}
                                 className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${outputUnit === 'mA' ? 'bg-white text-teal-700 shadow' : 'text-white hover:bg-white/10'}`}
                             >
                                 mA
                             </button>
                             <button
-                                onClick={() => setOutputUnit('Ω')}
-                                className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${outputUnit === 'Ω' ? 'bg-white text-teal-700 shadow' : 'text-white hover:bg-white/10'}`}
+                                type="button"
+                                onClick={() => setOutputUnit('ohm')}
+                                className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${outputUnit === 'ohm' ? 'bg-white text-teal-700 shadow' : 'text-white hover:bg-white/10'}`}
                             >
-                                Ohmios (Ω)
+                                Ω (Ohm)
                             </button>
                         </div>
 
-                        {/* --- SWITCH MOSTRAR/OCULTAR UE TRANS --- */}
+                        {/* --- SWITCH UE TRANS --- */}
                         <button
                             type="button"
                             onClick={() => setHasUeTransmitter(!hasUeTransmitter)}
@@ -160,14 +164,10 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                     <div className="px-2 py-4 text-center">Ideal UE</div>
                     <div className="px-2 py-4 text-center">Ideal {outputUnit}</div>
                     <div className="px-2 py-4 text-center">Patrón UE</div>
-                    
                     {hasUeTransmitter && <div className="px-2 py-4 text-center">UE Trans.</div>}
-                    
                     <div className="px-2 py-4 text-center">{outputUnit} Trans.</div>
                     <div className="px-2 py-4 text-center">% Rango</div>
-                    
                     {hasUeTransmitter && <div className="px-2 py-4 text-center bg-red-50">Err UE</div>}
-                    
                     <div className="px-2 py-4 text-center bg-red-50">Err {outputUnit}</div>
                     <div className="px-2 py-4 text-center bg-red-50">Err %</div>
                     <div className="px-2 py-4 text-center col-span-2">Acción</div>
@@ -181,11 +181,9 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                                 <div className="lg:px-2 lg:py-3 text-center">
                                     <InputField label="Ideal UE" unit="UE" value={m.idealUe} onChange={(e:any) => handleChange(index, 'idealUe', e.target.value)} />
                                 </div>
-                                
                                 <div className="lg:px-2 lg:py-3 text-center">
                                     <InputField label={`Ideal ${outputUnit}`} unit={outputUnit} value={m.idealMa} onChange={(e:any) => handleChange(index, 'idealMa', e.target.value)} />
                                 </div>
-
                                 <div className="lg:px-2 lg:py-3 text-center">
                                     <InputField label="Patrón UE" unit="UE" value={m.patronUe} onChange={(e:any) => handleChange(index, 'patronUe', e.target.value)} />
                                 </div>
@@ -230,17 +228,6 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                         </div>
                     ))}
                 </div>
-
-                {measurements.length > 0 && (
-                    <div className="bg-gray-50 p-4 border-t border-gray-200">
-                        <div className="flex flex-wrap gap-4 text-xs font-bold uppercase text-gray-500 justify-around">
-                            <div className="flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full bg-teal-500"></span>
-                                Puntos: <span className="text-teal-700">{measurements.length}</span>
-                            </div>
-                        </div>
-                    </div>
-                )}
             </div>
         </div>
     );

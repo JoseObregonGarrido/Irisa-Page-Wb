@@ -24,13 +24,13 @@ export interface ReportData {
     deviceCode: string;
     observations: string;
     hasUeTransmitter?: boolean; 
-    outputUnit?: 'mA' | 'Ω';    
+    outputUnit?: 'mA' | 'ohm';    
     transmitterMeasurements?: any[];
     pressureSwitchTests?: any[];
     thermostatTests?: any[];
 }
 
-const calculateRowErrors = (m: any, unit: 'mA' | 'Ω') => {
+const calculateRowErrors = (m: any, unit: 'mA' | 'ohm') => {
     const patronUe = parseFloat(m.patronUe) || 0;
     const ueTransmitter = parseFloat(m.ueTransmitter) || 0;
     const idealMa = parseFloat(m.idealMa) || 0;
@@ -39,7 +39,7 @@ const calculateRowErrors = (m: any, unit: 'mA' | 'Ω') => {
     const errorUe = ueTransmitter - patronUe; 
     const errorMa = maTransmitter - idealMa;
     
-    // Si la unidad es mA el divisor es 16, si es Ohmios usamos 100 para el cálculo de %
+    // Si la unidad es mA el divisor es 16, si es ohm usamos 100 para el cálculo de %
     const divisor = unit === 'mA' ? 16 : 100; 
     const errorPercentage = (errorMa / divisor) * 100; 
     
@@ -110,7 +110,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         if (data.deviceType === 'transmitter' && measurements.length) {
             addHeader(`RESULTADOS DE LAS MEDICIONES`);
 
-            // Headers dinámicos basados en hasUE y la unidad seleccionada
+            // Headers dinámicos basados en hasUE y la unidad seleccionada ('mA' o 'ohm')
             const headers = [
                 'Ideal UE', 
                 `Ideal ${unit}`, 
