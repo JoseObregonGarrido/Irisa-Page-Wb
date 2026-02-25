@@ -55,21 +55,8 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
     setHasUeTransmitter
 }) => {
     
-    const isOhm = outputUnit === 'ohm';
-    const deviceLabel = isOhm ? 'Sensor' : 'Transmisor';
-
-    // Ajuste dinámico de columnas para Desktop
-    // Base 9 + 1 si tiene UE Trans + 1 si es Ohm (para el Ideal mA extra)
-    let colsCount = 9;
-    if (hasUeTransmitter) colsCount += 1;
-    if (isOhm) colsCount += 1;
-
-    const gridCols = {
-        9: 'lg:grid-cols-9',
-        10: 'lg:grid-cols-10',
-        11: 'lg:grid-cols-11',
-        12: 'lg:grid-cols-12'
-    }[colsCount] || 'lg:grid-cols-11';
+    // Etiqueta dinámica: Si es ohm -> Sensor, si no -> Transmisor
+    const deviceLabel = outputUnit === 'ohm' ? 'Sensor' : 'Transmisor';
 
     const handleAddRow = () => {
         onMeasurementsChange([...measurements, { 
@@ -114,6 +101,8 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
         
         onMeasurementsChange(newMeasurements);
     };
+
+    const gridCols = hasUeTransmitter ? 'lg:grid-cols-11' : 'lg:grid-cols-9';
 
     return (
         <div className="mt-8 w-full max-w-full overflow-hidden">
@@ -172,8 +161,6 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                 {/* HEADERS DESKTOP */}
                 <div className={`hidden lg:grid ${gridCols} bg-gray-50 border-b border-gray-200 text-[10px] font-bold text-gray-600 tracking-wider`}>
                     <div className="px-2 py-4 text-center">Ideal UE</div>
-                    {/* Nueva columna agregada cuando es Sensor */}
-                    {isOhm && <div className="px-2 py-4 text-center">Ideal mA</div>}
                     <div className="px-2 py-4 text-center">Ideal {outputUnit}</div>
                     <div className="px-2 py-4 text-center">Patrón UE</div>
                     {hasUeTransmitter && <div className="px-2 py-4 text-center">UE {deviceLabel}</div>}
@@ -192,18 +179,9 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                                 <div className="lg:px-2 lg:py-3 text-center">
                                     <InputField label="Ideal UE" unit="UE" value={m.idealUe} onChange={(e:any) => handleChange(index, 'idealUe', e.target.value)} />
                                 </div>
-                                
-                                {/* Input de Ideal mA visible solo en modo Sensor */}
-                                {isOhm && (
-                                    <div className="lg:px-2 lg:py-3 text-center">
-                                        <InputField label="Ideal mA" unit="mA" value={m.idealmA} onChange={(e:any) => handleChange(index, 'idealmA', e.target.value)} />
-                                    </div>
-                                )}
-
                                 <div className="lg:px-2 lg:py-3 text-center">
-                                    <InputField label={`Ideal ${outputUnit}`} unit={outputUnit} value={isOhm ? m.idealmA : m.idealmA} onChange={(e:any) => handleChange(index, 'idealmA', e.target.value)} />
+                                    <InputField label={`Ideal ${outputUnit}`} unit={outputUnit} value={m.idealmA} onChange={(e:any) => handleChange(index, 'idealmA', e.target.value)} />
                                 </div>
-
                                 <div className="lg:px-2 lg:py-3 text-center">
                                     <InputField label="Patrón UE" unit="UE" value={m.patronUe} onChange={(e:any) => handleChange(index, 'patronUe', e.target.value)} />
                                 </div>
