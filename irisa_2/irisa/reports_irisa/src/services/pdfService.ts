@@ -3,9 +3,9 @@ import autoTable from 'jspdf-autotable';
 import logo from '../assets/logo_slogan_2.png';
 
 declare module 'jspdf' {
-    interface jsPDF {
-        autoTable: (options: any) => jsPDF;
-    }
+  interface jsPDF {
+    autoTable: (options: any) => jsPDF;
+  }
 }
 
 export interface ReportData {
@@ -26,10 +26,9 @@ export interface ReportData {
     hasUeTransmitter?: boolean; 
     outputUnit?: 'mA' | 'Ω';    
     transmitterMeasurements?: any[];
-    pressureSwitchTests?: any[];
-    thermostatTests?: any[];
 }
 
+// Mantenemos la lógica de cálculo idéntica a la tabla para consistencia
 const calculateRowErrors = (m: any, unit: 'mA' | 'Ω') => {
     const patronUe = parseFloat(m.patronUe) || 0;
     const ueTransmitter = parseFloat(m.ueTransmitter) || 0;
@@ -52,15 +51,18 @@ const calculateRowErrors = (m: any, unit: 'mA' | 'Ω') => {
 export const generatePDFReport = async (data: ReportData, chartImages?: string[]): Promise<void> => {
     const pdf = new jsPDF();
     
+    // --- LÓGICA DE SINCRONIZACIÓN CON LA TABLA ---
     const measurements = data.transmitterMeasurements || [];
     const unit = data.outputUnit || 'mA';
+    
+    // Si no se define explícitamente, verificamos si hay algún valor en ueTransmitter para mostrar la columna
     const hasUE = data.hasUeTransmitter !== undefined 
         ? data.hasUeTransmitter 
         : measurements.some(m => m.ueTransmitter && m.ueTransmitter !== "" && m.ueTransmitter !== "0");
 
     let yPos = 20;
     const colors = { 
-        risaraldaGreen: [119, 158, 79],
+        risaraldaGreen: [20, 110, 90], // Ajustado a un verde más institucional si prefieres
         errorBg: [254, 242, 242],
         errorText: [185, 28, 28],
         lightGray: [245, 245, 245] 
@@ -75,39 +77,38 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
     };
 
     try {
-        // 1. Encabezado con Logo
+        // Logo y Encabezado
         try {
             const b64Logo = await getBase64ImageFromUrl(logo);
-            pdf.addImage(b64Logo, 'PNG', 20, 12, 55, 22);
-        } catch { console.warn("Logo no disponible"); }
+            pdf.addImage(b64Logo, 'PNG', 20, 12, 50, 20);
+        } catch { console.warn("Logo no cargado"); }
         
-        pdf.setFontSize(16).setFont('helvetica', 'bold').setTextColor(0).text('REPORTE DE CALIBRACIÓN', 85, 28);
-        yPos = 50;
+        pdf.setFontSize(16).setFont('helvetica', 'bold').setTextColor(0).text('REPORTE DE CALIBRACIÓN', 80, 25);
+        yPos = 45;
 
-        // 2. Información Completa del Instrumento y Trabajo
-        addHeader('ESPECIFICACIONES TÉCNICAS Y DATOS DE CAMPO');
+        // Información del Equipo
+        addHeader('ESPECIFICACIONES DEL INSTRUMENTO');
         autoTable(pdf, {
             startY: yPos,
             margin: { left: 20, right: 20 },
             body: [
-                ['Nombre del Equipo', data.deviceName, 'TAG / Código', data.deviceCode],
-                ['Marca / Modelo', `${data.deviceBrand} / ${data.deviceModel}`, 'Serial', data.deviceSerial],
-                ['Rango / Unidad', `${data.deviceRange} ${data.unity}`, 'Tipo Dispositivo', data.deviceType.toUpperCase()],
-                ['Área', data.instrumentArea, 'Orden Trabajo', data.workOrder],
-                ['Instrumentista', data.instrumentistName, 'Código Personal', data.instrumentistCode],
-                ['Fecha Revisión', data.reviewDate || 'N/A', '', '']
+                ['TAG / Código', data.deviceCode, 'Marca/Modelo', `${data.deviceBrand} / ${data.deviceModel}`],
+                ['Instrumentista', data.instrumentistName, 'Orden de Trabajo', data.workOrder],
+                ['Rango de Medida', `${data.deviceRange} ${data.unity}`, 'Fecha de Revisión', data.reviewDate ? new Date(data.reviewDate).toLocaleDateString() : 'N/A']
             ],
-            styles: { fontSize: 8.5, cellPadding: 2.5 },
+            styles: { fontSize: 9, cellPadding: 3 },
             columnStyles: { 
                 0: { fontStyle: 'bold', fillColor: colors.lightGray, cellWidth: 35 },
                 2: { fontStyle: 'bold', fillColor: colors.lightGray, cellWidth: 35 }
             }
         });
-        yPos = (pdf as any).lastAutoTable.finalY + 12;
+        yPos = (pdf as any).lastAutoTable.finalY + 15;
 
-        // 3. Tabla de Mediciones (Solo si es Transmisor)
+        // Tabla de Mediciones (Lógica de Espejo)
         if (data.deviceType === 'transmitter' && measurements.length) {
             addHeader(`RESULTADOS DE LAS MEDICIONES (Salida en ${unit})`);
+
+            // Definición dinámica de columnas igual que en el Header Desktop de tu componente
             const headers = [
                 'Ideal UE', 
                 `Ideal ${unit}`, 
@@ -119,16 +120,23 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 `Err ${unit}`, 
                 'Err %'
             ];
-            
+
             const body = measurements.map(m => {
+                // Recalculamos para asegurar que el PDF sea veraz aunque el estado de React no haya actualizado un campo
                 const calcs = calculateRowErrors(m, unit);
-                return [
-                    m.idealUe, m.idealMa, m.patronUe, 
-                    ...(hasUE ? [m.ueTransmitter] : []), 
-                    m.maTransmitter, m.percentage, 
-                    ...(hasUE ? [calcs.errorUe] : []), 
-                    calcs.errorMa, calcs.errorPercentage
+                
+                const row = [
+                    m.idealUe, 
+                    m.idealMa, 
+                    m.patronUe,
+                    ...(hasUE ? [m.ueTransmitter] : []),
+                    m.maTransmitter, 
+                    m.percentage,
+                    ...(hasUE ? [calcs.errorUe] : []),
+                    calcs.errorMa, 
+                    calcs.errorPercentage
                 ];
+                return row;
             });
 
             autoTable(pdf, {
@@ -136,50 +144,57 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 head: [headers],
                 body: body,
                 theme: 'grid',
-                headStyles: { fillColor: colors.risaraldaGreen, halign: 'center', fontSize: 7.5, fontStyle: 'bold' },
-                styles: { fontSize: 7.5, halign: 'center', cellPadding: 2 },
-                didParseCell: (d: any) => {
-                    if (d.section === 'body' && headers[d.column.index].startsWith('Err')) {
-                        d.cell.styles.fillColor = colors.errorBg;
-                        d.cell.styles.textColor = colors.errorText;
-                        d.cell.styles.fontStyle = 'bold';
+                headStyles: { 
+                    fillColor: [119, 158, 79], 
+                    halign: 'center', 
+                    fontSize: 8,
+                    fontStyle: 'bold' 
+                },
+                styles: { fontSize: 8, halign: 'center', cellPadding: 2.5 },
+                didParseCell: (dataCell: any) => {
+                    const headerText = headers[dataCell.column.index];
+                    // Aplicar el estilo rojo a las columnas de error igual que en el InputField `isError`
+                    if (dataCell.section === 'body' && headerText.startsWith('Err')) {
+                        dataCell.cell.styles.fillColor = colors.errorBg;
+                        dataCell.cell.styles.textColor = colors.errorText;
+                        dataCell.cell.styles.fontStyle = 'bold';
                     }
                 }
             });
-            yPos = (pdf as any).lastAutoTable.finalY + 12;
+            yPos = (pdf as any).lastAutoTable.finalY + 15;
         }
 
-        // 4. Gráficos
+        // Gráficos
         if (chartImages && chartImages.length > 0) {
             chartImages.forEach((img, i) => {
-                if (yPos + 85 > 285) { pdf.addPage(); yPos = 20; }
-                const chartTitles = ['Curva de Respuesta', 'Análisis de Errores', 'Linealidad'];
-                addHeader(`ANÁLISIS GRÁFICO: ${chartTitles[i] || 'Gráfico de Calibración'}`);
-                pdf.addImage(img, 'PNG', 30, yPos, 150, 75);
+                const titles = ['Curva de Respuesta', 'Errores de Calibración'];
+                if (yPos + 80 > 280) { pdf.addPage(); yPos = 20; }
+                addHeader(`ANÁLISIS GRÁFICO: ${titles[i] || 'Gráfico'}`);
+                pdf.addImage(img, 'PNG', 30, yPos, 150, 70);
                 yPos += 85;
             });
         }
 
-        // 5. Observaciones
+        // Observaciones
         if (data.observations) {
             addHeader('OBSERVACIONES Y NOTAS TÉCNICAS');
             pdf.setFontSize(9).setFont('helvetica', 'normal').setTextColor(40);
-            pdf.text(pdf.splitTextToSize(data.observations, 170), 20, yPos);
+            const splitText = pdf.splitTextToSize(data.observations, 170);
+            pdf.text(splitText, 20, yPos);
         }
 
-        pdf.save(`Reporte_${data.deviceCode || 'Instrumento'}_${data.workOrder || 'OT'}.pdf`);
+        pdf.save(`Reporte_${data.deviceCode || 'Instrumento'}_${data.workOrder}.pdf`);
     } catch (e) { 
-        console.error("Error crítico en PDF Service:", e); 
+        console.error("Error generando PDF:", e); 
     }
 };
 
 const getBase64ImageFromUrl = async (url: string): Promise<string> => {
     const res = await fetch(url);
     const blob = await res.blob();
-    return new Promise((resolve, reject) => {
+    return new Promise(resolve => {
         const reader = new FileReader();
         reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = reject;
         reader.readAsDataURL(blob);
     });
 };
