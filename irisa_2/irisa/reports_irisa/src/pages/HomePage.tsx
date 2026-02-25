@@ -42,7 +42,7 @@ const HomePage: React.FC = () => {
     const [pressureSwitchTests, setPressureSwitchTests] = useLocalStorage<PressureSwitchTest[]>('ir_table_press', []);
     const [thermostatTests, setThermostatTests] = useLocalStorage<ThermostatTest[]>('ir_table_therm', []);
 
-    // --- ESTADOS PARA TRANSMISORES (Sincronizados con TransmitterTable) ---
+    // --- ESTADOS PARA TRANSMISORES ---
     const [outputUnit, setOutputUnit] = useLocalStorage<'mA' | 'ohm'>('ir_output_unit', 'mA');
     const [hasUeTransmitter, setHasUeTransmitter] = useLocalStorage<boolean>('ir_has_ue', false);
 
