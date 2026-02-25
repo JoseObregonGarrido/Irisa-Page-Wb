@@ -52,6 +52,8 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
     
     const measurements = data.transmitterMeasurements || [];
     const unit = data.outputUnit || 'mA';
+    
+    // Esta variable ahora obedece al booleano que el usuario marque en la interfaz
     const hasUE = data.hasUeTransmitter !== undefined 
         ? data.hasUeTransmitter 
         : measurements.some(m => m.ueTransmitter && m.ueTransmitter !== "" && m.ueTransmitter !== "0");
@@ -82,7 +84,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         pdf.setFontSize(16).setFont('helvetica', 'bold').setTextColor(0).text('REPORTE DE CALIBRACIÓN', 80, 25);
         yPos = 45;
 
-        // --- 1. ESPECIFICACIONES (TODOS LOS CAMPOS SOLICITADOS) ---
+        // --- 1. ESPECIFICACIONES ---
         addHeader('ESPECIFICACIONES DEL INSTRUMENTO');
         autoTable(pdf, {
             startY: yPos,
@@ -103,15 +105,15 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         });
         yPos = (pdf as any).lastAutoTable.finalY + 12;
 
-        // --- 2. TABLA DE MEDICIONES (SINCRONIZADA CON COMPONENTE) ---
+        // --- 2. TABLA DE MEDICIONES (Dinamizada por hasUE) ---
         if (data.deviceType.toLowerCase().includes('transmitter') || measurements.length) {
-            addHeader(`RESULTADOS DE LAS MEDICIONES`);
+            addHeader(`RESULTADOS DE LAS MEDICIONES (Salida en ${unit})`);
 
             const headers = [
                 'Ideal UE', `Ideal ${unit}`, 'Patrón UE', 
-                ...(hasUE ? ['UE Trans.'] : []), 
+                ...(hasUE ? ['UE Trans.'] : []), // Aparece si hasUE es true
                 `${unit} Trans.`, '% Rango', 
-                ...(hasUE ? ['Err UE'] : []), 
+                ...(hasUE ? ['Err UE'] : []),    // Aparece si hasUE es true
                 `Err ${unit}`, 'Err %'
             ];
 
@@ -156,7 +158,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             });
         }
 
-        // --- 4. OBSERVACIONES (ESPACIO COMPLETO) ---
+        // --- 4. OBSERVACIONES ---
         if (data.observations) {
             addHeader('OBSERVACIONES Y NOTAS TÉCNICAS');
             autoTable(pdf, {
