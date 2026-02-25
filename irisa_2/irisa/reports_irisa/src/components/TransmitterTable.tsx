@@ -77,7 +77,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
         const patronUe = parseFloat(measurement.patronUe) || 0;
         const ueTransmitter = parseFloat(measurement.ueTransmitter) || 0;
         
-        // LÓGICA SOLICITADA: Error mA = Ideal mA - mA Sensor (maTransmitter)
+        // LOGICA SOLICITADA: Error mA = Ideal mA - mA Sensor (maTransmitter)
         const idealMaValue = parseFloat(measurement.idealmA) || 0;
         const maSensorValue = parseFloat(measurement.maTransmitter) || 0;
         
@@ -132,7 +132,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
             <div className="overflow-x-auto">
                 <div className={`min-w-full ${desktopMinWidth} inline-block align-middle`}>
                     {/* HEADERS */}
-                    <div className={`hidden lg:grid ${gridCols} bg-gray-50 border-b border-gray-200 text-[10px] font-bold text-gray-500 uppercase tracking-wider`}>
+                    <div className={`hidden lg:grid ${gridCols} bg-gray-50 border-b border-gray-200 text-[10px] font-bold text-gray-500  tracking-wider`}>
                         <div className="px-2 py-4 text-center">Ideal UE</div>
                         <div className="px-2 py-4 text-center">Ideal mA</div>
                         {isOhm && <div className="px-2 py-4 text-center">Ideal Ohm</div>}
