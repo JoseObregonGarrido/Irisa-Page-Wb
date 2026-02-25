@@ -13,7 +13,7 @@ import TransmitterChart from '../components/TransmitterChart';
 import PressureSwitchChart from '../components/PressureSwitchChart';
 import ThermostatChart from '../components/ThermostatChart';
 
-// Hooks - Ajustado a la ruta 
+// Hooks
 import useLocalStorage from './hooks/useLocalStorage';
 
 const HomePage: React.FC = () => {
@@ -42,13 +42,13 @@ const HomePage: React.FC = () => {
     const [pressureSwitchTests, setPressureSwitchTests] = useLocalStorage<PressureSwitchTest[]>('ir_table_press', []);
     const [thermostatTests, setThermostatTests] = useLocalStorage<ThermostatTest[]>('ir_table_therm', []);
 
-    // --- ESTADOS PARA TRANSMISORES (Sincronizados con pdfService) ---
+    // --- ESTADOS PARA TRANSMISORES ---
     const [outputUnit, setOutputUnit] = useLocalStorage<'mA' | 'ohm'>('ir_output_unit', 'mA');
     const [hasUeTransmitter, setHasUeTransmitter] = useLocalStorage<boolean>('ir_has_ue', false);
 
     const [showChart, setShowChart] = useState(false);
 
-    // --- Refs ---
+    // --- Refs para captura de gráficos ---
     const transmitterChartRef = useRef<any>(null);
     const pressureSwitchChartRef = useRef<any>(null);
     const thermostatChartRef = useRef<any>(null);
@@ -78,7 +78,7 @@ const HomePage: React.FC = () => {
             transmitterMeasurements,
             pressureSwitchTests,
             thermostatTests,
-            outputUnit, // 'mA' o 'ohm'
+            outputUnit,
             hasUeTransmitter, 
         };
 
@@ -182,7 +182,7 @@ const HomePage: React.FC = () => {
 
                     <div className="p-8">
                         <form className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-                            {/* Inputs del formulario */}
+                            {/* Información Personal y de Trabajo */}
                             <div className="space-y-2">
                                 <label className="block text-sm font-semibold text-gray-700">Nombre del Instrumentista</label>
                                 <input type="text" value={instrumentistName} onChange={(e) => setInstrumentistName(e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none" placeholder="Ingrese el nombre completo" required />
@@ -212,6 +212,8 @@ const HomePage: React.FC = () => {
                                 <label className="block text-sm font-semibold text-gray-700">Fecha de Revisión</label>
                                 <input type="datetime-local" value={reviewDate} onChange={(e) => setReviewDate(e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none" />
                             </div>
+
+                            {/* Detalles del Equipo */}
                             <div className="space-y-2">
                                 <label className="block text-sm font-semibold text-gray-700">Nombre del equipo</label>
                                 <input type="text" value={deviceName} onChange={(e) => setDeviceName(e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none" placeholder="Ej: Medidor nivel..." />
@@ -259,6 +261,7 @@ const HomePage: React.FC = () => {
                             </div>
                         )}
 
+                        {/* Sección de Tablas Dinámicas */}
                         <div className="mt-8">
                             {deviceType === 'transmitter' && (
                                 <TransmitterTable 
@@ -278,7 +281,7 @@ const HomePage: React.FC = () => {
                             )}
                         </div>
 
-                        {/* Footer de botones */}
+                        {/* Botonera de Acciones */}
                         <div className="mt-8 p-6 bg-gray-50 rounded-xl border border-gray-200">
                             <div className="flex flex-col sm:flex-row flex-wrap gap-4 justify-center items-center">
                                 <button onClick={() => setShowChart(!showChart)} className="w-full sm:w-auto flex items-center justify-center px-6 py-3 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-semibold rounded-lg shadow-md transition-all duration-200 transform hover:scale-105">
@@ -296,6 +299,7 @@ const HomePage: React.FC = () => {
                             </div>
                         </div>
 
+                        {/* Sección de Gráficos */}
                         <div className="mt-6">
                             {showChart && (
                                 <div className="bg-white rounded-xl shadow-inner p-4 border border-gray-200">

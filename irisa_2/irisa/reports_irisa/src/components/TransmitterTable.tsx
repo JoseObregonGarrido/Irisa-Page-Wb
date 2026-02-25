@@ -6,6 +6,7 @@ export interface Measurement {
     patronUe: string;
     ueTransmitter: string;
     idealmA: string;
+    idealOhm: string; // <-- Nuevo campo agregado
     maTransmitter: string;
     errorUe: string;
     errorMa: string;
@@ -55,13 +56,25 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
     setHasUeTransmitter
 }) => {
     
-    // Etiqueta dinámica: Si es ohm -> Sensor, si no -> Transmisor
-    const deviceLabel = outputUnit === 'ohm' ? 'Sensor' : 'Transmisor';
+    const isOhm = outputUnit === 'ohm';
+    const deviceLabel = isOhm ? 'Sensor' : 'Transmisor';
+
+    // Cálculo dinámico de columnas para Desktop
+    let colsCount = 9;
+    if (hasUeTransmitter) colsCount += 1;
+    if (isOhm) colsCount += 1;
+
+    const gridCols = {
+        9: 'lg:grid-cols-9',
+        10: 'lg:grid-cols-10',
+        11: 'lg:grid-cols-11',
+        12: 'lg:grid-cols-12'
+    }[colsCount] || 'lg:grid-cols-11';
 
     const handleAddRow = () => {
         onMeasurementsChange([...measurements, { 
             percentage: "", idealUe: "", patronUe: "", ueTransmitter: "", 
-            idealmA:"", maTransmitter: "", errorUe: "", errorMa: "", errorPercentage: "" 
+            idealmA:"", idealOhm: "", maTransmitter: "", errorUe: "", errorMa: "", errorPercentage: "" 
         }]);
     };
 
@@ -73,13 +86,15 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
     const calculateErrors = (measurement: Measurement) => {
         const patronUe = parseFloat(measurement.patronUe) || 0;
         const ueTransmitter = parseFloat(measurement.ueTransmitter) || 0;
-        const idealmA = parseFloat(measurement.idealmA) || 0;
+        
+        // El error se calcula contra Ideal mA si es mA, o contra Ideal Ohm si es Sensor
+        const targetIdeal = isOhm ? parseFloat(measurement.idealOhm) : parseFloat(measurement.idealmA);
         const maTransmitter = parseFloat(measurement.maTransmitter) || 0;
         
         const errorUe = ueTransmitter - patronUe; 
-        const errorMa = maTransmitter - idealmA;    
+        const errorMa = maTransmitter - (targetIdeal || 0);    
         
-        const divisor = outputUnit === 'mA' ? 16 : 100;
+        const divisor = isOhm ? 100 : 16;
         const errorPercentage = (errorMa / divisor) * 100; 
         
         return {
@@ -94,15 +109,13 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
         const newMeasurements = [...measurements];
         newMeasurements[index] = { ...newMeasurements[index], [field]: value };
         
-        const relevantFields: (keyof Measurement)[] = ["patronUe", "ueTransmitter", "idealmA", "maTransmitter"];
+        const relevantFields: (keyof Measurement)[] = ["patronUe", "ueTransmitter", "idealmA", "idealOhm", "maTransmitter"];
         if (relevantFields.includes(field)) {
             newMeasurements[index] = calculateErrors(newMeasurements[index]);
         }
         
         onMeasurementsChange(newMeasurements);
     };
-
-    const gridCols = hasUeTransmitter ? 'lg:grid-cols-11' : 'lg:grid-cols-9';
 
     return (
         <div className="mt-8 w-full max-w-full overflow-hidden">
@@ -158,9 +171,9 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
             </div>
 
             <div className="bg-gray-100 lg:bg-white rounded-b-xl shadow-lg border border-gray-200">
-                {/* HEADERS DESKTOP */}
                 <div className={`hidden lg:grid ${gridCols} bg-gray-50 border-b border-gray-200 text-[10px] font-bold text-gray-600 tracking-wider`}>
                     <div className="px-2 py-4 text-center">Ideal UE</div>
+                    {isOhm && <div className="px-2 py-4 text-center">Ideal mA</div>}
                     <div className="px-2 py-4 text-center">Ideal {outputUnit}</div>
                     <div className="px-2 py-4 text-center">Patrón UE</div>
                     {hasUeTransmitter && <div className="px-2 py-4 text-center">UE {deviceLabel}</div>}
@@ -179,9 +192,23 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                                 <div className="lg:px-2 lg:py-3 text-center">
                                     <InputField label="Ideal UE" unit="UE" value={m.idealUe} onChange={(e:any) => handleChange(index, 'idealUe', e.target.value)} />
                                 </div>
+
+                                {isOhm && (
+                                    <div className="lg:px-2 lg:py-3 text-center">
+                                        <InputField label="Ideal mA" unit="mA" value={m.idealmA} onChange={(e:any) => handleChange(index, 'idealmA', e.target.value)} />
+                                    </div>
+                                )}
+
                                 <div className="lg:px-2 lg:py-3 text-center">
-                                    <InputField label={`Ideal ${outputUnit}`} unit={outputUnit} value={m.idealmA} onChange={(e:any) => handleChange(index, 'idealmA', e.target.value)} />
+                                    {/* Si es Ohm usa idealOhm, si es mA usa idealmA */}
+                                    <InputField 
+                                        label={`Ideal ${outputUnit}`} 
+                                        unit={outputUnit} 
+                                        value={isOhm ? m.idealOhm : m.idealmA} 
+                                        onChange={(e:any) => handleChange(index, isOhm ? 'idealOhm' : 'idealmA', e.target.value)} 
+                                    />
                                 </div>
+                                
                                 <div className="lg:px-2 lg:py-3 text-center">
                                     <InputField label="Patrón UE" unit="UE" value={m.patronUe} onChange={(e:any) => handleChange(index, 'patronUe', e.target.value)} />
                                 </div>

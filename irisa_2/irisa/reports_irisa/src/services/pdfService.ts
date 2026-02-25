@@ -30,22 +30,25 @@ export interface ReportData {
     thermostatTests?: any[];
 }
 
+/**
+ * Calcula errores de fila basándose en la unidad de salida (mA o Ohm)
+ */
 const calculateRowErrors = (m: any, unit: 'mA' | 'ohm') => {
     const patronUe = parseFloat(m.patronUe) || 0;
     const ueTransmitter = parseFloat(m.ueTransmitter) || 0;
-    const idealMa = parseFloat(m.idealMa) || 0;
-    const maTransmitter = parseFloat(m.maTransmitter) || 0;
+    const idealOutput = parseFloat(m.idealMa) || 0;
+    const transmitterOutput = parseFloat(m.maTransmitter) || 0;
     
     const errorUe = ueTransmitter - patronUe; 
-    const errorMa = maTransmitter - idealMa;
+    const errorOutput = transmitterOutput - idealOutput;
     
-    // Si la unidad es mA el divisor es 16, si es ohm usamos 100 para el cálculo de %
+    // Divisor para el % de error: 16 para mA (rango 4-20), 100 para Ohms (o según escala)
     const divisor = unit === 'mA' ? 16 : 100; 
-    const errorPercentage = (errorMa / divisor) * 100; 
+    const errorPercentage = (errorOutput / divisor) * 100; 
     
     return {
         errorUe: errorUe.toFixed(3),
-        errorMa: errorMa.toFixed(3),
+        errorOutput: errorOutput.toFixed(3),
         errorPercentage: errorPercentage.toFixed(2)
     };
 };
@@ -55,8 +58,6 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
     
     const measurements = data.transmitterMeasurements || [];
     const unit = data.outputUnit || 'mA';
-    
-    // El booleano que viene de la interfaz para mostrar/ocultar columnas UE
     const hasUE = data.hasUeTransmitter ?? false;
 
     let yPos = 20;
@@ -76,7 +77,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
     };
 
     try {
-        // Logo y Título
+        // --- LOGO Y TÍTULO ---
         try {
             const b64Logo = await getBase64ImageFromUrl(logo);
             pdf.addImage(b64Logo, 'PNG', 20, 12, 50, 20);
@@ -108,9 +109,8 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
 
         // --- 2. TABLA DE MEDICIONES (TRANSMISORES) ---
         if (data.deviceType === 'transmitter' && measurements.length) {
-            addHeader(`RESULTADOS DE LAS MEDICIONES`);
+            addHeader(`RESULTADOS DE LAS MEDICIONES (${unit})`);
 
-            // Headers dinámicos basados en hasUE y la unidad seleccionada ('mA' o 'ohm')
             const headers = [
                 'Ideal UE', 
                 `Ideal ${unit}`, 
@@ -133,7 +133,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                     m.maTransmitter, 
                     m.percentage,
                     ...(hasUE ? [calcs.errorUe] : []),
-                    calcs.errorMa, 
+                    calcs.errorOutput, 
                     calcs.errorPercentage
                 ];
             });
@@ -147,7 +147,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 styles: { fontSize: 7, halign: 'center', cellPadding: 2 },
                 didParseCell: (dataCell: any) => {
                     const headerText = headers[dataCell.column.index];
-                    // Pintar de rojo clarito cualquier columna que empiece por "Err"
+                    // Resaltar celdas de error
                     if (dataCell.section === 'body' && headerText && headerText.startsWith('Err')) {
                         dataCell.cell.styles.fillColor = colors.errorBg;
                         dataCell.cell.styles.textColor = colors.errorText;
