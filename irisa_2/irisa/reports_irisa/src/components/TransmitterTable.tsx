@@ -1,12 +1,12 @@
 import React from 'react';
 
-// ... (Interface Measurement y TransmitterTableProps se mantienen igual)
 export interface Measurement {
     percentage: string;
     idealUe: string;
     patronUe: string;
     ueTransmitter: string;
     idealmA: string;
+    idealOhm?: string; // Agregado para independencia en modo sensor
     maTransmitter: string;
     errorUe: string;
     errorMa: string;
@@ -71,13 +71,12 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
         12: 'lg:grid-cols-12'
     }[colsCount] || 'lg:grid-cols-11';
 
-    // Ajustamos el min-width SOLO para desktop usando clases dinámicas
-    const desktopMinWidth = hasUeTransmitter ? (isOhm ? 'lg:min-w-[1200px]' : 'lg:min-w-[1000px]') : 'lg:min-w-[900px]';
+    const desktopMinWidth = hasUeTransmitter ? (isOhm ? 'lg:min-w-[1250px]' : 'lg:min-w-[1050px]') : 'lg:min-w-[950px]';
 
     const handleAddRow = () => {
         onMeasurementsChange([...measurements, { 
             percentage: "", idealUe: "", patronUe: "", ueTransmitter: "", 
-            idealmA:"", maTransmitter: "", errorUe: "", errorMa: "", errorPercentage: "" 
+            idealmA:"", idealOhm: "", maTransmitter: "", errorUe: "", errorMa: "", errorPercentage: "" 
         }]);
     };
 
@@ -89,12 +88,18 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
     const calculateErrors = (measurement: Measurement) => {
         const patronUe = parseFloat(measurement.patronUe) || 0;
         const ueTransmitter = parseFloat(measurement.ueTransmitter) || 0;
-        const idealmA = parseFloat(measurement.idealmA) || 0;
+        
+        // Resultado de ideal ohm = ideal mA - ohm sensor
+        // Si es ohm, comparamos contra idealOhm, si no contra idealmA
+        const targetIdeal = isOhm ? (parseFloat(measurement.idealOhm || "0") || 0) : (parseFloat(measurement.idealmA) || 0);
         const maTransmitter = parseFloat(measurement.maTransmitter) || 0;
+        
         const errorUe = ueTransmitter - patronUe; 
-        const errorMa = maTransmitter - idealmA;    
-        const divisor = outputUnit === 'mA' ? 16 : 100;
+        const errorMa = maTransmitter - targetIdeal;    
+        
+        const divisor = isOhm ? 100 : 16;
         const errorPercentage = (errorMa / divisor) * 100; 
+        
         return {
             ...measurement,
             errorUe: errorUe.toFixed(3),
@@ -106,7 +111,8 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
     const handleChange = (index: number, field: keyof Measurement, value: string) => {
         const newMeasurements = [...measurements];
         newMeasurements[index] = { ...newMeasurements[index], [field]: value };
-        const relevantFields: (keyof Measurement)[] = ["patronUe", "ueTransmitter", "idealmA", "maTransmitter"];
+        
+        const relevantFields: (keyof Measurement)[] = ["patronUe", "ueTransmitter", "idealmA", "idealOhm", "maTransmitter"];
         if (relevantFields.includes(field)) {
             newMeasurements[index] = calculateErrors(newMeasurements[index]);
         }
@@ -138,7 +144,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                             onClick={() => setHasUeTransmitter(!hasUeTransmitter)}
                             className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition-all ${hasUeTransmitter ? 'bg-white text-teal-700 shadow' : 'bg-white/10 border-white/20 text-white hover:bg-white/20'}`}
                         >
-                            {hasUeTransmitter ? 'Ocultar UE' : 'Mostrar UE'}
+                            {hasUeTransmitter ? 'Ocultar UE Transmisor' : 'Mostrar UE Transmisor'}
                         </button>
                     </div>
 
@@ -148,30 +154,28 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                 </div>
             </div>
 
-            {/* CONTENEDOR CON SCROLL SÓLO EN DESKTOP */}
             <div className="overflow-x-auto lg:overflow-x-auto">
                 <div className={`min-w-full ${desktopMinWidth} inline-block align-middle`}>
                     
-                    {/* HEADERS DESKTOP (Ocultos en mobile) */}
+                    {/* HEADERS DESKTOP */}
                     <div className={`hidden lg:grid ${gridCols} bg-gray-50 border-b border-gray-200 text-[10px] font-bold text-gray-500 uppercase tracking-wider`}>
                         <div className="px-2 py-4 text-center">Ideal UE</div>
                         {isOhm && <div className="px-2 py-4 text-center">Ideal mA</div>}
                         <div className="px-2 py-4 text-center">Ideal {outputUnit}</div>
                         <div className="px-2 py-4 text-center">Patrón UE</div>
                         {hasUeTransmitter && <div className="px-2 py-4 text-center">UE {deviceLabel}</div>}
-                        <div className="px-2 py-4 text-center">{outputUnit} {deviceLabel}</div>
+                        <div className="px-2 py-4 text-center">mA {deviceLabel}</div>
                         <div className="px-2 py-4 text-center">% Rango</div>
                         {hasUeTransmitter && <div className="px-2 py-4 text-center bg-red-50 text-red-700">Err UE</div>}
-                        <div className="px-2 py-4 text-center bg-red-50 text-red-700">Err {outputUnit}</div>
+                        <div className="px-2 py-4 text-center bg-red-50 text-red-700">Err mA</div>
                         <div className="px-2 py-4 text-center bg-red-50 text-red-700">Err %</div>
                         <div className="px-2 py-4 text-center">Acción</div>
                     </div>
 
-                    {/* CUERPO: En mobile se ve vertical, en desktop horizontal */}
+                    {/* CUERPO */}
                     <div className="p-4 lg:p-0 space-y-4 lg:space-y-0 lg:divide-y lg:divide-gray-200 bg-gray-50 lg:bg-white">
                         {measurements.map((m, index) => (
                             <div key={index} className={`bg-white p-4 lg:p-0 rounded-xl lg:rounded-none shadow-sm lg:shadow-none border lg:border-none border-gray-200 lg:grid ${gridCols} lg:items-center hover:bg-teal-50/30 transition-colors`}>
-                                {/* Grid de Mobile (2 cols) que se convierte en contents en Desktop */}
                                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:contents gap-4">
                                     <div className="lg:px-2 lg:py-3"><InputField label="Ideal UE" unit="UE" value={m.idealUe} onChange={(e:any) => handleChange(index, 'idealUe', e.target.value)} /></div>
                                     
@@ -179,21 +183,23 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                                         <div className="lg:px-2 lg:py-3"><InputField label="Ideal mA" unit="mA" value={m.idealmA} onChange={(e:any) => handleChange(index, 'idealmA', e.target.value)} /></div>
                                     )}
 
-                                    <div className="lg:px-2 lg:py-3"><InputField label={`Ideal ${outputUnit}`} unit={outputUnit} value={m.idealmA} onChange={(e:any) => handleChange(index, 'idealmA', e.target.value)} /></div>
+                                    {/* Ideal Ohm ahora es independiente de Ideal mA */}
+                                    <div className="lg:px-2 lg:py-3"><InputField label={`Ideal ${outputUnit}`} unit={outputUnit} value={isOhm ? (m.idealOhm || "") : m.idealmA} onChange={(e:any) => handleChange(index, isOhm ? 'idealOhm' : 'idealmA', e.target.value)} /></div>
+                                    
                                     <div className="lg:px-2 lg:py-3"><InputField label="Patrón UE" unit="UE" value={m.patronUe} onChange={(e:any) => handleChange(index, 'patronUe', e.target.value)} /></div>
 
                                     {hasUeTransmitter && (
-                                        <div className="lg:px-2 lg:py-3"><InputField label={`UE ${deviceLabel}`} unit="UE" value={m.ueTransmitter} onChange={(e:any) => handleChange(index, 'ueTransmitter', e.target.value)} /></div>
+                                        <div className="lg:px-2 lg:py-3"><InputField label="UE Transmisor" unit="UE" value={m.ueTransmitter} onChange={(e:any) => handleChange(index, 'ueTransmitter', e.target.value)} /></div>
                                     )}
 
-                                    <div className="lg:px-2 lg:py-3"><InputField label={`${outputUnit} ${deviceLabel}`} unit={outputUnit} value={m.maTransmitter} onChange={(e:any) => handleChange(index, 'maTransmitter', e.target.value)} /></div>
+                                    <div className="lg:px-2 lg:py-3"><InputField label={`mA ${deviceLabel}`} unit="mA" value={m.maTransmitter} onChange={(e:any) => handleChange(index, 'maTransmitter', e.target.value)} /></div>
                                     <div className="lg:px-2 lg:py-3"><InputField label="% Rango" unit="%" value={m.percentage} onChange={(e:any) => handleChange(index, 'percentage', e.target.value)} /></div>
 
                                     {hasUeTransmitter && (
                                         <div className="lg:px-2 lg:py-3 lg:bg-red-50/20"><InputField label="Err UE" unit="UE" value={m.errorUe} isError readOnly /></div>
                                     )}
 
-                                    <div className="lg:px-2 lg:py-3 lg:bg-red-50/20"><InputField label={`Err ${outputUnit}`} unit={outputUnit} value={m.errorMa} isError readOnly /></div>
+                                    <div className="lg:px-2 lg:py-3 lg:bg-red-50/20"><InputField label="Err mA" unit="mA" value={m.errorMa} isError readOnly /></div>
                                     <div className="lg:px-2 lg:py-3 lg:bg-red-50/20"><InputField label="Err %" unit="%" value={m.errorPercentage} isError readOnly /></div>
 
                                     <div className="col-span-2 sm:col-span-3 lg:col-span-1 flex justify-center items-center pt-2 lg:pt-0 border-t lg:border-none border-gray-100 mt-2 lg:mt-0">
