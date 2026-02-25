@@ -171,7 +171,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                                     <div className="lg:px-1 lg:py-3 lg:bg-red-50/20 border-l border-red-100"><InputField label="Err UE" unit="UE" value={m.errorUe} isError readOnly /></div>
                                 )}
                                 <div className={`lg:px-1 lg:py-3 lg:bg-red-50/20 ${!hasUeTransmitter ? 'border-l border-red-50' : ''}`}><InputField label={`Err ${outputUnit}`} unit={outputUnit} value={m.errorMa} isError readOnly /></div>
-                                <div className="lg:px-1 lg:py-3 lg:bg-red-0"><InputField label="Err %" unit="%" value={m.errorPercentage} isError readOnly /></div>
+                                <div className="lg:px-1 lg:py-3 lg:bg-red-50/20"><InputField label="Err %" unit="%" value={m.errorPercentage} isError readOnly /></div>
 
                                 <div className="col-span-2 md:col-span-3 lg:col-span-2 flex justify-center py-2 lg:py-0">
                                     <button onClick={() => handleDeleteRow(index)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors">
