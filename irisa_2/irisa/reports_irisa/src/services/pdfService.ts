@@ -30,20 +30,14 @@ export interface ReportData {
     thermostatTests?: any[];
 }
 
-/**
- * SINCRONIZADO CON TRANSMITTERTABLE:
- * Error mA = Ideal mA - mA Sensor
- */
 const calculateRowErrors = (m: any, unit: 'mA' | 'ohm') => {
     const patronUe = parseFloat(m.patronUe) || 0;
     const ueTransmitter = parseFloat(m.ueTransmitter) || 0;
-    
-    // Usamos idealmA para el cálculo del error (como en el componente)
     const idealOutput = parseFloat(m.idealmA) || 0;
     const sensorOutput = parseFloat(m.maTransmitter) || 0;
     
     const errorUe = ueTransmitter - patronUe; 
-    const errorOutput = idealOutput - sensorOutput; // Lógica espejo del componente
+    const errorOutput = idealOutput - sensorOutput; 
     
     const divisor = unit === 'mA' ? 16 : 100; 
     const errorPercentage = divisor !== 0 ? (errorOutput / divisor) * 100 : 0; 
@@ -63,11 +57,14 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
     const isOhm = unit === 'ohm';
 
     let yPos = 20;
-    const colors = { 
+
+    // Tipado estricto para evitar error: Target requires 3 element(s) but source may have fewer
+    const colors: { [key: string]: [number, number, number] } = { 
         risaraldaGreen: [20, 110, 90], 
         errorBg: [254, 242, 242],
         errorText: [185, 28, 28],
-        lightGray: [245, 245, 245] 
+        lightGray: [245, 245, 245],
+        white: [252, 252, 252]
     };
 
     const addHeader = (title: string) => {
@@ -79,7 +76,6 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
     };
 
     try {
-        // --- LOGO ---
         try {
             const b64Logo = await getBase64ImageFromUrl(logo);
             pdf.addImage(b64Logo, 'PNG', 20, 12, 50, 20);
@@ -88,7 +84,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         pdf.setFontSize(16).setFont('helvetica', 'bold').setTextColor(0).text('REPORTE DE CALIBRACIÓN', 80, 25);
         yPos = 45;
 
-        // --- 1. ESPECIFICACIONES (Sin líneas blancas) ---
+        // --- 1. ESPECIFICACIONES ---
         addHeader('ESPECIFICACIONES DEL INSTRUMENTO');
         autoTable(pdf, {
             startY: yPos,
@@ -101,11 +97,8 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 ['Nombre Instrumentista', data.instrumentistName, 'Código Instrumentista', data.instrumentistCode],
                 ['Orden de Trabajo', data.workOrder, 'Fecha de Revisión', data.reviewDate || 'N/A']
             ],
-            styles: { 
-                fontSize: 8.5, 
-                cellPadding: 2.5,
-                lineWidth: 0 // Elimina líneas blancas de los bordes
-            },
+            theme: 'plain',
+            styles: { fontSize: 8.5, cellPadding: 3, lineWidth: 0, textColor: 50 },
             columnStyles: { 
                 0: { fontStyle: 'bold', fillColor: colors.lightGray, cellWidth: 40 },
                 2: { fontStyle: 'bold', fillColor: colors.lightGray, cellWidth: 40 }
@@ -115,35 +108,20 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
 
         // --- 2. TABLA DE MEDICIONES ---
         if (data.deviceType === 'transmitter' && measurements.length) {
-            const displayUnit = isOhm ? 'Ohm' : 'mA';
-            addHeader(`RESULTADOS DE LAS MEDICIONES (${isOhm ? 'Modo Sensor' : 'Modo Transmisor'})`);
+            addHeader(`RESULTADOS DE LAS MEDICIONES`);
 
             const headers = [
-                'Ideal UE', 
-                'Ideal mA',
-                ...(isOhm ? ['Ideal Ohm'] : []), 
-                'Patrón UE', 
-                ...(hasUE ? ['UE Trans.'] : []), 
-                'mA Sensor', 
-                '% Rango', 
-                ...(hasUE ? ['Err UE'] : []), 
-                'Err mA', 
-                'Err %'
+                'Ideal UE', 'Ideal mA', ...(isOhm ? ['Ideal Ohm'] : []), 'Patrón UE', 
+                ...(hasUE ? ['UE Trans.'] : []), 'mA Sensor', '% Rango', 
+                ...(hasUE ? ['Err UE'] : []), 'Err mA', 'Err %'
             ];
 
             const body = measurements.map(m => {
                 const calcs = calculateRowErrors(m, unit);
                 return [
-                    m.idealUe, 
-                    m.idealmA,
-                    ...(isOhm ? [m.idealOhm] : []), 
-                    m.patronUe,
-                    ...(hasUE ? [m.ueTransmitter] : []),
-                    m.maTransmitter, 
-                    m.percentage,
-                    ...(hasUE ? [calcs.errorUe] : []),
-                    calcs.errorOutput, 
-                    calcs.errorPercentage
+                    m.idealUe, m.idealmA, ...(isOhm ? [m.idealOhm] : []), m.patronUe,
+                    ...(hasUE ? [m.ueTransmitter] : []), m.maTransmitter, m.percentage,
+                    ...(hasUE ? [calcs.errorUe] : []), calcs.errorOutput, calcs.errorPercentage
                 ];
             });
 
@@ -151,22 +129,17 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 startY: yPos,
                 head: [headers],
                 body: body,
-                theme: 'grid',
+                theme: 'plain',
                 headStyles: { 
-                    fillColor: [119, 158, 79], 
-                    halign: 'center', 
-                    fontSize: 6.5, 
-                    fontStyle: 'bold',
-                    lineWidth: 0 
+                    fillColor: colors.risaraldaGreen, 
+                    halign: 'center', fontSize: 7, fontStyle: 'bold', textColor: 255, lineWidth: 0 
                 },
-                styles: { 
-                    fontSize: 6.5, 
-                    halign: 'center', 
-                    cellPadding: 1.5,
-                    lineWidth: 0.1 // Línea muy fina para evitar el efecto de "bloques separados"
-                },
+                styles: { fontSize: 7, halign: 'center', cellPadding: 2, lineWidth: 0, textColor: 40 },
                 didParseCell: (dataCell: any) => {
                     const headerText = headers[dataCell.column.index];
+                    if (dataCell.section === 'body' && dataCell.row.index % 2 === 1) {
+                        dataCell.cell.styles.fillColor = colors.white;
+                    }
                     if (dataCell.section === 'body' && headerText && headerText.startsWith('Err')) {
                         dataCell.cell.styles.fillColor = colors.errorBg;
                         dataCell.cell.styles.textColor = colors.errorText;
@@ -177,24 +150,28 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }
 
-        // --- OBSERVACIONES (Limpio) ---
+        // --- 3. GRÁFICAS (Uso de chartImages) ---
+        if (chartImages && chartImages.length > 0) {
+            chartImages.forEach((img, index) => {
+                if (yPos + 80 > 280) { pdf.addPage(); yPos = 20; }
+                addHeader(index === 0 ? 'CURVA DE RESPUESTA' : 'ANÁLISIS DE ERROR');
+                pdf.addImage(img, 'PNG', 25, yPos, 160, 80);
+                yPos += 90;
+            });
+        }
+
+        // --- 4. OBSERVACIONES ---
         if (data.observations) {
             addHeader('OBSERVACIONES Y NOTAS TÉCNICAS');
             autoTable(pdf, {
                 startY: yPos,
                 margin: { left: 20, right: 20 },
                 body: [[data.observations]],
-                styles: { 
-                    fontSize: 9, 
-                    cellPadding: 5, 
-                    fillColor: [250, 250, 250], 
-                    lineWidth: 0
-                },
+                styles: { fontSize: 9, cellPadding: 5, fillColor: colors.white, lineWidth: 0, textColor: 60 },
                 theme: 'plain'
             });
         }
 
-        // --- PIE DE PÁGINA ---
         const pageCount = (pdf as any).internal.getNumberOfPages();
         for (let i = 1; i <= pageCount; i++) {
             pdf.setPage(i);
