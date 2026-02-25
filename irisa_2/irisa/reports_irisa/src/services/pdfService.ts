@@ -32,6 +32,7 @@ export interface ReportData {
 
 /**
  * Calcula errores de fila basándose en la unidad de salida (mA o Ohm)
+ * Se ajusta para usar los nombres de propiedades correctos del modelo de datos
  */
 const calculateRowErrors = (m: any, unit: 'mA' | 'ohm') => {
     const patronUe = parseFloat(m.patronUe) || 0;
@@ -39,10 +40,14 @@ const calculateRowErrors = (m: any, unit: 'mA' | 'ohm') => {
     const idealOutput = parseFloat(m.idealMa) || 0;
     const transmitterOutput = parseFloat(m.maTransmitter) || 0;
     
+    // Error absoluto en unidades de ingeniería (UE)
     const errorUe = ueTransmitter - patronUe; 
+    
+    // Error en la salida (mA o Ohm)
     const errorOutput = transmitterOutput - idealOutput;
     
-    // Divisor para el % de error: 16 para mA (rango 4-20), 100 para Ohms (o según escala)
+    // El span para el cálculo del % de error: 
+    // Si es mA, el span es 16 (20 - 4). Si es Ohm, se asume un span basado en el rango o 100 por defecto.
     const divisor = unit === 'mA' ? 16 : 100; 
     const errorPercentage = (errorOutput / divisor) * 100; 
     
@@ -109,13 +114,13 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
 
         // --- 2. TABLA DE MEDICIONES (TRANSMISORES) ---
         if (data.deviceType === 'transmitter' && measurements.length) {
-            addHeader(`RESULTADOS DE LAS MEDICIONES (${unit})`);
+            addHeader(`RESULTADOS DE LAS MEDICIONES`);
 
             const headers = [
                 'Ideal UE', 
                 `Ideal ${unit}`, 
                 'Patrón UE', 
-                ...(hasUE ? ['UE Trans.'] : []), 
+                ...(hasUE ? [`UE Trans.`] : []), 
                 `${unit} Trans.`, 
                 '% Rango', 
                 ...(hasUE ? ['Err UE'] : []), 
@@ -147,7 +152,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 styles: { fontSize: 7, halign: 'center', cellPadding: 2 },
                 didParseCell: (dataCell: any) => {
                     const headerText = headers[dataCell.column.index];
-                    // Resaltar celdas de error
+                    // Resaltar celdas de error (Err UE, Err mA, Err %, etc)
                     if (dataCell.section === 'body' && headerText && headerText.startsWith('Err')) {
                         dataCell.cell.styles.fillColor = colors.errorBg;
                         dataCell.cell.styles.textColor = colors.errorText;
