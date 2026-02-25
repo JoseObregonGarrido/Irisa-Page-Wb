@@ -24,11 +24,13 @@ export interface ReportData {
     deviceCode: string;
     observations: string;
     hasUeTransmitter?: boolean; 
-    outputUnit?: 'mA' | 'omh';    
+    outputUnit?: 'mA' | 'Ω';    
     transmitterMeasurements?: any[];
+    pressureSwitchTests?: any[];
+    thermostatTests?: any[];
 }
 
-const calculateRowErrors = (m: any, unit: 'mA' | 'omh') => {
+const calculateRowErrors = (m: any, unit: 'mA' | 'Ω') => {
     const patronUe = parseFloat(m.patronUe) || 0;
     const ueTransmitter = parseFloat(m.ueTransmitter) || 0;
     const idealMa = parseFloat(m.idealMa) || 0;
@@ -37,7 +39,7 @@ const calculateRowErrors = (m: any, unit: 'mA' | 'omh') => {
     const errorUe = ueTransmitter - patronUe; 
     const errorMa = maTransmitter - idealMa;
     
-    // Si la unidad es mA el divisor es 16, si es Ohmios suele ser el span configurado (usamos 100 por defecto o el que definas)
+    // Si la unidad es mA el divisor es 16, si es Ohmios usamos 100 para el cálculo de %
     const divisor = unit === 'mA' ? 16 : 100; 
     const errorPercentage = (errorMa / divisor) * 100; 
     
@@ -54,8 +56,8 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
     const measurements = data.transmitterMeasurements || [];
     const unit = data.outputUnit || 'mA';
     
-    // El booleano que viene de la interfaz
-    const hasUE = data.hasUeTransmitter ?? true;
+    // El booleano que viene de la interfaz para mostrar/ocultar columnas UE
+    const hasUE = data.hasUeTransmitter ?? false;
 
     let yPos = 20;
     const colors = { 
@@ -104,11 +106,11 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         });
         yPos = (pdf as any).lastAutoTable.finalY + 12;
 
-        // --- 2. TABLA DE MEDICIONES ---
-        if (measurements.length) {
+        // --- 2. TABLA DE MEDICIONES (TRANSMISORES) ---
+        if (data.deviceType === 'transmitter' && measurements.length) {
             addHeader(`RESULTADOS DE LAS MEDICIONES`);
 
-            // Headers: Ideal UE y Patrón UE SIEMPRE están. UE Trans y Err UE son condicionales.
+            // Headers dinámicos basados en hasUE y la unidad seleccionada
             const headers = [
                 'Ideal UE', 
                 `Ideal ${unit}`, 
@@ -185,6 +187,18 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 },
                 theme: 'plain'
             });
+        }
+
+        // --- PIE DE PÁGINA ---
+        const pageCount = (pdf as any).internal.getNumberOfPages();
+        for (let i = 1; i <= pageCount; i++) {
+            pdf.setPage(i);
+            pdf.setFontSize(8).setTextColor(150);
+            pdf.text(
+                `Ingenio Risaralda - Reporte generado automáticamente el ${new Date().toLocaleDateString()}`,
+                105, 290, { align: 'center' }
+            );
+            pdf.text(`Página ${i} de ${pageCount}`, 190, 290, { align: 'right' });
         }
 
         pdf.save(`Reporte_${data.deviceCode || 'Instrumento'}_OT_${data.workOrder}.pdf`);

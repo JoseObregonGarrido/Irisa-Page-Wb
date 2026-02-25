@@ -15,12 +15,12 @@ export interface Measurement {
 interface TransmitterTableProps {
     measurements: Measurement[];
     onMeasurementsChange: (measurements: Measurement[]) => void;
-    // Props para el switch
     outputUnit: 'mA' | 'Ω';
     setOutputUnit: (unit: 'mA' | 'Ω') => void;
+    hasUeTransmitter: boolean; // Prop sincronizada con el PDF
+    setHasUeTransmitter: (show: boolean) => void;
 }
 
-// 1. COMPONENTE FUERA PARA EVITAR PERDER EL FOCO
 const InputField = ({ label, value, onChange, unit, isError = false, readOnly = false }: any) => (
     <div className="flex flex-col w-full">
         <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1 lg:hidden">
@@ -50,7 +50,9 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
     measurements, 
     onMeasurementsChange,
     outputUnit,
-    setOutputUnit
+    setOutputUnit,
+    hasUeTransmitter,
+    setHasUeTransmitter
 }) => {
     
     const handleAddRow = () => {
@@ -73,7 +75,8 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
         
         const errorUe = ueTransmitter - patronUe; 
         const errorMa = maTransmitter - idealMa;    
-        const errorPercentage = (errorMa / 16) * 100; 
+        const divisor = outputUnit === 'mA' ? 16 : 100;
+        const errorPercentage = (errorMa / divisor) * 100; 
         
         return {
             ...measurement,
@@ -95,11 +98,14 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
         onMeasurementsChange(newMeasurements);
     };
 
+    // Ajuste dinámico del grid: 11 columnas con UE Trans, 9 columnas sin él
+    const gridCols = hasUeTransmitter ? 'lg:grid-cols-11' : 'lg:grid-cols-9';
+
     return (
         <div className="mt-8 w-full max-w-full overflow-hidden">
             <div className="bg-gradient-to-r from-teal-600 to-emerald-600 rounded-t-xl px-4 py-4 sm:px-6">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                    <div className="flex flex-wrap items-center gap-4">
                         <div className="flex items-center">
                             <div className="p-2 bg-white/20 rounded-lg mr-3">
                                 <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -124,6 +130,19 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                                 Ohmios (Ω)
                             </button>
                         </div>
+
+                        {/* --- SWITCH MOSTRAR/OCULTAR UE TRANS --- */}
+                        <button
+                            type="button"
+                            onClick={() => setHasUeTransmitter(!hasUeTransmitter)}
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-bold transition-all ${
+                                hasUeTransmitter 
+                                ? 'bg-white text-teal-700 shadow' 
+                                : 'bg-white/10 border-white/20 text-white hover:bg-white/20'
+                            }`}
+                        >
+                            {hasUeTransmitter ? 'OCULTAR UE TRANS' : 'MOSTRAR UE TRANS'}
+                        </button>
                     </div>
 
                     <button 
@@ -136,14 +155,19 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
             </div>
 
             <div className="bg-gray-100 lg:bg-white rounded-b-xl shadow-lg border border-gray-200">
-                <div className="hidden lg:grid grid-cols-11 bg-gray-50 border-b border-gray-200 text-[10px] font-bold text-gray-600 uppercase tracking-wider">
+                {/* HEADERS DESKTOP */}
+                <div className={`hidden lg:grid ${gridCols} bg-gray-50 border-b border-gray-200 text-[10px] font-bold text-gray-600 uppercase tracking-wider`}>
                     <div className="px-2 py-4 text-center">Ideal UE</div>
                     <div className="px-2 py-4 text-center">Ideal {outputUnit}</div>
                     <div className="px-2 py-4 text-center">Patrón UE</div>
-                    <div className="px-2 py-4 text-center">UE Trans.</div>
+                    
+                    {hasUeTransmitter && <div className="px-2 py-4 text-center">UE Trans.</div>}
+                    
                     <div className="px-2 py-4 text-center">{outputUnit} Trans.</div>
                     <div className="px-2 py-4 text-center">% Rango</div>
-                    <div className="px-2 py-4 text-center bg-red-50">Err UE</div>
+                    
+                    {hasUeTransmitter && <div className="px-2 py-4 text-center bg-red-50">Err UE</div>}
+                    
                     <div className="px-2 py-4 text-center bg-red-50">Err {outputUnit}</div>
                     <div className="px-2 py-4 text-center bg-red-50">Err %</div>
                     <div className="px-2 py-4 text-center col-span-2">Acción</div>
@@ -151,29 +175,40 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
 
                 <div className="p-4 lg:p-0 space-y-4 lg:space-y-0 lg:divide-y lg:divide-gray-200">
                     {measurements.map((m, index) => (
-                        <div key={index} className="bg-white p-4 lg:p-0 rounded-xl lg:rounded-none shadow-sm lg:shadow-none border lg:border-none border-gray-200 lg:grid lg:grid-cols-11 lg:items-center hover:bg-gray-50 transition-colors">
+                        <div key={index} className={`bg-white p-4 lg:p-0 rounded-xl lg:rounded-none shadow-sm lg:shadow-none border lg:border-none border-gray-200 lg:grid ${gridCols} lg:items-center hover:bg-gray-50 transition-colors`}>
                             <div className="grid grid-cols-2 md:grid-cols-3 lg:contents gap-3">
+                                
                                 <div className="lg:px-2 lg:py-3 text-center">
                                     <InputField label="Ideal UE" unit="UE" value={m.idealUe} onChange={(e:any) => handleChange(index, 'idealUe', e.target.value)} />
                                 </div>
+                                
                                 <div className="lg:px-2 lg:py-3 text-center">
                                     <InputField label={`Ideal ${outputUnit}`} unit={outputUnit} value={m.idealMa} onChange={(e:any) => handleChange(index, 'idealMa', e.target.value)} />
                                 </div>
+
                                 <div className="lg:px-2 lg:py-3 text-center">
                                     <InputField label="Patrón UE" unit="UE" value={m.patronUe} onChange={(e:any) => handleChange(index, 'patronUe', e.target.value)} />
                                 </div>
-                                <div className="lg:px-2 lg:py-3 text-center">
-                                    <InputField label="UE Trans." unit="UE" value={m.ueTransmitter} onChange={(e:any) => handleChange(index, 'ueTransmitter', e.target.value)} />
-                                </div>
+
+                                {hasUeTransmitter && (
+                                    <div className="lg:px-2 lg:py-3 text-center">
+                                        <InputField label="UE Trans." unit="UE" value={m.ueTransmitter} onChange={(e:any) => handleChange(index, 'ueTransmitter', e.target.value)} />
+                                    </div>
+                                )}
+
                                 <div className="lg:px-2 lg:py-3 text-center">
                                     <InputField label={`${outputUnit} Trans.`} unit={outputUnit} value={m.maTransmitter} onChange={(e:any) => handleChange(index, 'maTransmitter', e.target.value)} />
                                 </div>
                                 <div className="lg:px-2 lg:py-3 text-center">
                                     <InputField label="% Rango" unit="%" value={m.percentage} onChange={(e:any) => handleChange(index, 'percentage', e.target.value)} />
                                 </div>
-                                <div className="lg:px-2 lg:py-3 text-center lg:bg-red-50/30">
-                                    <InputField label="Err UE" unit="UE" value={m.errorUe} isError readOnly />
-                                </div>
+
+                                {hasUeTransmitter && (
+                                    <div className="lg:px-2 lg:py-3 text-center lg:bg-red-50/30">
+                                        <InputField label="Err UE" unit="UE" value={m.errorUe} isError readOnly />
+                                    </div>
+                                )}
+
                                 <div className="lg:px-2 lg:py-3 text-center lg:bg-red-50/30">
                                     <InputField label={`Err ${outputUnit}`} unit={outputUnit} value={m.errorMa} isError readOnly />
                                 </div>
@@ -188,7 +223,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                                         <svg className="w-5 h-5 lg:w-4 lg:h-4 mr-2 lg:mr-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                         </svg>
-                                        <span className="lg:hidden font-bold text-sm uppercase">Eliminar Medición</span>
+                                        <span className="lg:hidden font-bold text-sm uppercase">Eliminar</span>
                                     </button>
                                 </div>
                             </div>
