@@ -131,7 +131,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                                 onClick={() => setOutputUnit('ohm')}
                                 className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${outputUnit === 'ohm' ? 'bg-white text-teal-700 shadow' : 'text-white hover:bg-white/10'}`}
                             >
-                                Ω (Ohm)
+                                 Sensor
                             </button>
                         </div>
 
