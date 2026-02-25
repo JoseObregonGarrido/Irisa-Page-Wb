@@ -1,5 +1,6 @@
 import React from 'react';
 
+// ... (Interface Measurement y TransmitterTableProps se mantienen igual)
 export interface Measurement {
     percentage: string;
     idealUe: string;
@@ -34,8 +35,8 @@ const InputField = ({ label, value, onChange, unit, isError = false, readOnly = 
                 readOnly={readOnly}
                 className={`w-full px-2 py-2 pr-7 text-xs border rounded-lg focus:outline-none focus:ring-2 
                     ${isError 
-                        ? 'border-red-200 bg-red-50 focus:ring-red-500 font-bold' 
-                        : 'border-gray-300 bg-white focus:ring-teal-500'
+                        ? 'border-red-200 bg-red-50 focus:ring-red-500 font-bold text-red-700' 
+                        : 'border-gray-300 bg-white focus:ring-teal-500 text-gray-700'
                     } ${readOnly ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                 placeholder="0.00"
             />
@@ -58,10 +59,9 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
     const isOhm = outputUnit === 'ohm';
     const deviceLabel = isOhm ? 'Sensor' : 'Transmisor';
 
-    // Cálculo dinámico de columnas
-    let colsCount = 8; // Base: IdealUE, IdealOut, PatronUE, OutTrans, %Rango, ErrOut, Err%, Acción
-    if (hasUeTransmitter) colsCount += 2; // + UE Trans y + Err UE
-    if (isOhm) colsCount += 1; // + Ideal mA
+    let colsCount = 8; 
+    if (hasUeTransmitter) colsCount += 2; 
+    if (isOhm) colsCount += 1;
 
     const gridCols = {
         8: 'lg:grid-cols-8',
@@ -71,8 +71,8 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
         12: 'lg:grid-cols-12'
     }[colsCount] || 'lg:grid-cols-11';
 
-    // Definimos un ancho mínimo para la tabla en desktop para evitar que se aplaste
-    const minTableWidth = hasUeTransmitter ? (isOhm ? '1300px' : '1100px') : '900px';
+    // Ajustamos el min-width SOLO para desktop usando clases dinámicas
+    const desktopMinWidth = hasUeTransmitter ? (isOhm ? 'lg:min-w-[1200px]' : 'lg:min-w-[1000px]') : 'lg:min-w-[900px]';
 
     const handleAddRow = () => {
         onMeasurementsChange([...measurements, { 
@@ -91,13 +91,10 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
         const ueTransmitter = parseFloat(measurement.ueTransmitter) || 0;
         const idealmA = parseFloat(measurement.idealmA) || 0;
         const maTransmitter = parseFloat(measurement.maTransmitter) || 0;
-        
         const errorUe = ueTransmitter - patronUe; 
         const errorMa = maTransmitter - idealmA;    
-        
         const divisor = outputUnit === 'mA' ? 16 : 100;
         const errorPercentage = (errorMa / divisor) * 100; 
-        
         return {
             ...measurement,
             errorUe: errorUe.toFixed(3),
@@ -109,12 +106,10 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
     const handleChange = (index: number, field: keyof Measurement, value: string) => {
         const newMeasurements = [...measurements];
         newMeasurements[index] = { ...newMeasurements[index], [field]: value };
-        
         const relevantFields: (keyof Measurement)[] = ["patronUe", "ueTransmitter", "idealmA", "maTransmitter"];
         if (relevantFields.includes(field)) {
             newMeasurements[index] = calculateErrors(newMeasurements[index]);
         }
-        
         onMeasurementsChange(newMeasurements);
     };
 
@@ -130,7 +125,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                                 </svg>
                             </div>
-                            <h3 className="text-lg font-bold text-white">Mediciones</h3>
+                            <h3 className="text-lg font-bold text-white tracking-tight">Mediciones</h3>
                         </div>
 
                         <div className="flex bg-black/20 p-1 rounded-lg border border-white/10">
@@ -143,7 +138,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                             onClick={() => setHasUeTransmitter(!hasUeTransmitter)}
                             className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition-all ${hasUeTransmitter ? 'bg-white text-teal-700 shadow' : 'bg-white/10 border-white/20 text-white hover:bg-white/20'}`}
                         >
-                            {hasUeTransmitter ? 'Ocultar UE Trans.' : 'Mostrar UE Trans.'}
+                            {hasUeTransmitter ? 'Ocultar UE' : 'Mostrar UE'}
                         </button>
                     </div>
 
@@ -153,11 +148,11 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                 </div>
             </div>
 
-            {/* Contenedor con Scroll Horizontal para Desktop */}
-            <div className="overflow-x-auto">
-                <div style={{ minWidth: minTableWidth }} className="inline-block min-w-full align-middle">
+            {/* CONTENEDOR CON SCROLL SÓLO EN DESKTOP */}
+            <div className="overflow-x-auto lg:overflow-x-auto">
+                <div className={`min-w-full ${desktopMinWidth} inline-block align-middle`}>
                     
-                    {/* HEADERS DESKTOP */}
+                    {/* HEADERS DESKTOP (Ocultos en mobile) */}
                     <div className={`hidden lg:grid ${gridCols} bg-gray-50 border-b border-gray-200 text-[10px] font-bold text-gray-500 uppercase tracking-wider`}>
                         <div className="px-2 py-4 text-center">Ideal UE</div>
                         {isOhm && <div className="px-2 py-4 text-center">Ideal mA</div>}
@@ -172,11 +167,12 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                         <div className="px-2 py-4 text-center">Acción</div>
                     </div>
 
-                    {/* CUERPO DE LA TABLA */}
+                    {/* CUERPO: En mobile se ve vertical, en desktop horizontal */}
                     <div className="p-4 lg:p-0 space-y-4 lg:space-y-0 lg:divide-y lg:divide-gray-200 bg-gray-50 lg:bg-white">
                         {measurements.map((m, index) => (
                             <div key={index} className={`bg-white p-4 lg:p-0 rounded-xl lg:rounded-none shadow-sm lg:shadow-none border lg:border-none border-gray-200 lg:grid ${gridCols} lg:items-center hover:bg-teal-50/30 transition-colors`}>
-                                <div className="grid grid-cols-2 md:grid-cols-3 lg:contents gap-3">
+                                {/* Grid de Mobile (2 cols) que se convierte en contents en Desktop */}
+                                <div className="grid grid-cols-2 sm:grid-cols-3 lg:contents gap-4">
                                     <div className="lg:px-2 lg:py-3"><InputField label="Ideal UE" unit="UE" value={m.idealUe} onChange={(e:any) => handleChange(index, 'idealUe', e.target.value)} /></div>
                                     
                                     {isOhm && (
@@ -200,18 +196,16 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                                     <div className="lg:px-2 lg:py-3 lg:bg-red-50/20"><InputField label={`Err ${outputUnit}`} unit={outputUnit} value={m.errorMa} isError readOnly /></div>
                                     <div className="lg:px-2 lg:py-3 lg:bg-red-50/20"><InputField label="Err %" unit="%" value={m.errorPercentage} isError readOnly /></div>
 
-                                    {/* Botón Eliminar */}
-                                    <div className="col-span-2 md:col-span-3 lg:col-span-1 flex justify-center items-center py-2 lg:py-0">
+                                    <div className="col-span-2 sm:col-span-3 lg:col-span-1 flex justify-center items-center pt-2 lg:pt-0 border-t lg:border-none border-gray-100 mt-2 lg:mt-0">
                                         <button
                                             type="button"
                                             onClick={() => handleDeleteRow(index)}
-                                            className="w-full lg:w-auto p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full transition-all"
-                                            title="Eliminar fila"
+                                            className="w-full lg:w-auto p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg lg:rounded-full transition-all flex items-center justify-center gap-2"
                                         >
                                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                             </svg>
-                                            <span className="lg:hidden ml-2 font-bold text-sm">Eliminar Fila</span>
+                                            <span className="lg:hidden font-bold text-xs uppercase">Eliminar Medición</span>
                                         </button>
                                     </div>
                                 </div>
@@ -221,8 +215,8 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                 </div>
             </div>
             {measurements.length === 0 && (
-                <div className="p-8 text-center text-gray-400 text-sm italic bg-gray-50">
-                    No hay mediciones registradas. Haz clic en "Nueva Fila" para comenzar.
+                <div className="p-12 text-center text-gray-400 text-sm italic bg-gray-50">
+                    No hay mediciones registradas.
                 </div>
             )}
         </div>
