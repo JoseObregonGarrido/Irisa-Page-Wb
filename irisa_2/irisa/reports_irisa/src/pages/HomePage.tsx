@@ -1,229 +1,190 @@
-import React, { useState, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React from 'react';
 
-// Services
-import { logout } from '../services/authService';
-import { generatePDFReport, type ReportData } from '../services/pdfService';
+export interface Measurement {
+    percentage: string;
+    idealUe: string;
+    patronUe: string;
+    ueTransmitter: string;
+    idealMa: string;
+    maTransmitter: string;
+    errorUe: string;
+    errorMa: string;
+    errorPercentage: string;
+}
 
-// Components
-import TransmitterTable, { type Measurement } from '../components/TransmitterTable';
-import PressureSwitchTable, { type PressureSwitchTest } from '../components/PressureSwitchTable';
-import ThermostatTable, { type ThermostatTest } from '../components/ThermostatTable';
-import TransmitterChart from '../components/TransmitterChart';
-import PressureSwitchChart from '../components/PressureSwitchChart';
-import ThermostatChart from '../components/ThermostatChart';
+interface TransmitterTableProps {
+    measurements: Measurement[];
+    onMeasurementsChange: (measurements: Measurement[]) => void;
+    outputUnit: 'mA' | 'Ω';
+    setOutputUnit: (unit: 'mA' | 'Ω') => void;
+    hasUeTransmitter: boolean;
+    setHasUeTransmitter: (val: boolean) => void;
+}
 
-// Hooks
-import useLocalStorage from './hooks/useLocalStorage';
+// InputField refactorizado con tipos y mejor UX para móviles
+const InputField = ({ label, value, onChange, unit, isError = false, readOnly = false }: any) => (
+    <div className="flex flex-col w-full">
+        <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1 lg:hidden">
+            {label}
+        </label>
+        <div className="relative w-full">
+            <input
+                type="text"
+                inputMode="decimal"
+                value={value}
+                onChange={onChange}
+                readOnly={readOnly}
+                className={`w-full px-2 py-2 pr-8 text-sm border rounded-lg focus:outline-none focus:ring-2 
+                    ${isError 
+                        ? 'border-red-200 bg-red-50 focus:ring-red-500' 
+                        : 'border-gray-300 bg-white focus:ring-teal-500'
+                    } ${readOnly ? 'bg-gray-50 cursor-not-allowed text-gray-600' : ''}`}
+                placeholder="0.00"
+            />
+            <span className={`absolute right-2 top-2 text-[10px] font-bold ${isError ? 'text-red-400' : 'text-gray-400'}`}>
+                {unit}
+            </span>
+        </div>
+    </div>
+);
 
-const HomePage: React.FC = () => {
-    const navigate = useNavigate();
+const TransmitterTable: React.FC<TransmitterTableProps> = ({ 
+    measurements, 
+    onMeasurementsChange,
+    outputUnit,
+    setOutputUnit,
+    hasUeTransmitter,
+    setHasUeTransmitter
+}) => {
 
-    const [instrumentist, setInstrumentist] = useLocalStorage('ir_staff', { name: '', code: '' });
-    const [workInfo, setWorkInfo] = useLocalStorage('ir_work', { order: '', area: '', date: '', deviceType: '' });
-    const [deviceDetails, setDeviceDetails] = useLocalStorage('ir_dev_details', {
-        name: '', brand: '', model: '', serial: '', range: '', unity: '', code: '', observations: ''
-    });
+    const calculateErrors = (measurement: Measurement) => {
+        // Helper para manejar comas y puntos
+        const parse = (val: string) => parseFloat(val.replace(',', '.')) || 0;
 
-    const [transmitterMeasurements, setTransmitterMeasurements] = useLocalStorage<Measurement[]>('ir_table_trans', []);
-    const [pressureSwitchTests, setPressureSwitchTests] = useLocalStorage<PressureSwitchTest[]>('ir_table_press', []);
-    const [thermostatTests, setThermostatTests] = useLocalStorage<ThermostatTest[]>('ir_table_therm', []);
-
-    const [outputUnit, setOutputUnit] = useLocalStorage<'mA' | 'Ω'>('ir_output_unit', 'mA');
-    const [hasUeTransmitter, setHasUeTransmitter] = useLocalStorage('ir_has_ue', false);
-
-    const [showChart, setShowChart] = useState(false);
-    const [isGenerating, setIsGenerating] = useState(false);
-
-    const transmitterChartRef = useRef<any>(null);
-    const pressureSwitchChartRef = useRef<any>(null);
-    const thermostatChartRef = useRef<any>(null);
-
-    const handleLogout = () => {
-        logout();
-        navigate('/login');
+        const patronUe = parse(measurement.patronUe);
+        const ueTransmitter = parse(measurement.ueTransmitter);
+        const idealMa = parse(measurement.idealMa);
+        const maTransmitter = parse(measurement.maTransmitter);
+        
+        const errorUe = ueTransmitter - patronUe; 
+        const errorMa = maTransmitter - idealMa;
+        
+        // Divisor: 16 para mA (rango 4-20), 100 para Ohms o porcentajes
+        const divisor = outputUnit === 'mA' ? 16 : 100; 
+        const errorPercentage = (errorMa / divisor) * 100; 
+        
+        return {
+            ...measurement,
+            errorUe: errorUe.toFixed(3),
+            errorMa: errorMa.toFixed(3),
+            errorPercentage: errorPercentage.toFixed(2)
+        };
     };
 
-    const handleGeneratePdf = async () => {
-        if (!workInfo.deviceType) {
-            alert("Por favor, seleccione un tipo de dispositivo.");
-            return;
-        }
-
-        setIsGenerating(true);
-
-        // 1. Captura de imágenes de gráficos
-        const chartImages: string[] = [];
-        try {
-            if (showChart) {
-                const activeRef = 
-                    workInfo.deviceType === 'transmitter' ? transmitterChartRef :
-                    workInfo.deviceType === 'pressure_switch' ? pressureSwitchChartRef : 
-                    thermostatChartRef;
-
-                if (activeRef.current?.getChartImages) {
-                    chartImages.push(...activeRef.current.getChartImages());
-                }
-            }
-
-            // 2. Mapeo Correcto a ReportData
-            const reportData: ReportData = {
-                instrumentistName: instrumentist.name,
-                instrumentistCode: instrumentist.code,
-                deviceType: workInfo.deviceType,
-                workOrder: workInfo.order,
-                instrumentArea: workInfo.area,
-                reviewDate: workInfo.date,
-                deviceName: deviceDetails.name,
-                deviceBrand: deviceDetails.brand,
-                deviceModel: deviceDetails.model,
-                deviceSerial: deviceDetails.serial,
-                deviceRange: deviceDetails.range,
-                unity: deviceDetails.unity,
-                deviceCode: deviceDetails.code,
-                observations: deviceDetails.observations,
-                outputUnit: outputUnit,
-                hasUeTransmitter: hasUeTransmitter,
-                transmitterMeasurements: transmitterMeasurements,
-                pressureSwitchTests: pressureSwitchTests,
-                thermostatTests: thermostatTests
-            };
-
-            await generatePDFReport(reportData, chartImages);
-        } catch (error) {
-            console.error("Error generating PDF:", error);
-            alert("Error al generar el PDF.");
-        } finally {
-            setIsGenerating(false);
-        }
+    const handleAddRow = () => {
+        onMeasurementsChange([...measurements, { 
+            percentage: "", idealUe: "", patronUe: "", ueTransmitter: "", 
+            idealMa:"", maTransmitter: "", errorUe: "", errorMa: "", errorPercentage: "" 
+        }]);
     };
 
-    const handleClearForm = () => {
-        if (window.confirm('¿Desea limpiar todos los campos?')) {
-            setInstrumentist({ name: '', code: '' });
-            setWorkInfo({ order: '', area: '', date: '', deviceType: '' });
-            setDeviceDetails({ name: '', brand: '', model: '', serial: '', range: '', unity: '', code: '', observations: '' });
-            setTransmitterMeasurements([]);
-            setPressureSwitchTests([]);
-            setThermostatTests([]);
-            setShowChart(false);
-        }
+    const handleDeleteRow = (indexToDelete: number) => {
+        onMeasurementsChange(measurements.filter((_, index) => index !== indexToDelete));
     };
+
+    const handleChange = (index: number, field: keyof Measurement, value: string) => {
+        const newMeasurements = [...measurements];
+        newMeasurements[index] = { ...newMeasurements[index], [field]: value };
+        
+        const relevantFields: (keyof Measurement)[] = ["patronUe", "ueTransmitter", "idealMa", "maTransmitter"];
+        if (relevantFields.includes(field)) {
+            newMeasurements[index] = calculateErrors(newMeasurements[index]);
+        }
+        
+        onMeasurementsChange(newMeasurements);
+    };
+
+    const gridConfig = hasUeTransmitter ? 'lg:grid-cols-12' : 'lg:grid-cols-10';
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            <header className="bg-white shadow-md border-b-4 border-teal-600">
-                <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-                    <div className="flex items-center space-x-3">
-                        <div className="p-2 bg-teal-700 rounded-lg text-white">
-                            <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20"><path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" /></svg>
+        <div className="mt-8 w-full max-w-full overflow-hidden">
+            <div className="bg-gradient-to-r from-teal-600 to-emerald-600 rounded-t-xl px-4 py-4 sm:px-6">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div className="flex flex-wrap items-center gap-4">
+                        <div className="p-2 bg-white/20 rounded-lg text-white">⚙️</div>
+                        <h3 className="text-lg font-bold text-white uppercase">Mediciones Transmisor</h3>
+                        
+                        <div className="flex bg-black/20 p-1 rounded-lg">
+                            <button onClick={() => setOutputUnit('mA')} className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${outputUnit === 'mA' ? 'bg-white text-teal-700 shadow' : 'text-white hover:bg-white/10'}`}>mA</button>
+                            <button onClick={() => setOutputUnit('Ω')} className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${outputUnit === 'Ω' ? 'bg-white text-teal-700 shadow' : 'text-white hover:bg-white/10'}`}>Ω</button>
                         </div>
-                        <div>
-                            <h1 className="text-xl font-black text-gray-800 uppercase">Ingenio Risaralda</h1>
-                            <p className="text-xs font-bold text-teal-600 tracking-widest uppercase">Metrología Industrial</p>
-                        </div>
+
+                        <label className="flex items-center cursor-pointer gap-2 bg-black/10 px-3 py-1.5 rounded-lg border border-white/10 hover:bg-black/20 transition-all">
+                            <input 
+                                type="checkbox" 
+                                checked={hasUeTransmitter} 
+                                onChange={(e) => setHasUeTransmitter(e.target.checked)}
+                                className="w-4 h-4 accent-emerald-400"
+                            />
+                            <span className="text-[10px] font-bold text-white uppercase">Aplica UE Trans.</span>
+                        </label>
                     </div>
-                    <button onClick={handleLogout} className="text-sm font-bold text-red-600 hover:text-red-800 flex items-center gap-2 border border-red-200 px-3 py-1.5 rounded-md">
-                        SALIR
-                    </button>
+                    
+                    <button onClick={handleAddRow} className="w-full md:w-auto px-4 py-2 bg-white text-teal-700 hover:bg-teal-50 font-bold rounded-lg transition-all shadow-md active:scale-95 text-sm">+ FILA</button>
                 </div>
-            </header>
+            </div>
 
-            <main className="max-w-7xl mx-auto p-4 md:p-8">
-                <div className="bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden">
-                    <div className="bg-gradient-to-r from-teal-700 to-emerald-700 px-8 py-6 text-white">
-                        <h2 className="text-2xl font-bold">Generación de Reporte Técnico</h2>
-                    </div>
+            <div className="bg-gray-100 lg:bg-white rounded-b-xl shadow-lg border border-gray-200">
+                {/* Header Desktop */}
+                <div className={`hidden lg:grid ${gridConfig} bg-gray-50 border-b border-gray-200 text-[10px] font-bold text-gray-600 uppercase`}>
+                    <div className="px-1 py-4 text-center">Ideal UE</div>
+                    <div className="px-1 py-4 text-center">Ideal {outputUnit}</div>
+                    <div className="px-1 py-4 text-center">Patrón UE</div>
+                    {hasUeTransmitter && <div className="px-1 py-4 text-center text-teal-600">UE Trans.</div>}
+                    <div className="px-1 py-4 text-center">{outputUnit} Trans.</div>
+                    <div className="px-1 py-4 text-center">% Rango</div>
+                    
+                    {hasUeTransmitter && <div className="px-1 py-4 text-center bg-red-50 text-red-700 border-l border-red-100">Err UE</div>}
+                    <div className={`px-1 py-4 text-center bg-red-50 text-red-700 ${!hasUeTransmitter ? 'border-l border-red-100' : ''}`}>Err {outputUnit}</div>
+                    <div className="px-1 py-4 text-center bg-red-50 text-red-700">Err %</div>
+                    
+                    <div className="px-1 py-4 text-center col-span-2">Acción</div>
+                </div>
 
-                    <div className="p-6 md:p-10">
-                        {/* Datos del Instrumentista */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-10">
-                            <div className="flex flex-col gap-1.5">
-                                <label className="text-xs font-bold text-gray-500 uppercase">Instrumentista</label>
-                                <input 
-                                    type="text" 
-                                    value={instrumentist.name} 
-                                    onChange={(e) => setInstrumentist({...instrumentist, name: e.target.value})}
-                                    className="border-b-2 border-gray-200 py-2 focus:border-teal-500 outline-none font-medium"
-                                />
-                            </div>
+                {/* Filas */}
+                <div className="p-4 lg:p-0 space-y-4 lg:space-y-0 lg:divide-y lg:divide-gray-200">
+                    {measurements.map((m, index) => (
+                        <div key={index} className={`bg-white p-4 lg:p-0 rounded-xl lg:rounded-none lg:grid ${gridConfig} lg:items-center hover:bg-gray-50 transition-colors`}>
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:contents gap-3">
+                                <div className="lg:px-1 lg:py-3"><InputField label="Ideal UE" unit="UE" value={m.idealUe} onChange={(e:any) => handleChange(index, 'idealUe', e.target.value)} /></div>
+                                <div className="lg:px-1 lg:py-3"><InputField label={`Ideal ${outputUnit}`} unit={outputUnit} value={m.idealMa} onChange={(e:any) => handleChange(index, 'idealMa', e.target.value)} /></div>
+                                <div className="lg:px-1 lg:py-3"><InputField label="Patrón UE" unit="UE" value={m.patronUe} onChange={(e:any) => handleChange(index, 'patronUe', e.target.value)} /></div>
 
-                            <div className="flex flex-col gap-1.5">
-                                <label className="text-xs font-bold text-gray-500 uppercase">Tipo de Dispositivo</label>
-                                <select 
-                                    value={workInfo.deviceType} 
-                                    onChange={(e) => setWorkInfo({...workInfo, deviceType: e.target.value})}
-                                    className="bg-gray-50 border-none rounded p-2 text-gray-800 font-bold focus:ring-2 focus:ring-teal-500"
-                                >
-                                    <option value="">Seleccione...</option>
-                                    <option value="transmitter">Transmisor</option>
-                                    <option value="pressure_switch">Presostato</option>
-                                    <option value="thermostat">Termostato</option>
-                                </select>
-                            </div>
+                                {hasUeTransmitter && (
+                                    <div className="lg:px-1 lg:py-3 border-teal-50 bg-teal-50/10"><InputField label="UE Trans." unit="UE" value={m.ueTransmitter} onChange={(e:any) => handleChange(index, 'ueTransmitter', e.target.value)} /></div>
+                                )}
 
-                            <div className="flex flex-col gap-1.5">
-                                <label className="text-xs font-bold text-gray-500 uppercase">Unidad de Salida</label>
-                                <div className="flex gap-2">
-                                    {['mA', 'Ω'].map(u => (
-                                        <button 
-                                            key={u}
-                                            onClick={() => setOutputUnit(u as 'mA' | 'Ω')}
-                                            className={`flex-1 py-1 rounded font-bold border ${outputUnit === u ? 'bg-teal-600 text-white' : 'bg-white text-gray-400'}`}
-                                        >
-                                            {u}
-                                        </button>
-                                    ))}
+                                <div className="lg:px-1 lg:py-3"><InputField label={`${outputUnit} Trans.`} unit={outputUnit} value={m.maTransmitter} onChange={(e:any) => handleChange(index, 'maTransmitter', e.target.value)} /></div>
+                                <div className="lg:px-1 lg:py-3"><InputField label="% Rango" unit="%" value={m.percentage} onChange={(e:any) => handleChange(index, 'percentage', e.target.value)} /></div>
+
+                                {hasUeTransmitter && (
+                                    <div className="lg:px-1 lg:py-3 lg:bg-red-50/20 border-l border-red-100"><InputField label="Err UE" unit="UE" value={m.errorUe} isError readOnly /></div>
+                                )}
+                                <div className={`lg:px-1 lg:py-3 lg:bg-red-50/20 ${!hasUeTransmitter ? 'border-l border-red-50' : ''}`}><InputField label={`Err ${outputUnit}`} unit={outputUnit} value={m.errorMa} isError readOnly /></div>
+                                <div className="lg:px-1 lg:py-3 lg:bg-red-0"><InputField label="Err %" unit="%" value={m.errorPercentage} isError readOnly /></div>
+
+                                <div className="col-span-2 md:col-span-3 lg:col-span-2 flex justify-center py-2 lg:py-0">
+                                    <button onClick={() => handleDeleteRow(index)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                    </button>
                                 </div>
                             </div>
                         </div>
-
-                        {/* Tablas Dinámicas */}
-                        <div className="mb-10 min-h-[300px]">
-                            {workInfo.deviceType === 'transmitter' && (
-                                <TransmitterTable 
-                                    measurements={transmitterMeasurements} 
-                                    onMeasurementsChange={setTransmitterMeasurements}
-                                    outputUnit={outputUnit}
-                                    setOutputUnit={setOutputUnit}
-                                    hasUeTransmitter={hasUeTransmitter}
-                                    setHasUeTransmitter={setHasUeTransmitter}
-                                />
-                            )}
-                            {workInfo.deviceType === 'pressure_switch' && (
-                                <PressureSwitchTable tests={pressureSwitchTests} onTestsChange={setPressureSwitchTests} />
-                            )}
-                            {workInfo.deviceType === 'thermostat' && (
-                                <ThermostatTable tests={thermostatTests} onTestsChange={setThermostatTests} />
-                            )}
-                        </div>
-
-                        {/* Acciones */}
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <button onClick={() => setShowChart(!showChart)} className="px-6 py-3 rounded-lg font-bold bg-gray-100 text-gray-600 border border-gray-200">
-                                {showChart ? 'CERRAR GRÁFICOS' : 'VISUALIZAR GRÁFICOS'}
-                            </button>
-                            <button onClick={handleGeneratePdf} disabled={isGenerating} className="px-6 py-3 rounded-lg font-bold text-white bg-teal-600 shadow-lg disabled:bg-gray-400">
-                                {isGenerating ? 'PROCESANDO...' : 'GENERAR REPORTE PDF'}
-                            </button>
-                            <button onClick={handleClearForm} className="px-6 py-3 bg-white text-gray-400 font-bold border border-gray-200 rounded-lg hover:text-red-500">
-                                LIMPIAR TODO
-                            </button>
-                        </div>
-
-                        {/* Panel de Gráficos */}
-                        {showChart && workInfo.deviceType && (
-                            <div className="mt-10 p-6 bg-gray-50 rounded-2xl border border-gray-200">
-                                {workInfo.deviceType === 'transmitter' && <TransmitterChart ref={transmitterChartRef} data={transmitterMeasurements} />}
-                                {workInfo.deviceType === 'pressure_switch' && <PressureSwitchChart ref={pressureSwitchChartRef} tests={pressureSwitchTests} />}
-                                {workInfo.deviceType === 'thermostat' && <ThermostatChart ref={thermostatChartRef} tests={thermostatTests} />}
-                            </div>
-                        )}
-                    </div>
+                    ))}
                 </div>
-            </main>
+            </div>
         </div>
     );
-};
+}
 
-export default HomePage;
+export default TransmitterTable;
