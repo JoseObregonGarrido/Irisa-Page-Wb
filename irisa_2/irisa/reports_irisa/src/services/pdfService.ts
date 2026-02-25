@@ -105,7 +105,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
 
         // --- 2. TABLA DE MEDICIONES (SINCRONIZADA CON COMPONENTE) ---
         if (data.deviceType.toLowerCase().includes('transmitter') || measurements.length) {
-            addHeader(`RESULTADOS DE LAS MEDICIONES (Salida en ${unit})`);
+            addHeader(`RESULTADOS DE LAS MEDICIONES`);
 
             const headers = [
                 'Ideal UE', `Ideal ${unit}`, 'Patrón UE', 
