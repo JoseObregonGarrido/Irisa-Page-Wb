@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 
 export interface Measurement {
     percentage: string;
@@ -15,6 +15,10 @@ export interface Measurement {
 interface TransmitterTableProps {
     measurements: Measurement[];
     onMeasurementsChange: (measurements: Measurement[]) => void;
+    outputUnit: 'mA' | 'Ω';
+    setOutputUnit: (unit: 'mA' | 'Ω') => void;
+    hasUeTransmitter: boolean;
+    setHasUeTransmitter: (val: boolean) => void;
 }
 
 const InputField = ({ label, value, onChange, unit, isError = false, readOnly = false }: any) => (
@@ -42,21 +46,14 @@ const InputField = ({ label, value, onChange, unit, isError = false, readOnly = 
     </div>
 );
 
-const TransmitterTable: React.FC<TransmitterTableProps> = ({ measurements, onMeasurementsChange }) => {
-    const [outputUnit, setOutputUnit] = useState<'mA' | 'Ω'>('mA');
-    const [hasUeTransmitter, setHasUeTransmitter] = useState<boolean>(true);
-
-    const handleAddRow = () => {
-        onMeasurementsChange([...measurements, { 
-            percentage: "", idealUe: "", patronUe: "", ueTransmitter: "", 
-            idealMa:"", maTransmitter: "", errorUe: "", errorMa: "", errorPercentage: "" 
-        }]);
-    };
-
-    const handleDeleteRow = (indexToDelete: number) => {
-        const newMeasurements = measurements.filter((_, index) => index !== indexToDelete);
-        onMeasurementsChange(newMeasurements);
-    };
+const TransmitterTable: React.FC<TransmitterTableProps> = ({ 
+    measurements, 
+    onMeasurementsChange,
+    outputUnit,
+    setOutputUnit,
+    hasUeTransmitter,
+    setHasUeTransmitter
+}) => {
 
     const calculateErrors = (measurement: Measurement) => {
         const patronUe = parseFloat(measurement.patronUe) || 0;
@@ -65,8 +62,9 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({ measurements, onMea
         const maTransmitter = parseFloat(measurement.maTransmitter) || 0;
         
         const errorUe = ueTransmitter - patronUe; 
-        const errorMa = maTransmitter - idealMa; // Invertido comúnmente en calibración (Medido - Ideal)
+        const errorMa = maTransmitter - idealMa;
         
+        // Divisor: 16 para mA (rango 4-20), 100 para Ohms o porcentajes
         const divisor = outputUnit === 'mA' ? 16 : 100; 
         const errorPercentage = (errorMa / divisor) * 100; 
         
@@ -78,10 +76,22 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({ measurements, onMea
         };
     };
 
+    const handleAddRow = () => {
+        onMeasurementsChange([...measurements, { 
+            percentage: "", idealUe: "", patronUe: "", ueTransmitter: "", 
+            idealMa:"", maTransmitter: "", errorUe: "", errorMa: "", errorPercentage: "" 
+        }]);
+    };
+
+    const handleDeleteRow = (indexToDelete: number) => {
+        onMeasurementsChange(measurements.filter((_, index) => index !== indexToDelete));
+    };
+
     const handleChange = (index: number, field: keyof Measurement, value: string) => {
         const newMeasurements = [...measurements];
         newMeasurements[index] = { ...newMeasurements[index], [field]: value };
         
+        // Recalcular si cambian valores de entrada
         const relevantFields: (keyof Measurement)[] = ["patronUe", "ueTransmitter", "idealMa", "maTransmitter"];
         if (relevantFields.includes(field)) {
             newMeasurements[index] = calculateErrors(newMeasurements[index]);
@@ -90,7 +100,6 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({ measurements, onMea
         onMeasurementsChange(newMeasurements);
     };
 
-    // Dinámico: 12 columnas si tiene UE (Input + Error), 10 si no.
     const gridConfig = hasUeTransmitter ? 'lg:grid-cols-12' : 'lg:grid-cols-10';
 
     return (
@@ -98,17 +107,15 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({ measurements, onMea
             <div className="bg-gradient-to-r from-teal-600 to-emerald-600 rounded-t-xl px-4 py-4 sm:px-6">
                 <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                     <div className="flex flex-wrap items-center gap-4">
-                        <div className="p-2 bg-white/20 rounded-lg">
-                            <span className="text-white">⚙️</span>
-                        </div>
-                        <h3 className="text-lg font-bold text-white uppercase">Mediciones</h3>
+                        <div className="p-2 bg-white/20 rounded-lg text-white">⚙️</div>
+                        <h3 className="text-lg font-bold text-white uppercase">Mediciones Transmisor</h3>
                         
                         <div className="flex bg-black/20 p-1 rounded-lg">
                             <button onClick={() => setOutputUnit('mA')} className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${outputUnit === 'mA' ? 'bg-white text-teal-700 shadow' : 'text-white hover:bg-white/10'}`}>mA</button>
                             <button onClick={() => setOutputUnit('Ω')} className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${outputUnit === 'Ω' ? 'bg-white text-teal-700 shadow' : 'text-white hover:bg-white/10'}`}>Ω</button>
                         </div>
 
-                        <label className="flex items-center cursor-pointer gap-2 bg-black/10 px-3 py-1.5 rounded-lg border border-white/10 transition-hover hover:bg-black/20">
+                        <label className="flex items-center cursor-pointer gap-2 bg-black/10 px-3 py-1.5 rounded-lg border border-white/10 hover:bg-black/20 transition-all">
                             <input 
                                 type="checkbox" 
                                 checked={hasUeTransmitter} 
@@ -133,7 +140,6 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({ measurements, onMea
                     <div className="px-1 py-4 text-center">{outputUnit} Trans.</div>
                     <div className="px-1 py-4 text-center">% Rango</div>
                     
-                    {/* Sección Errores */}
                     {hasUeTransmitter && <div className="px-1 py-4 text-center bg-red-50 text-red-700 border-l border-red-100">Err UE</div>}
                     <div className={`px-1 py-4 text-center bg-red-50 text-red-700 ${!hasUeTransmitter ? 'border-l border-red-100' : ''}`}>Err {outputUnit}</div>
                     <div className="px-1 py-4 text-center bg-red-50 text-red-700">Err %</div>
@@ -141,6 +147,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({ measurements, onMea
                     <div className="px-1 py-4 text-center col-span-2">Acción</div>
                 </div>
 
+                {/* Filas */}
                 <div className="p-4 lg:p-0 space-y-4 lg:space-y-0 lg:divide-y lg:divide-gray-200">
                     {measurements.map((m, index) => (
                         <div key={index} className={`bg-white p-4 lg:p-0 rounded-xl lg:rounded-none lg:grid ${gridConfig} lg:items-center hover:bg-gray-50 transition-colors`}>
@@ -156,9 +163,8 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({ measurements, onMea
                                 <div className="lg:px-1 lg:py-3"><InputField label={`${outputUnit} Trans.`} unit={outputUnit} value={m.maTransmitter} onChange={(e:any) => handleChange(index, 'maTransmitter', e.target.value)} /></div>
                                 <div className="lg:px-1 lg:py-3"><InputField label="% Rango" unit="%" value={m.percentage} onChange={(e:any) => handleChange(index, 'percentage', e.target.value)} /></div>
 
-                                {/* Errores condicionales */}
                                 {hasUeTransmitter && (
-                                    <div className="lg:px-1 lg:py-3 lg:bg-red-50/20 border-l border-red-50"><InputField label="Err UE" unit="UE" value={m.errorUe} isError readOnly /></div>
+                                    <div className="lg:px-1 lg:py-3 lg:bg-red-50/20 border-l border-red-100"><InputField label="Err UE" unit="UE" value={m.errorUe} isError readOnly /></div>
                                 )}
                                 <div className={`lg:px-1 lg:py-3 lg:bg-red-50/20 ${!hasUeTransmitter ? 'border-l border-red-50' : ''}`}><InputField label={`Err ${outputUnit}`} unit={outputUnit} value={m.errorMa} isError readOnly /></div>
                                 <div className="lg:px-1 lg:py-3 lg:bg-red-50/20"><InputField label="Err %" unit="%" value={m.errorPercentage} isError readOnly /></div>
