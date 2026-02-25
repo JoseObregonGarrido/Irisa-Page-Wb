@@ -31,22 +31,20 @@ export interface ReportData {
 }
 
 /**
- * Calcula errores de fila basándose en la unidad de salida (mA o Ohm)
- * Se ajusta para usar las propiedades correctas del objeto Measurement
+ * SINCRONIZADO CON TRANSMITTERTABLE:
+ * Error mA = Ideal mA - mA Sensor
  */
 const calculateRowErrors = (m: any, unit: 'mA' | 'ohm') => {
     const patronUe = parseFloat(m.patronUe) || 0;
     const ueTransmitter = parseFloat(m.ueTransmitter) || 0;
     
-    // IMPORTANTE: En tu componente usas 'idealmA' y 'maTransmitter' para ambos casos (mA/Ohm)
+    // Usamos idealmA para el cálculo del error (como en el componente)
     const idealOutput = parseFloat(m.idealmA) || 0;
-    const transmitterOutput = parseFloat(m.maTransmitter) || 0;
+    const sensorOutput = parseFloat(m.maTransmitter) || 0;
     
     const errorUe = ueTransmitter - patronUe; 
-    const errorOutput = transmitterOutput - idealOutput;
+    const errorOutput = idealOutput - sensorOutput; // Lógica espejo del componente
     
-    // Divisor para el % de error: 
-    // Si es mA, el span es 16 (20 - 4). Si es Ohm (Sensor), se suele usar 100 o el fondo de escala.
     const divisor = unit === 'mA' ? 16 : 100; 
     const errorPercentage = divisor !== 0 ? (errorOutput / divisor) * 100 : 0; 
     
@@ -59,7 +57,6 @@ const calculateRowErrors = (m: any, unit: 'mA' | 'ohm') => {
 
 export const generatePDFReport = async (data: ReportData, chartImages?: string[]): Promise<void> => {
     const pdf = new jsPDF();
-    
     const measurements = data.transmitterMeasurements || [];
     const unit = data.outputUnit || 'mA';
     const hasUE = data.hasUeTransmitter ?? false;
@@ -82,7 +79,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
     };
 
     try {
-        // --- LOGO Y TÍTULO ---
+        // --- LOGO ---
         try {
             const b64Logo = await getBase64ImageFromUrl(logo);
             pdf.addImage(b64Logo, 'PNG', 20, 12, 50, 20);
@@ -91,7 +88,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         pdf.setFontSize(16).setFont('helvetica', 'bold').setTextColor(0).text('REPORTE DE CALIBRACIÓN', 80, 25);
         yPos = 45;
 
-        // --- 1. ESPECIFICACIONES ---
+        // --- 1. ESPECIFICACIONES (Sin líneas blancas) ---
         addHeader('ESPECIFICACIONES DEL INSTRUMENTO');
         autoTable(pdf, {
             startY: yPos,
@@ -104,7 +101,11 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 ['Nombre Instrumentista', data.instrumentistName, 'Código Instrumentista', data.instrumentistCode],
                 ['Orden de Trabajo', data.workOrder, 'Fecha de Revisión', data.reviewDate || 'N/A']
             ],
-            styles: { fontSize: 8.5, cellPadding: 2.5 },
+            styles: { 
+                fontSize: 8.5, 
+                cellPadding: 2.5,
+                lineWidth: 0 // Elimina líneas blancas de los bordes
+            },
             columnStyles: { 
                 0: { fontStyle: 'bold', fillColor: colors.lightGray, cellWidth: 40 },
                 2: { fontStyle: 'bold', fillColor: colors.lightGray, cellWidth: 40 }
@@ -112,22 +113,21 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         });
         yPos = (pdf as any).lastAutoTable.finalY + 12;
 
-        // --- 2. TABLA DE MEDICIONES (TRANSMISORES) ---
+        // --- 2. TABLA DE MEDICIONES ---
         if (data.deviceType === 'transmitter' && measurements.length) {
             const displayUnit = isOhm ? 'Ohm' : 'mA';
-            addHeader(`RESULTADOS DE LAS MEDICIONES (${displayUnit})`);
+            addHeader(`RESULTADOS DE LAS MEDICIONES (${isOhm ? 'Modo Sensor' : 'Modo Transmisor'})`);
 
-            // Construcción dinámica de cabeceras para el PDF
             const headers = [
                 'Ideal UE', 
-                ...(isOhm ? ['Ideal mA'] : []), // Solo si es modo Sensor/Ohm
-                `Ideal ${displayUnit}`, 
+                'Ideal mA',
+                ...(isOhm ? ['Ideal Ohm'] : []), 
                 'Patrón UE', 
                 ...(hasUE ? ['UE Trans.'] : []), 
-                `${displayUnit} Trans.`, 
+                'mA Sensor', 
                 '% Rango', 
                 ...(hasUE ? ['Err UE'] : []), 
-                `Err ${displayUnit}`, 
+                'Err mA', 
                 'Err %'
             ];
 
@@ -135,8 +135,8 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 const calcs = calculateRowErrors(m, unit);
                 return [
                     m.idealUe, 
-                    ...(isOhm ? [m.idealmA] : []), // Valor de mA en modo sensor
-                    m.idealmA, // Este es el "Ideal Output" (mA u Ohm)
+                    m.idealmA,
+                    ...(isOhm ? [m.idealOhm] : []), 
                     m.patronUe,
                     ...(hasUE ? [m.ueTransmitter] : []),
                     m.maTransmitter, 
@@ -152,11 +152,21 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 head: [headers],
                 body: body,
                 theme: 'grid',
-                headStyles: { fillColor: [119, 158, 79], halign: 'center', fontSize: 6.5, fontStyle: 'bold' },
-                styles: { fontSize: 6.5, halign: 'center', cellPadding: 1.5 },
+                headStyles: { 
+                    fillColor: [119, 158, 79], 
+                    halign: 'center', 
+                    fontSize: 6.5, 
+                    fontStyle: 'bold',
+                    lineWidth: 0 
+                },
+                styles: { 
+                    fontSize: 6.5, 
+                    halign: 'center', 
+                    cellPadding: 1.5,
+                    lineWidth: 0.1 // Línea muy fina para evitar el efecto de "bloques separados"
+                },
                 didParseCell: (dataCell: any) => {
                     const headerText = headers[dataCell.column.index];
-                    // Resaltar celdas de error con el color corporativo/alerta
                     if (dataCell.section === 'body' && headerText && headerText.startsWith('Err')) {
                         dataCell.cell.styles.fillColor = colors.errorBg;
                         dataCell.cell.styles.textColor = colors.errorText;
@@ -167,18 +177,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }
 
-        // --- 3. GRÁFICOS ---
-        if (chartImages && chartImages.length > 0) {
-            chartImages.forEach((img, i) => {
-                const titles = ['Curva de Respuesta', 'Análisis de Errores'];
-                if (yPos + 80 > 280) { pdf.addPage(); yPos = 20; }
-                addHeader(`ANÁLISIS GRÁFICO: ${titles[i] || 'Gráfico de Calibración'}`);
-                pdf.addImage(img, 'PNG', 30, yPos, 150, 70);
-                yPos += 85;
-            });
-        }
-
-        // --- 4. OBSERVACIONES ---
+        // --- OBSERVACIONES (Limpio) ---
         if (data.observations) {
             addHeader('OBSERVACIONES Y NOTAS TÉCNICAS');
             autoTable(pdf, {
@@ -189,10 +188,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                     fontSize: 9, 
                     cellPadding: 5, 
                     fillColor: [250, 250, 250], 
-                    textColor: 40,
-                    lineColor: [200, 200, 200],
-                    lineWidth: 0.1,
-                    overflow: 'linebreak'
+                    lineWidth: 0
                 },
                 theme: 'plain'
             });
@@ -203,17 +199,12 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         for (let i = 1; i <= pageCount; i++) {
             pdf.setPage(i);
             pdf.setFontSize(8).setTextColor(150);
-            pdf.text(
-                `Ingenio Risaralda - Reporte generado automáticamente el ${new Date().toLocaleDateString()}`,
-                105, 290, { align: 'center' }
-            );
+            pdf.text(`Ingenio Risaralda - Generado el ${new Date().toLocaleDateString()}`, 105, 290, { align: 'center' });
             pdf.text(`Página ${i} de ${pageCount}`, 190, 290, { align: 'right' });
         }
 
-        pdf.save(`Reporte_${data.deviceCode || 'Instrumento'}_OT_${data.workOrder}.pdf`);
-    } catch (e) { 
-        console.error("Error generando PDF:", e); 
-    }
+        pdf.save(`Reporte_${data.deviceCode || 'Instrumento'}.pdf`);
+    } catch (e) { console.error(e); }
 };
 
 const getBase64ImageFromUrl = async (url: string): Promise<string> => {
