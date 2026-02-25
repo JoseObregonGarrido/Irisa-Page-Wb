@@ -24,11 +24,11 @@ export interface ReportData {
     deviceCode: string;
     observations: string;
     hasUeTransmitter?: boolean; 
-    outputUnit?: 'mA' | 'Ω';    
+    outputUnit?: 'mA' | 'omh';    
     transmitterMeasurements?: any[];
 }
 
-const calculateRowErrors = (m: any, unit: 'mA' | 'Ω') => {
+const calculateRowErrors = (m: any, unit: 'mA' | 'omh') => {
     const patronUe = parseFloat(m.patronUe) || 0;
     const ueTransmitter = parseFloat(m.ueTransmitter) || 0;
     const idealMa = parseFloat(m.idealMa) || 0;
