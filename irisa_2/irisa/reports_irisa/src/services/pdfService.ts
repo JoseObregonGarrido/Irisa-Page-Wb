@@ -37,6 +37,7 @@ const calculateRowErrors = (m: any, unit: 'mA' | 'omh') => {
     const errorUe = ueTransmitter - patronUe; 
     const errorMa = maTransmitter - idealMa;
     
+    // Si la unidad es mA el divisor es 16, si es Ohmios suele ser el span configurado (usamos 100 por defecto o el que definas)
     const divisor = unit === 'mA' ? 16 : 100; 
     const errorPercentage = (errorMa / divisor) * 100; 
     
@@ -53,10 +54,8 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
     const measurements = data.transmitterMeasurements || [];
     const unit = data.outputUnit || 'mA';
     
-    // Esta variable ahora obedece al booleano que el usuario marque en la interfaz
-    const hasUE = data.hasUeTransmitter !== undefined 
-        ? data.hasUeTransmitter 
-        : measurements.some(m => m.ueTransmitter && m.ueTransmitter !== "" && m.ueTransmitter !== "0");
+    // El booleano que viene de la interfaz
+    const hasUE = data.hasUeTransmitter ?? true;
 
     let yPos = 20;
     const colors = { 
@@ -105,26 +104,35 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         });
         yPos = (pdf as any).lastAutoTable.finalY + 12;
 
-        // --- 2. TABLA DE MEDICIONES (Dinamizada por hasUE) ---
-        if (data.deviceType.toLowerCase().includes('transmitter') || measurements.length) {
-            addHeader(`RESULTADOS DE LAS MEDICIONES (Salida en ${unit})`);
+        // --- 2. TABLA DE MEDICIONES ---
+        if (measurements.length) {
+            addHeader(`RESULTADOS DE LAS MEDICIONES`);
 
+            // Headers: Ideal UE y Patrón UE SIEMPRE están. UE Trans y Err UE son condicionales.
             const headers = [
-                'Ideal UE', `Ideal ${unit}`, 'Patrón UE', 
-                ...(hasUE ? ['UE Trans.'] : []), // Aparece si hasUE es true
-                `${unit} Trans.`, '% Rango', 
-                ...(hasUE ? ['Err UE'] : []),    // Aparece si hasUE es true
-                `Err ${unit}`, 'Err %'
+                'Ideal UE', 
+                `Ideal ${unit}`, 
+                'Patrón UE', 
+                ...(hasUE ? ['UE Trans.'] : []), 
+                `${unit} Trans.`, 
+                '% Rango', 
+                ...(hasUE ? ['Err UE'] : []), 
+                `Err ${unit}`, 
+                'Err %'
             ];
 
             const body = measurements.map(m => {
                 const calcs = calculateRowErrors(m, unit);
                 return [
-                    m.idealUe, m.idealMa, m.patronUe,
+                    m.idealUe, 
+                    m.idealMa, 
+                    m.patronUe,
                     ...(hasUE ? [m.ueTransmitter] : []),
-                    m.maTransmitter, m.percentage,
+                    m.maTransmitter, 
+                    m.percentage,
                     ...(hasUE ? [calcs.errorUe] : []),
-                    calcs.errorMa, calcs.errorPercentage
+                    calcs.errorMa, 
+                    calcs.errorPercentage
                 ];
             });
 
@@ -133,10 +141,11 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 head: [headers],
                 body: body,
                 theme: 'grid',
-                headStyles: { fillColor: [119, 158, 79], halign: 'center', fontSize: 7.5, fontStyle: 'bold' },
-                styles: { fontSize: 7.5, halign: 'center', cellPadding: 2 },
+                headStyles: { fillColor: [119, 158, 79], halign: 'center', fontSize: 7, fontStyle: 'bold' },
+                styles: { fontSize: 7, halign: 'center', cellPadding: 2 },
                 didParseCell: (dataCell: any) => {
                     const headerText = headers[dataCell.column.index];
+                    // Pintar de rojo clarito cualquier columna que empiece por "Err"
                     if (dataCell.section === 'body' && headerText && headerText.startsWith('Err')) {
                         dataCell.cell.styles.fillColor = colors.errorBg;
                         dataCell.cell.styles.textColor = colors.errorText;
