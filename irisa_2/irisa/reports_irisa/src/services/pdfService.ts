@@ -32,19 +32,23 @@ export interface ReportData {
 
 /**
  * Calcula errores de fila basándose en la unidad de salida (mA o Ohm)
+ * Se ajusta para usar las propiedades correctas del objeto Measurement
  */
 const calculateRowErrors = (m: any, unit: 'mA' | 'ohm') => {
     const patronUe = parseFloat(m.patronUe) || 0;
     const ueTransmitter = parseFloat(m.ueTransmitter) || 0;
-    const idealOutput = parseFloat(m.idealMa) || 0;
+    
+    // IMPORTANTE: En tu componente usas 'idealmA' y 'maTransmitter' para ambos casos (mA/Ohm)
+    const idealOutput = parseFloat(m.idealmA) || 0;
     const transmitterOutput = parseFloat(m.maTransmitter) || 0;
     
     const errorUe = ueTransmitter - patronUe; 
     const errorOutput = transmitterOutput - idealOutput;
     
-    // Divisor para el % de error: 16 para mA (rango 4-20), 100 para Ohms (o según escala)
+    // Divisor para el % de error: 
+    // Si es mA, el span es 16 (20 - 4). Si es Ohm (Sensor), se suele usar 100 o el fondo de escala.
     const divisor = unit === 'mA' ? 16 : 100; 
-    const errorPercentage = (errorOutput / divisor) * 100; 
+    const errorPercentage = divisor !== 0 ? (errorOutput / divisor) * 100 : 0; 
     
     return {
         errorUe: errorUe.toFixed(3),
@@ -59,6 +63,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
     const measurements = data.transmitterMeasurements || [];
     const unit = data.outputUnit || 'mA';
     const hasUE = data.hasUeTransmitter ?? false;
+    const isOhm = unit === 'ohm';
 
     let yPos = 20;
     const colors = { 
@@ -109,17 +114,20 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
 
         // --- 2. TABLA DE MEDICIONES (TRANSMISORES) ---
         if (data.deviceType === 'transmitter' && measurements.length) {
-            addHeader(`RESULTADOS DE LAS MEDICIONES (${unit})`);
+            const displayUnit = isOhm ? 'Ohm' : 'mA';
+            addHeader(`RESULTADOS DE LAS MEDICIONES (${displayUnit})`);
 
+            // Construcción dinámica de cabeceras para el PDF
             const headers = [
                 'Ideal UE', 
-                `Ideal ${unit}`, 
+                ...(isOhm ? ['Ideal mA'] : []), // Solo si es modo Sensor/Ohm
+                `Ideal ${displayUnit}`, 
                 'Patrón UE', 
                 ...(hasUE ? ['UE Trans.'] : []), 
-                `${unit} Trans.`, 
+                `${displayUnit} Trans.`, 
                 '% Rango', 
                 ...(hasUE ? ['Err UE'] : []), 
-                `Err ${unit}`, 
+                `Err ${displayUnit}`, 
                 'Err %'
             ];
 
@@ -127,7 +135,8 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 const calcs = calculateRowErrors(m, unit);
                 return [
                     m.idealUe, 
-                    m.idealMa, 
+                    ...(isOhm ? [m.idealmA] : []), // Valor de mA en modo sensor
+                    m.idealmA, // Este es el "Ideal Output" (mA u Ohm)
                     m.patronUe,
                     ...(hasUE ? [m.ueTransmitter] : []),
                     m.maTransmitter, 
@@ -143,11 +152,11 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 head: [headers],
                 body: body,
                 theme: 'grid',
-                headStyles: { fillColor: [119, 158, 79], halign: 'center', fontSize: 7, fontStyle: 'bold' },
-                styles: { fontSize: 7, halign: 'center', cellPadding: 2 },
+                headStyles: { fillColor: [119, 158, 79], halign: 'center', fontSize: 6.5, fontStyle: 'bold' },
+                styles: { fontSize: 6.5, halign: 'center', cellPadding: 1.5 },
                 didParseCell: (dataCell: any) => {
                     const headerText = headers[dataCell.column.index];
-                    // Resaltar celdas de error
+                    // Resaltar celdas de error con el color corporativo/alerta
                     if (dataCell.section === 'body' && headerText && headerText.startsWith('Err')) {
                         dataCell.cell.styles.fillColor = colors.errorBg;
                         dataCell.cell.styles.textColor = colors.errorText;
