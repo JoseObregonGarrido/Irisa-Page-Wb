@@ -6,7 +6,7 @@ export interface Measurement {
     patronUe: string;
     ueTransmitter: string;
     idealmA: string;
-    idealOhm?: string; // Agregado para independencia en modo sensor
+    idealOhm?: string; 
     maTransmitter: string;
     errorUe: string;
     errorMa: string;
@@ -89,8 +89,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
         const patronUe = parseFloat(measurement.patronUe) || 0;
         const ueTransmitter = parseFloat(measurement.ueTransmitter) || 0;
         
-        // Resultado de ideal ohm = ideal mA - ohm sensor
-        // Si es ohm, comparamos contra idealOhm, si no contra idealmA
+        // El target ideal depende de la unidad. 
         const targetIdeal = isOhm ? (parseFloat(measurement.idealOhm || "0") || 0) : (parseFloat(measurement.idealmA) || 0);
         const maTransmitter = parseFloat(measurement.maTransmitter) || 0;
         
@@ -163,7 +162,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                         {isOhm && <div className="px-2 py-4 text-center">Ideal mA</div>}
                         <div className="px-2 py-4 text-center">Ideal {outputUnit}</div>
                         <div className="px-2 py-4 text-center">Patrón UE</div>
-                        {hasUeTransmitter && <div className="px-2 py-4 text-center">UE {deviceLabel}</div>}
+                        {hasUeTransmitter && <div className="px-2 py-4 text-center">UE Transmisor</div>}
                         <div className="px-2 py-4 text-center">mA {deviceLabel}</div>
                         <div className="px-2 py-4 text-center">% Rango</div>
                         {hasUeTransmitter && <div className="px-2 py-4 text-center bg-red-50 text-red-700">Err UE</div>}
@@ -183,7 +182,6 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                                         <div className="lg:px-2 lg:py-3"><InputField label="Ideal mA" unit="mA" value={m.idealmA} onChange={(e:any) => handleChange(index, 'idealmA', e.target.value)} /></div>
                                     )}
 
-                                    {/* Ideal Ohm ahora es independiente de Ideal mA */}
                                     <div className="lg:px-2 lg:py-3"><InputField label={`Ideal ${outputUnit}`} unit={outputUnit} value={isOhm ? (m.idealOhm || "") : m.idealmA} onChange={(e:any) => handleChange(index, isOhm ? 'idealOhm' : 'idealmA', e.target.value)} /></div>
                                     
                                     <div className="lg:px-2 lg:py-3"><InputField label="Patrón UE" unit="UE" value={m.patronUe} onChange={(e:any) => handleChange(index, 'patronUe', e.target.value)} /></div>
@@ -220,11 +218,6 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                     </div>
                 </div>
             </div>
-            {measurements.length === 0 && (
-                <div className="p-12 text-center text-gray-400 text-sm italic bg-gray-50">
-                    No hay mediciones registradas.
-                </div>
-            )}
         </div>
     );
 }
