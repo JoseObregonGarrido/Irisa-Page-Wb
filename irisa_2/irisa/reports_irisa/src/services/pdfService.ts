@@ -49,14 +49,21 @@ const calculateRowErrors = (m: any, unit: 'mA' | 'ohm') => {
     };
 };
 
-/**
- * DETERMINA EL ESTATUS DEL CONTACTO BASADO EN LOS CAMPOS DEL COMPONENTE
- */
 const getContactLabel = (t: any) => {
     if (t.isNO) return 'N.O (Abierto)';
     if (t.isNC) return 'N.C (Cerrado)';
     if (t.contactState) return t.contactState;
     return 'N/A';
+};
+
+const getBase64ImageFromUrl = async (url: string): Promise<string> => {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    return new Promise(resolve => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
+    });
 };
 
 export const generatePDFReport = async (data: ReportData, chartImages?: string[]): Promise<void> => {
@@ -85,6 +92,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
     };
 
     try {
+        // --- LOGO Y TÍTULO ---
         try {
             const b64Logo = await getBase64ImageFromUrl(logo);
             pdf.addImage(b64Logo, 'PNG', 20, 12, 50, 20);
@@ -115,10 +123,9 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         });
         yPos = (pdf as any).lastAutoTable.finalY + 12;
 
-        // --- 2. TABLA DE MEDICIONES (TRANSMISORES) ---
+        // --- 2. TABLAS DE RESULTADOS ---
         if (data.deviceType === 'transmitter' && measurements.length) {
             addHeader(`RESULTADOS DE LAS MEDICIONES`);
-
             const headers = [
                 'Ideal UE', 'Ideal mA', ...(isOhm ? ['Ideal Ohm'] : []), 'Patrón UE', 
                 ...(hasUE ? ['UE Trans.'] : []), 'mA Sensor', '% Rango', 
@@ -139,17 +146,12 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 head: [headers],
                 body: body,
                 theme: 'plain',
-                headStyles: { 
-                    fillColor: colors.risaraldaGreen, 
-                    halign: 'center', fontSize: 7, fontStyle: 'bold', textColor: 255, lineWidth: 0 
-                },
-                styles: { fontSize: 7, halign: 'center', cellPadding: 2, lineWidth: 0, textColor: 40 },
+                headStyles: { fillColor: colors.risaraldaGreen, halign: 'center', fontSize: 7, fontStyle: 'bold', textColor: 255 },
+                styles: { fontSize: 7, halign: 'center', cellPadding: 2, textColor: 40 },
                 didParseCell: (dataCell: any) => {
                     const headerText = headers[dataCell.column.index];
-                    if (dataCell.section === 'body' && dataCell.row.index % 2 === 1) {
-                        dataCell.cell.styles.fillColor = colors.white;
-                    }
-                    if (dataCell.section === 'body' && headerText && headerText.startsWith('Err')) {
+                    if (dataCell.section === 'body' && dataCell.row.index % 2 === 1) dataCell.cell.styles.fillColor = colors.white;
+                    if (dataCell.section === 'body' && headerText?.startsWith('Err')) {
                         dataCell.cell.styles.fillColor = colors.errorBg;
                         dataCell.cell.styles.textColor = colors.errorText;
                         dataCell.cell.styles.fontStyle = 'bold';
@@ -159,28 +161,17 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }
 
-        // --- 2.1 TABLA DE MEDICIONES (PRESOSTATOS / TERMOSTATOS) ---
         const switchTests = data.pressureSwitchTests || data.thermostatTests || [];
         if ((data.deviceType === 'pressure_switch' || data.deviceType === 'thermostat') && switchTests.length) {
             const isPressure = data.deviceType === 'pressure_switch';
             addHeader(`RESULTADOS DE LAS PRUEBAS DE ${isPressure ? 'PRESIÓN' : 'TEMPERATURA'}`);
-
             const unitLabel = data.unity || (isPressure ? 'PSI' : '°C');
             const headers = [`Set Point (${unitLabel})`, `P. Disparada (${unitLabel})`, `P. Repone (${unitLabel})`, 'Diferencial', 'Estado Contacto'];
 
             const body = switchTests.map(t => {
-                // Usamos los nombres exactos de tu componente: presionDisparada / presionRepone / tempDisparada / tempRepone
                 const disparo = parseFloat(t.presionDisparada || t.tempDisparada || t.pressureDisparada) || 0;
                 const repone = parseFloat(t.presionRepone || t.tempRepone || t.pressureRepone) || 0;
-                const diferencial = Math.abs(disparo - repone).toFixed(2);
-                
-                return [
-                    t.setPoint || 'N/A',
-                    disparo,
-                    repone,
-                    diferencial,
-                    getContactLabel(t) // <--- CORREGIDO: Ahora busca isNO / isNC
-                ];
+                return [t.setPoint || 'N/A', disparo, repone, Math.abs(disparo - repone).toFixed(2), getContactLabel(t)];
             });
 
             autoTable(pdf, {
@@ -195,28 +186,36 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }
 
-        // --- 3. GRÁFICAS ---
+        // --- 3. GRÁFICAS (Sincronización de Nombres y Espaciado) ---
         if (chartImages && chartImages.length > 0) {
+            const chartTitles = [
+                'CURVA DE RESPUESTA',
+                'ANÁLISIS DE ERROR (Diferencial)',
+                'ANÁLISIS DE ESTADOS'
+            ];
+
             chartImages.forEach((img, index) => {
-                if (yPos + 80 > 280) { pdf.addPage(); yPos = 20; }
-                addHeader(index === 0 ? 'CURVA DE RESPUESTA' : 'ANÁLISIS DE ERROR');
+                if (yPos + 95 > 280) { pdf.addPage(); yPos = 20; }
+                addHeader(chartTitles[index] || 'GRÁFICA DE ANÁLISIS');
                 pdf.addImage(img, 'PNG', 25, yPos, 160, 80);
-                yPos += 90;
+                yPos += 95; // Espacio suficiente para que no se vea pegado
             });
         }
 
         // --- 4. OBSERVACIONES ---
         if (data.observations) {
+            if (yPos + 40 > 280) { pdf.addPage(); yPos = 20; }
             addHeader('OBSERVACIONES Y NOTAS TÉCNICAS');
             autoTable(pdf, {
                 startY: yPos,
                 margin: { left: 20, right: 20 },
                 body: [[data.observations]],
-                styles: { fontSize: 9, cellPadding: 5, fillColor: colors.white, lineWidth: 0, textColor: 60 },
+                styles: { fontSize: 9, cellPadding: 5, fillColor: colors.white, textColor: 60 },
                 theme: 'plain'
             });
         }
 
+        // --- PIE DE PÁGINA ---
         const pageCount = (pdf as any).internal.getNumberOfPages();
         for (let i = 1; i <= pageCount; i++) {
             pdf.setPage(i);
@@ -226,15 +225,5 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         }
 
         pdf.save(`Reporte_${data.deviceCode || 'Instrumento'}.pdf`);
-    } catch (e) { console.error(e); }
-};
-
-const getBase64ImageFromUrl = async (url: string): Promise<string> => {
-    const res = await fetch(url);
-    const blob = await res.blob();
-    return new Promise(resolve => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.readAsDataURL(blob);
-    });
+    } catch (e) { console.error("Error generando PDF:", e); }
 };
