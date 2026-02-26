@@ -12,8 +12,6 @@ export interface Measurement {
     idealmA?: string;
     idealMa?: string;
     maTransmitter: string;
-    idealohm?: string;
-    ohmTransmitter?: string;
     errorUE?: string;
     errorUe?: string;
     errormA?: string;
@@ -32,33 +30,21 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
     const containerRef = useRef<HTMLDivElement>(null);
     const isOhm = outputUnit === 'ohm';
 
-    // Normalización centrada en mA y RTD (ohm)
-    const processedData = chartData.map((m) => {
-        const pct = parseFloat(m.percentage) || 0;
-        return {
-            percentage: pct,
-            // Valores de Corriente (mA)
-            idealmA: parseFloat(m.idealmA || m.idealMa || "0"),
-            maTransmitter: parseFloat(m.maTransmitter) || 0,
-            // Valores de Resistencia (Solo si es RTD)
-            idealOhm: isOhm ? parseFloat(m.idealohm || "0") : null,
-            ohmTransmitter: isOhm ? parseFloat(m.ohmTransmitter || "0") : null,
-            // Unidades de Ingeniería (UE)
-            idealUE: parseFloat(m.idealUE || m.idealUe || "0"),
-            ueTransmitter: parseFloat(m.ueTransmitter) || 0,
-            // Error / Desviación
-            deviation: parseFloat(m.errormA || m.errorMa || "0"),
-        };
-    }).sort((a, b) => a.percentage - b.percentage);
+    // Normalización y procesamiento de datos incluyendo desviación
+    const processedData = chartData.map((m) => ({
+        percentage: parseFloat(m.percentage) || 0,
+        idealUE: parseFloat(m.idealUE || m.idealUe || "0"),
+        ueTransmitter: parseFloat(m.ueTransmitter) || 0,
+        idealValue: parseFloat(m.idealmA || m.idealMa || "0"),
+        measuredValue: parseFloat(m.maTransmitter) || 0,
+        deviation: parseFloat(m.errormA || m.errorMa || "0"), // Desviación de corriente
+    })).sort((a, b) => a.percentage - b.percentage);
 
-    // LÓGICA DE ESCALA PARA EJE Y
+    // LÓGICA DE SALTOS DE 4 EN 4 PARA EL EJE Y
     const getYTicks = () => {
         if (processedData.length === 0) return [0, 4, 8, 12, 16, 20];
         
-        // Buscamos el máximo entre mA y UE para que la escala los cubra a ambos
-        const allValues = processedData.flatMap(d => [
-            d.idealmA, d.maTransmitter, d.idealUE, d.ueTransmitter
-        ]);
+        const allValues = processedData.flatMap(d => [d.idealUE, d.ueTransmitter]);
         const maxVal = Math.max(...allValues);
         const minVal = Math.min(...allValues, 0); 
         
@@ -74,6 +60,7 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
 
     const yTicks = getYTicks();
 
+    // Exponer captura para PDF
     useImperativeHandle(ref, () => ({
         captureAllCharts: async () => {
             if (containerRef.current) {
@@ -90,22 +77,24 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
 
     return (
         <div className="mt-8 shadow-lg rounded-xl overflow-hidden border border-gray-200 bg-white" ref={containerRef}>
-            <div className="bg-gradient-to-r from-teal-600 to-emerald-600 px-6 py-5 text-white">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-5 text-white">
                 <div className="flex items-center gap-4">
                     <span className="text-3xl">📈</span>
                     <div>
                         <h3 className="text-xl font-bold">
-                            {isOhm ? 'Curva de Respuesta RTD' : 'Curva de Respuesta mA'}
+                            {isOhm ? 'Curva de Respuesta RTD' : 'Curva de Respuesta del Transmisor'}
                         </h3>
-                        <p className="text-teal-100 text-sm opacity-90">Visualización de linealidad y error</p>
+                        <p className="text-blue-100 text-sm opacity-90">Saltos de 4 unidades y análisis de desviación</p>
                     </div>
                 </div>
             </div>
 
+            {/* Chart Area */}
             <div className="p-6 bg-white">
                 {processedData.length === 0 ? (
                     <div className="text-center py-12 text-gray-400">
-                        <p>No hay datos suficientes para generar el gráfico.</p>
+                        <p>No hay datos suficientes para generar la curva de respuesta.</p>
                     </div>
                 ) : (
                     <div className="h-96 w-full">
@@ -122,32 +111,22 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
                                     ticks={yTicks} 
                                     domain={[yTicks[0], yTicks[yTicks.length - 1]]}
                                     tick={{ fontSize: 10 }}
-                                    label={{ value: 'Valor / Desviación', angle: -90, position: 'insideLeft', fontWeight: 'bold', fontSize: 12 }}
+                                    label={{ value: 'Rango UE / Desviación', angle: -90, position: 'insideLeft', fontWeight: 'bold', fontSize: 12 }}
                                 />
 
                                 <Tooltip 
                                     contentStyle={{ borderRadius: '8px', fontSize: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                    formatter={(value: any, name: string) => [value ? value.toFixed(3) : '0.000', name]}
+                                    formatter={(value: any, name: string) => [value.toFixed(3), name]}
                                 />
                                 <Legend verticalAlign="top" height={36} />
                                 
-                                {/* LINEAS mA */}
-                                <Line type="monotone" dataKey="idealmA" stroke="#3b82f6" name="Ideal mA" strokeWidth={2} dot={{ r: 4 }} isAnimationActive={false} />
-                                <Line type="monotone" dataKey="maTransmitter" stroke="#ef4444" name="Medido mA" strokeWidth={2} dot={{ r: 4 }} isAnimationActive={false} />
-                                
-                                {/* LINEAS UE (Ingeniería) */}
+                                {/* Líneas principales de respuesta */}
+                                <Line type="monotone" dataKey="idealValue" stroke="#3b82f6" name="Ideal mA" strokeWidth={2} dot={{ r: 4 }} isAnimationActive={false} />
+                                <Line type="monotone" dataKey="measuredValue" stroke="#ef4444" name="Medido mA" strokeWidth={2} dot={{ r: 4 }} isAnimationActive={false} />
                                 <Line type="monotone" dataKey="idealUE" stroke="#10b981" name="Ideal UE" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} isAnimationActive={false} />
                                 <Line type="monotone" dataKey="ueTransmitter" stroke="#f59e0b" name="UE Transmisor" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} isAnimationActive={false} />
                                 
-                                {/* LINEAS OHM (Solo aparecen si es RTD) */}
-                                {isOhm && (
-                                    <>
-                                        <Line type="monotone" dataKey="idealOhm" stroke="#6366f1" name="Ideal Ω" strokeWidth={1} dot={{ r: 2 }} isAnimationActive={false} />
-                                        <Line type="monotone" dataKey="ohmTransmitter" stroke="#ec4899" name="Medido Ω" strokeWidth={1} dot={{ r: 2 }} isAnimationActive={false} />
-                                    </>
-                                )}
-
-                                {/* LINEA DE DESVIACIÓN */}
+                                {/* Línea de Desviación */}
                                 <Line type="monotone" dataKey="deviation" stroke="#8b5cf6" name="Desviación mA" strokeWidth={2} dot={{ r: 3 }} isAnimationActive={false} />
                             </LineChart>
                         </ResponsiveContainer>
