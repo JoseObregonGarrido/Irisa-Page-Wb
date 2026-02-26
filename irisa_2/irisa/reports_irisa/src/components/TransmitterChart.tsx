@@ -4,20 +4,20 @@ import React, { useRef, useImperativeHandle, forwardRef } from 'react';
 
 export interface Measurement {
     percentage: string;
-    idealUe: string;
-    patronUe: string;
+    idealUE: string;
+    patronUE: string;
     ueTransmitter: string;
     idealmA: string;
     maTransmitter: string;
-    errorUe: string;
-    errorMa: string;
+    errorUE: string;
+    errormA: string;
     errorPercentage: string;
 }
 
 interface TransmitterChartProps {
     measurements?: Measurement[];
     data?: Measurement[];
-    outputUnit?: 'mA' | 'Ω' | string; 
+    outputUnit?: 'mA' | 'ohm' | string; 
 }
 
 const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements, data, outputUnit = 'mA' }, ref) => {
@@ -33,7 +33,7 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
     const processDataForChart = () => {
         return chartData.map((m) => ({
             percentage: parseFloat(m.percentage) || 0,
-            idealUe: parseFloat(m.idealUe) || 0,
+            idealUE: parseFloat(m.idealUE || (m as any).idealUe) || 0,
             ueTransmitter: parseFloat(m.ueTransmitter) || 0,
             idealValue: parseFloat(m.idealmA) || 0, 
             measuredValue: parseFloat(m.maTransmitter) || 0, 
@@ -42,14 +42,12 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
 
     const processedData = processDataForChart();
 
-    // CLAVE: Cálculo de ticks para que se note la separación
     const getYTicks = () => {
         if (processedData.length === 0) return [];
-        const allValues = processedData.flatMap(d => [d.idealUe, d.ueTransmitter]);
+        const allValues = processedData.flatMap(d => [d.idealUE, d.ueTransmitter]);
         const maxVal = Math.max(...allValues);
         const minVal = Math.min(...allValues);
         
-        // Si el error es muy pequeño, reducimos el paso para dar más detalle
         const range = maxVal - minVal;
         let step = 10;
         if (range <= 10) step = 1;
@@ -105,7 +103,6 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
                             />
                             
                             <YAxis 
-                                // CLAVE: Usamos 'auto' con padding para que las líneas se separen
                                 domain={['dataMin - 2', 'dataMax + 2']} 
                                 ticks={yTicks}
                                 label={{ value: 'Rango UE', angle: -90, position: 'insideLeft', fontWeight: 'bold' }}
@@ -114,10 +111,9 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
                             <Tooltip />
                             <Legend verticalAlign="top" height={36}/>
                             
-                            {/* Línea Ideal: Azul sólida */}
                             <Line 
                                 type="monotone" 
-                                dataKey="idealUe" 
+                                dataKey="idealUE" 
                                 stroke="#3b82f6" 
                                 name="Ideal UE" 
                                 strokeWidth={3} 
@@ -125,14 +121,13 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
                                 isAnimationActive={false} 
                             />
                             
-                            {/* Línea Medida: Roja discontinua para que se note la separación */}
                             <Line 
                                 type="monotone" 
                                 dataKey="ueTransmitter" 
                                 stroke="#ef4444" 
-                                name="UE Transmisor (Real)" 
+                                name="UE transmisor (Real)" 
                                 strokeWidth={3} 
-                                strokeDasharray="8 4" // Esto hace que se entienda cuál es cuál incluso si están cerca
+                                strokeDasharray="8 4"
                                 dot={{ r: 6, fill: '#ef4444', strokeWidth: 2, stroke: '#fff' }} 
                                 connectNulls 
                                 isAnimationActive={false} 

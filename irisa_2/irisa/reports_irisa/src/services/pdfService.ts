@@ -30,14 +30,12 @@ export interface ReportData {
     thermostatTests?: any[]; 
 }
 
-// Formateador de texto: Primera en mayúscula, resto minúscula
 const capitalize = (text: string) => {
     if (!text) return '';
     const s = text.toLowerCase();
     return s.charAt(0).toUpperCase() + s.slice(1);
 };
 
-// Formateador de etiquetas de contacto (Actualizado a Mayúsculas)
 const getContactLabel = (t: any) => {
     if (t.isNO === true) return 'N.O (Abierto)';
     if (t.isNC === true) return 'N.C (Cerrado)';
@@ -111,27 +109,29 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
 
         // --- TABLA TRANSMISORES ---
         if (data.deviceType === 'transmitter' && measurements.length) {
-            addHeader(`Resultados de las mediciones (Unidad: ${unit.toLowerCase()})`);
-            const headers = ['Ideal ue', 'Ideal ma'];
+            addHeader(`Resultados de las mediciones (Unidad: ${unit})`);
+            
+            // Construcción de Headers sin abreviaciones y con nomenclatura correcta
+            const headers = ['Ideal UE', 'Ideal mA'];
             if (isOhm) headers.push('Ideal ohm');
-            headers.push('Patrón ue');
-            if (hasUE) headers.push('Ue trans.');
-            headers.push('Ma trans.');
-            if (isOhm) headers.push('Ohm sensor');
+            headers.push('Patrón UE');
+            if (hasUE) headers.push('UE transmisor');
+            headers.push('mA transmisor');
+            if (isOhm) headers.push('ohm sensor');
             headers.push('% Rango');
-            if (hasUE) headers.push('Err ue');
-            headers.push(isOhm ? 'Err ohm' : 'Err ma', 'Err %');
+            if (hasUE) headers.push('Error UE');
+            headers.push(isOhm ? 'Error ohm' : 'Error mA', 'Error %');
 
             const body = measurements.map(m => {
-                const row = [m.idealUe, m.idealmA];
-                if (isOhm) row.push(m.idealOhm || '0');
-                row.push(m.patronUe);
+                const row = [m.idealUE || m.idealUe, m.idealmA]; // Soporta ambas keys por si acaso
+                if (isOhm) row.push(m.idealohm || m.idealOhm || '0');
+                row.push(m.patronUE || m.patronUe);
                 if (hasUE) row.push(m.ueTransmitter);
                 row.push(m.maTransmitter);
                 if (isOhm) row.push(m.ohmTransmitter || '0');
                 row.push(m.percentage);
-                if (hasUE) row.push(m.errorUe);
-                row.push(m.errorMa, m.errorPercentage);
+                if (hasUE) row.push(m.errorUE || m.errorUe);
+                row.push(m.errormA || m.errorMa, m.errorPercentage);
                 return row;
             });
 
@@ -155,15 +155,15 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             const unitLabel = data.unity || (isThermostat ? '°C' : 'psi');
             
             const headers = [
-                isThermostat ? `Temp. disparo (${unitLabel})` : `Presión disparo (${unitLabel})`,
-                isThermostat ? `Temp. repone (${unitLabel})` : `Presión repone (${unitLabel})`,
+                isThermostat ? `Temperatura disparo (${unitLabel})` : `Presión disparo (${unitLabel})`,
+                isThermostat ? `Temperatura repone (${unitLabel})` : `Presión repone (${unitLabel})`,
                 'Estado contacto'
             ];
 
             const body = switchTests.map(t => [
                 isThermostat ? (t.temperaturadeDisparo || '0') : (t.presiondeDisparo || '0'),
                 isThermostat ? (t.temperaturadeRepone || '0') : (t.presiondeRepone || '0'),
-                getContactLabel(t) // Aquí se aplica el N.O / N.C en mayúsculas
+                getContactLabel(t)
             ]);
 
             autoTable(pdf, {
