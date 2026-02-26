@@ -1,6 +1,15 @@
-import axios  from "axios";
-import type { PressureSwitch } from "../types/PressureSwitch";
+import axios from "axios";
 import { getCurrentUser } from "./authService";
+// Importamos el tipo desde el archivo hermano en la misma carpeta service
+import type { PressureSwitchTest } from "./pressureSwitchTest"; 
+
+// Si no tienes el tipo PressureSwitch definido, aquí te dejo la estructura base
+export interface PressureSwitch {
+    id?: number;
+    reportId: number;
+    nombre?: string;
+    // ... otros campos que tengas en tu tabla de presostato
+}
 
 const API_URL = "http://localhost:8080/api/pressure-switch";
 
@@ -55,36 +64,36 @@ export const createPressureSwitch = async (pressureSwitchData: PressureSwitch) =
     }
 }
 
-// export const updatePressureSwitch = async (id:number , pressureSwitchData: PressureSwitch) => {
-//     const user = getCurrentUser();
-//     const token = user?.token;
-//     try {
-//         const response = await axios.put(`${API_URL}/${id}`, pressureSwitchData, {
-//             headers: {
-//                 "Content-Type": "application/json",
-//                 "Authorization": `Bearer ${token}`
-//             }
-//         });
-//         return response.data;
-//     } catch (error) {
-//         console.error("Error updating pressure switch:", error);
-//         throw error;
-//     }
-// }
+export const updatePressureSwitch = async (id: number, pressureSwitchData: PressureSwitch) => {
+    const user = getCurrentUser();
+    const token = user?.token;
+    try {
+        const response = await axios.put(`${API_URL}/${id}`, pressureSwitchData, {
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+            }
+        });
+        return response.data;
+    } catch (error) {
+        console.error("Error updating pressure switch:", error);
+        throw error;
+    }
+}
 
-// export const deletePressureSwitch = async (id: number) => {
-//     const user = getCurrentUser();
-//     const token = user?.token;
-//     try {
-//         const response = await axios.delete(`${API_URL}/${id}`, {
-//             headers: {
-//                 "Content-Type": "application/json",
-//                 "Authorization": `Bearer ${token}`
-//             }
-//         });
-//         return response.data;
-//     } catch (error) {
-//         console.error("Error deleting pressure switch:", error);
-//         throw error;
-//     }
-// };
+export const deletePressureSwitch = async (id: number) => {
+    const user = getCurrentUser();
+    const token = user?.token;
+    try {
+        const response = await axios.delete(`${API_URL}/${id}`, {
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${token}`
+            }
+        });
+        return response.data;
+    } catch (error) {
+        console.error("Error deleting pressure switch:", error);
+        throw error;
+    }
+};

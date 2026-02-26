@@ -1,6 +1,14 @@
 import axios from 'axios';
 import { getCurrentUser } from './authService';
-import type { PressureSwitchTest } from '../types/PressureSwitchTest';
+
+// Definimos y exportamos la interfaz aquí mismo
+export interface PressureSwitchTest {
+    id?: number;
+    presionDisparada: string;
+    presionRepone: string;
+    isNO: boolean;
+    isNC: boolean;
+}
 
 const API_URL = 'http://localhost:8080/api/pressure-switch-test';
 
@@ -35,32 +43,32 @@ export const createTestForPressureSwitch = async (pressureSwitchId: number, test
     }
 };
 
-// export const updatePressureSwitchTest = async (id: number, testData: PressureSwitchTest) => {
-//     const user = getCurrentUser();
-//     const token = user?.token;
-//     try {
-//         const response = await axios.put(`${API_URL}/update-pressure-switch-test/${id}`, testData, {
-//             headers: {
-//                 'Content-Type': 'application/json',
-//                 'Authorization': `Bearer ${token}`
-//             }
-//         });
-//         return response.data;
-//     } catch (error) {
-//         console.error(`Error updating pressure switch test ${id}:`, error);
-//         throw error;
-//     }
-// };
+export const updatePressureSwitchTest = async (id: number, testData: PressureSwitchTest) => {
+    const user = getCurrentUser();
+    const token = user?.token;
+    try {
+        const response = await axios.put(`${API_URL}/update-pressure-switch-test/${id}`, testData, {
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        return response.data;
+    } catch (error) {
+        console.error(`Error updating pressure switch test ${id}:`, error);
+        throw error;
+    }
+};
 
-// export const deletePressureSwitchTest = async (id: number) => {
-//     const user = getCurrentUser();
-//     const token = user?.token;
-//     try {
-//         await axios.delete(`${API_URL}/delete-pressure-switch-test/${id}`, {
-//             headers: { 'Authorization': `Bearer ${token}` }
-//         });
-//     } catch (error) {
-//         console.error(`Error deleting pressure switch test ${id}:`, error);
-//         throw error;
-//     }
-// };
+export const deletePressureSwitchTest = async (id: number) => {
+    const user = getCurrentUser();
+    const token = user?.token;
+    try {
+        await axios.delete(`${API_URL}/delete-pressure-switch-test/${id}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+    } catch (error) {
+        console.error(`Error deleting pressure switch test ${id}:`, error);
+        throw error;
+    }
+};

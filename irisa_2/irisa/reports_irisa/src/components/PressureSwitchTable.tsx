@@ -1,11 +1,11 @@
 import React from 'react';
 
+// Interfaz limpia para Presostato
 export interface PressureSwitchTest {
-    typeTest: string; // Enum: 'RISING', 'FALLING'
-    appliedPressure: string;
-    realPressureChange: string;
-    stateContact: string;
-    meetsSpecification: boolean;
+    presionDisparada: string;
+    presionRepone: string;
+    isNO: boolean;
+    isNC: boolean;
 }
 
 interface PressureSwitchTableProps {
@@ -13,9 +13,8 @@ interface PressureSwitchTableProps {
     onTestsChange: (tests: PressureSwitchTest[]) => void;
 }
 
-// --- COMPONENTES EXTRAÍDOS PARA EVITAR PÉRDIDA DE FOCO ---
-
-const TableInput = ({ value, onChange, unit, placeholder }: any) => (
+// --- COMPONENTE DE INPUT ---
+const TableInput = ({ value, onChange, placeholder }: any) => (
     <div className="relative w-full">
         <input 
             type="text" 
@@ -24,28 +23,15 @@ const TableInput = ({ value, onChange, unit, placeholder }: any) => (
             className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none" 
             placeholder={placeholder || "0.00"} 
         />
-        {unit && <span className="absolute right-2 top-2 text-[10px] text-gray-400 font-bold">{unit}</span>}
+        <span className="absolute right-2 top-2 text-[10px] text-gray-400 font-bold">PSI</span>
     </div>
 );
 
-const TableSelect = ({ value, onChange, options }: any) => (
-    <select
-        value={value}
-        onChange={onChange}
-        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none bg-white"
-    >
-        {options.map((opt: any) => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-        ))}
-    </select>
-);
-
 // --- COMPONENTE PRINCIPAL ---
-
 const PressureSwitchTable: React.FC<PressureSwitchTableProps> = ({ tests, onTestsChange }) => {
 
     const handleAddRow = () => {
-        onTestsChange([...tests, { typeTest: 'ASCENDENTE', appliedPressure: '', realPressureChange: '', stateContact: '', meetsSpecification: false }]);
+        onTestsChange([...tests, { presionDisparada: '', presionRepone: '', isNO: false, isNC: false }]);
     };
 
     const handleDeleteRow = (indexToDelete: number) => {
@@ -53,23 +39,11 @@ const PressureSwitchTable: React.FC<PressureSwitchTableProps> = ({ tests, onTest
         onTestsChange(newTests);
     };
 
-    const handleChange = (index: number, field: keyof PressureSwitchTest, value: string | boolean) => {
+    const handleChange = (index: number, field: keyof PressureSwitchTest, value: any) => {
         const newTests = [...tests];
-        newTests[index] = { ...newTests[index], [field]: value } as PressureSwitchTest;
+        newTests[index] = { ...newTests[index], [field]: value };
         onTestsChange(newTests);
     };
-
-    const typeOptions = [
-        { value: 'ASCENDENTE', label: 'Ascendente' },
-        { value: 'DESCENDENTE', label: 'Descendente' }
-    ];
-
-    const contactOptions = [
-        { value: '', label: 'Seleccionar...' },
-        { value: 'ABIERTO', label: 'Abierto' },
-        { value: 'CERRADO', label: 'Cerrado' },
-        { value: 'NO_CAMBIO', label: 'Sin Cambio' }
-    ];
 
     return (
         <div className="mt-8">
@@ -102,26 +76,25 @@ const PressureSwitchTable: React.FC<PressureSwitchTableProps> = ({ tests, onTest
                                 </button>
                             </div>
                             
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="col-span-2">
-                                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Tipo de Prueba</label>
-                                    <TableSelect value={test.typeTest} onChange={(e:any) => handleChange(index, 'typeTest', e.target.value)} options={typeOptions} />
+                            <div className="space-y-3">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Presion disparada en valor de PSI</label>
+                                    <TableInput value={test.presionDisparada} onChange={(e:any) => handleChange(index, 'presionDisparada', e.target.value)} />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Presión Aplicada</label>
-                                    <TableInput value={test.appliedPressure} onChange={(e:any) => handleChange(index, 'appliedPressure', e.target.value)} unit="PSI" />
+                                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Presion repone en valor de PSI</label>
+                                    <TableInput value={test.presionRepone} onChange={(e:any) => handleChange(index, 'presionRepone', e.target.value)} />
                                 </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Cambio Real</label>
-                                    <TableInput value={test.realPressureChange} onChange={(e:any) => handleChange(index, 'realPressureChange', e.target.value)} unit="PSI" />
-                                </div>
-                                <div className="col-span-2">
-                                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Estado de Contacto</label>
-                                    <TableSelect value={test.stateContact} onChange={(e:any) => handleChange(index, 'stateContact', e.target.value)} options={contactOptions} />
-                                </div>
-                                <div className="col-span-2 flex items-center justify-between bg-teal-50 p-3 rounded-lg border border-teal-100">
-                                    <span className="text-sm font-bold text-teal-800 uppercase">¿Cumple especificación?</span>
-                                    <input type="checkbox" checked={test.meetsSpecification} onChange={(e) => handleChange(index, 'meetsSpecification', e.target.checked)} className="w-6 h-6 text-teal-600 rounded focus:ring-teal-500" />
+                                <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                    <label className="block text-xs font-bold text-gray-500 mb-2 uppercase">Estado contacto</label>
+                                    <div className="flex gap-4">
+                                        <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                                            <input type="checkbox" checked={test.isNO} onChange={(e) => handleChange(index, 'isNO', e.target.checked)} className="w-5 h-5 text-teal-600 rounded" /> N.O
+                                        </label>
+                                        <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                                            <input type="checkbox" checked={test.isNC} onChange={(e) => handleChange(index, 'isNC', e.target.checked)} className="w-5 h-5 text-teal-600 rounded" /> N.C
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -133,31 +106,30 @@ const PressureSwitchTable: React.FC<PressureSwitchTableProps> = ({ tests, onTest
                     <table className="w-full text-sm">
                         <thead className="bg-gray-50 border-b border-gray-200">
                             <tr>
-                                <th className="px-4 py-4 text-left font-bold text-gray-600 uppercase tracking-wider">Tipo</th>
-                                <th className="px-4 py-4 text-left font-bold text-gray-600 uppercase tracking-wider">P. Aplicada</th>
-                                <th className="px-4 py-4 text-left font-bold text-gray-600 uppercase tracking-wider">Cambio Real</th>
-                                <th className="px-4 py-4 text-left font-bold text-gray-600 uppercase tracking-wider">Estado</th>
-                                <th className="px-4 py-4 text-center font-bold text-gray-600 uppercase tracking-wider">Cumple</th>
+                                <th className="px-4 py-4 text-left font-bold text-gray-600 uppercase tracking-wider">Presion disparada en valor de PSI</th>
+                                <th className="px-4 py-4 text-left font-bold text-gray-600 uppercase tracking-wider">Presion repone en valor de PSI</th>
+                                <th className="px-4 py-4 text-center font-bold text-gray-600 uppercase tracking-wider">Estado contacto</th>
                                 <th className="px-4 py-4 text-center font-bold text-gray-600 uppercase tracking-wider">Acción</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200">
                             {tests.map((test, index) => (
                                 <tr key={index} className="hover:bg-gray-50 transition-colors">
-                                    <td className="px-4 py-3 min-w-[150px]">
-                                        <TableSelect value={test.typeTest} onChange={(e:any) => handleChange(index, 'typeTest', e.target.value)} options={typeOptions} />
+                                    <td className="px-4 py-3">
+                                        <TableInput value={test.presionDisparada} onChange={(e:any) => handleChange(index, 'presionDisparada', e.target.value)} />
                                     </td>
                                     <td className="px-4 py-3">
-                                        <TableInput value={test.appliedPressure} onChange={(e:any) => handleChange(index, 'appliedPressure', e.target.value)} unit="PSI" />
+                                        <TableInput value={test.presionRepone} onChange={(e:any) => handleChange(index, 'presionRepone', e.target.value)} />
                                     </td>
                                     <td className="px-4 py-3">
-                                        <TableInput value={test.realPressureChange} onChange={(e:any) => handleChange(index, 'realPressureChange', e.target.value)} unit="PSI" />
-                                    </td>
-                                    <td className="px-4 py-3 min-w-[150px]">
-                                        <TableSelect value={test.stateContact} onChange={(e:any) => handleChange(index, 'stateContact', e.target.value)} options={contactOptions} />
-                                    </td>
-                                    <td className="px-4 py-3 text-center">
-                                        <input type="checkbox" checked={test.meetsSpecification} onChange={(e) => handleChange(index, 'meetsSpecification', e.target.checked)} className="w-5 h-5 text-teal-600 border-gray-300 rounded focus:ring-teal-500" />
+                                        <div className="flex justify-center gap-6">
+                                            <label className="flex items-center gap-2 font-bold text-gray-600">
+                                                <input type="checkbox" checked={test.isNO} onChange={(e) => handleChange(index, 'isNO', e.target.checked)} className="w-5 h-5 text-teal-600 rounded focus:ring-teal-500" /> N.O
+                                            </label>
+                                            <label className="flex items-center gap-2 font-bold text-gray-600">
+                                                <input type="checkbox" checked={test.isNC} onChange={(e) => handleChange(index, 'isNC', e.target.checked)} className="w-5 h-5 text-teal-600 rounded focus:ring-teal-500" /> N.C
+                                            </label>
+                                        </div>
                                     </td>
                                     <td className="px-4 py-3 text-center">
                                         <button onClick={() => handleDeleteRow(index)} className="text-red-600 hover:text-red-800 p-2 hover:bg-red-50 rounded-full transition-colors">
@@ -173,11 +145,8 @@ const PressureSwitchTable: React.FC<PressureSwitchTableProps> = ({ tests, onTest
                 {/* Empty State */}
                 {tests.length === 0 && (
                     <div className="text-center py-12 px-4 bg-gray-50/50">
-                        <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gray-100 mb-4">
-                            <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
-                        </div>
-                        <p className="text-gray-500 font-medium mb-4">No hay pruebas registradas.</p>
-                        <button onClick={handleAddRow} className="text-teal-600 font-bold hover:text-teal-700 transition-colors uppercase text-sm tracking-wider">Agregar la primera ahora</button>
+                        <p className="text-gray-500 font-medium mb-4">No hay registros de presostato.</p>
+                        <button onClick={handleAddRow} className="text-teal-600 font-bold hover:text-teal-700 uppercase text-sm tracking-wider">Agregar Prueba</button>
                     </div>
                 )}
             </div>
