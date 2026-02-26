@@ -37,7 +37,7 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
             ueTransmitter: parseFloat(m.ueTransmitter) || 0,
             idealValue: parseFloat(m.idealmA) || 0, 
             measuredValue: parseFloat(m.maTransmitter) || 0, 
-        })).sort((a, b) => a.percentage - b.percentage);
+        })).sort((a, b) => a.idealValue - b.idealValue); // Ordenado por mA (Eje X)
     };
 
     const processedData = processDataForChart();
@@ -81,19 +81,26 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
                     <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={processedData} margin={{ top: 5, right: 30, left: 20, bottom: 25 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                            {/* X: Escala de 4-20 mA con saltos */}
                             <XAxis 
-                                dataKey="percentage" 
-                                label={{ value: '% Rango', position: 'insideBottom', offset: -10 }} 
+                                dataKey="idealValue" 
+                                type="number"
+                                domain={[4, 20]}
+                                ticks={[4, 8, 12, 16, 20]}
+                                label={{ value: 'Escala (mA)', position: 'insideBottom', offset: -10 }} 
                             />
+                            {/* Y: Rango UE con saltos de 5 o 10 */}
                             <YAxis 
-                                label={{ value: `Unidades (${labels.unit})`, angle: -90, position: 'insideLeft' }} 
+                                label={{ value: 'Rango UE', angle: -90, position: 'insideLeft' }}
                             />
                             <Tooltip />
                             <Legend verticalAlign="top" />
-                            <Line type="monotone" dataKey="idealValue" stroke="#3b82f6" name={labels.ideal} strokeWidth={2} isAnimationActive={false} />
-                            <Line type="monotone" dataKey="measuredValue" stroke="#ef4444" name={labels.measured} strokeWidth={2} isAnimationActive={false} />
-                            <Line type="monotone" dataKey="idealUe" stroke="#10b981" name="Ideal UE" strokeDasharray="5 5" isAnimationActive={false} />
-                            <Line type="monotone" dataKey="ueTransmitter" stroke="#f59e0b" name="UE Transmisor" strokeDasharray="5 5" isAnimationActive={false} />
+                            
+                            {/* Primera: Ideal UE vs Ideal mA */}
+                            <Line type="monotone" dataKey="idealUe" stroke="#3b82f6" name="Ideal UE vs Ideal mA" strokeWidth={2} dot={{ r: 4 }} isAnimationActive={false} />
+                            
+                            {/* Segunda: UE Transmisor vs mA Transmisor (Se oculta si no hay datos de UE) */}
+                            <Line type="monotone" dataKey="ueTransmitter" stroke="#ef4444" name="UE Transmisor vs mA Transmisor" strokeWidth={2} dot={{ r: 4 }} connectNulls isAnimationActive={false} />
                         </LineChart>
                     </ResponsiveContainer>
                 </div>
