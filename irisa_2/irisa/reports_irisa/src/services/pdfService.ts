@@ -109,21 +109,27 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
 
         // --- TABLA TRANSMISORES ---
         if (data.deviceType === 'transmitter' && measurements.length) {
-            addHeader(`Resultados de las mediciones (Unidad: ${unit})`);
+            // Título de sección cambia a RTD si corresponde
+            addHeader(`Resultados de las mediciones (Unidad: ${isOhm ? 'RTD' : 'mA'})`);
             
-            // Construcción de Headers sin abreviaciones y con nomenclatura correcta
+            // Construcción de Headers
             const headers = ['Ideal UE', 'Ideal mA'];
             if (isOhm) headers.push('Ideal ohm');
             headers.push('Patrón UE');
             if (hasUE) headers.push('UE transmisor');
-            headers.push('mA transmisor');
+            
+            // Refleja "mA sensor" si es RTD (Ohm)
+            headers.push(isOhm ? 'mA sensor' : 'mA transmisor');
+            
             if (isOhm) headers.push('ohm sensor');
             headers.push('% Rango');
             if (hasUE) headers.push('Error UE');
-            headers.push(isOhm ? 'Error ohm' : 'Error mA', 'Error %');
+            
+            // REQUERIMIENTO: Mantener Error mA incluso en modo Ohm
+            headers.push('Error mA', 'Error %');
 
             const body = measurements.map(m => {
-                const row = [m.idealUE || m.idealUe, m.idealmA]; // Soporta ambas keys por si acaso
+                const row = [m.idealUE || m.idealUe, m.idealmA]; 
                 if (isOhm) row.push(m.idealohm || m.idealOhm || '0');
                 row.push(m.patronUE || m.patronUe);
                 if (hasUE) row.push(m.ueTransmitter);
@@ -140,8 +146,8 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 head: [headers],
                 body: body,
                 theme: 'grid',
-                headStyles: { fillColor: colors.risaraldaGreen, halign: 'center', fontSize: 7, fontStyle: 'bold' },
-                styles: { fontSize: 7, halign: 'center', cellPadding: 2 }
+                headStyles: { fillColor: colors.risaraldaGreen, halign: 'center', fontSize: 6, fontStyle: 'bold' },
+                styles: { fontSize: 6.5, halign: 'center', cellPadding: 1.5 }
             });
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }

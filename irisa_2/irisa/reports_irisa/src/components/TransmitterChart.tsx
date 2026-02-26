@@ -23,11 +23,14 @@ interface TransmitterChartProps {
 const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements, data, outputUnit = 'mA' }, ref) => {
     const chartData = measurements || data || [];
     const responseRef = useRef<HTMLDivElement>(null);
+    const isOhm = outputUnit === 'ohm';
 
+    // Labels dinámicos sincronizados con la tabla y el nuevo requerimiento RTD
     const labels = {
-        ideal: `Ideal ${outputUnit}`,
-        measured: `Medido ${outputUnit}`,
-        unit: outputUnit
+        title: isOhm ? 'Análisis RTD (Sensor)' : 'Análisis del Transmisor',
+        xAxis: isOhm ? 'Escala (mA sensor)' : 'Escala (mA)',
+        yAxis: 'Rango UE',
+        unit: isOhm ? 'RTD' : 'mA'
     };
 
     const processDataForChart = () => {
@@ -35,6 +38,7 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
             percentage: parseFloat(m.percentage) || 0,
             idealUE: parseFloat(m.idealUE || (m as any).idealUe) || 0,
             ueTransmitter: parseFloat(m.ueTransmitter) || 0,
+            // El eje X se mantiene en mA (4-20) para ver la linealidad del lazo
             idealValue: parseFloat(m.idealmA) || 0, 
             measuredValue: parseFloat(m.maTransmitter) || 0, 
         })).sort((a, b) => a.idealValue - b.idealValue);
@@ -68,7 +72,12 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
     useImperativeHandle(ref, () => ({
         captureAllCharts: async () => {
             if (responseRef.current) {
-                const dataUrl = await toPng(responseRef.current, { backgroundColor: '#ffffff', pixelRatio: 2 });
+                // Forzamos el renderizado antes de la captura para evitar espacios en blanco
+                const dataUrl = await toPng(responseRef.current, { 
+                    backgroundColor: '#ffffff', 
+                    pixelRatio: 2,
+                    cacheBust: true 
+                });
                 return [dataUrl];
             }
             return [];
@@ -77,18 +86,20 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
 
     return (
         <div className="mt-8 shadow-lg rounded-xl overflow-hidden border border-gray-100 bg-white">
+            {/* Header del Chart */}
             <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-5 text-white">
                 <div className="flex items-center gap-4">
                     <span className="text-3xl">📊</span>
                     <div>
-                        <h3 className="text-xl font-bold">Análisis del Transmisor ({labels.unit})</h3>
+                        <h3 className="text-xl font-bold">{labels.title} ({labels.unit})</h3>
                         <p className="text-blue-100 text-sm opacity-90">Visualización detallada de curva de error</p>
                     </div>
                 </div>
             </div>
 
+            {/* Contenedor Capturable */}
             <div className="p-6 bg-white" ref={responseRef}>
-                <h4 className="text-lg font-semibold text-gray-700 mb-4 text-center">Curva de Respuesta</h4>
+                <h4 className="text-lg font-semibold text-gray-700 mb-4 text-center">Curva de Respuesta vs Ideal</h4>
                 <div className="h-96 w-full">
                     <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={processedData} margin={{ top: 20, right: 30, left: 20, bottom: 25 }}>
@@ -99,16 +110,18 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
                                 type="number"
                                 domain={[4, 20]}
                                 ticks={[4, 8, 12, 16, 20]}
-                                label={{ value: 'Escala (mA)', position: 'insideBottom', offset: -15, fontWeight: 'bold' }} 
+                                label={{ value: labels.xAxis, position: 'insideBottom', offset: -15, fontWeight: 'bold', fontSize: 12 }} 
                             />
                             
                             <YAxis 
                                 domain={['dataMin - 2', 'dataMax + 2']} 
                                 ticks={yTicks}
-                                label={{ value: 'Rango UE', angle: -90, position: 'insideLeft', fontWeight: 'bold' }}
+                                label={{ value: labels.yAxis, angle: -90, position: 'insideLeft', fontWeight: 'bold', fontSize: 12 }}
                             />
                             
-                            <Tooltip />
+                            <Tooltip 
+                                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                            />
                             <Legend verticalAlign="top" height={36}/>
                             
                             <Line 
@@ -118,6 +131,7 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
                                 name="Ideal UE" 
                                 strokeWidth={3} 
                                 dot={{ r: 6, fill: '#3b82f6' }} 
+                                activeDot={{ r: 8 }}
                                 isAnimationActive={false} 
                             />
                             
@@ -129,6 +143,7 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
                                 strokeWidth={3} 
                                 strokeDasharray="8 4"
                                 dot={{ r: 6, fill: '#ef4444', strokeWidth: 2, stroke: '#fff' }} 
+                                activeDot={{ r: 8 }}
                                 connectNulls 
                                 isAnimationActive={false} 
                             />
