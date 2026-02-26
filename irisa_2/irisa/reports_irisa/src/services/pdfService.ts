@@ -2,21 +2,28 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import logo from '../assets/logo_slogan_2.png';
 
-// --- CONFIGURACIÓN DE TEMAS ---
-const THEMES = {
-    TRANSMITTER: { primary: [20, 110, 90] as [number, number, number], title: 'TRANSMISOR' },
-    THERMOSTAT: { primary: [234, 88, 12] as [number, number, number], title: 'TERMOSTATO' },
-    PRESSURE: { primary: [30, 64, 175] as [number, number, number], title: 'PRESOSTATO' }
+// Tipado estricto para evitar que Rollup infiera tipos incorrectos
+interface ThemeConfig {
+    primary: [number, number, number];
+    title: string;
+}
+
+const THEMES: Record<string, ThemeConfig> = {
+    TRANSMITTER: { primary: [20, 110, 90], title: 'TRANSMISOR' },
+    THERMOSTAT: { primary: [234, 88, 12], title: 'TERMOSTATO' },
+    PRESSURE: { primary: [30, 64, 175], title: 'PRESOSTATO' }
 };
 
-const GRAY_BG = [245, 245, 245] as [number, number, number];
+const GRAY_BG: [number, number, number] = [245, 245, 245];
 
+// Función helper para conversión de imagen
 const getBase64 = async (url: string): Promise<string> => {
     const res = await fetch(url);
     const blob = await res.blob();
-    return new Promise(resolve => {
+    return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
         reader.readAsDataURL(blob);
     });
 };
@@ -24,8 +31,6 @@ const getBase64 = async (url: string): Promise<string> => {
 // --- 1. GENERAR TRANSMISOR ---
 export const generateTransmitterPDF = async (data: any, measurements: any[], chartImages?: string[]) => {
     const pdf = new jsPDF();
-    
-    // BIEN: El await está dentro de la función async (Esto evita errores en Render/Rollup)
     const b64 = await getBase64(logo);
     
     pdf.addImage(b64, 'PNG', 20, 12, 50, 20);
@@ -64,7 +69,7 @@ export const generateTransmitterPDF = async (data: any, measurements: any[], cha
         styles: { fontSize: 8, halign: 'center' }
     });
 
-    if (chartImages) {
+    if (chartImages && chartImages.length > 0) {
         chartImages.forEach(img => {
             pdf.addPage();
             pdf.text('ANÁLISIS DE CURVA Y ERROR', 20, 20);
@@ -77,8 +82,6 @@ export const generateTransmitterPDF = async (data: any, measurements: any[], cha
 // --- 2. GENERAR TERMOSTATO ---
 export const generateThermostatPDF = async (data: any, tests: any[], chartImages?: string[]) => {
     const pdf = new jsPDF();
-    
-    // BIEN: El await ocurre dentro de la ejecución de la función
     const b64 = await getBase64(logo);
     
     pdf.addImage(b64, 'PNG', 20, 12, 50, 20);
@@ -98,7 +101,7 @@ export const generateThermostatPDF = async (data: any, tests: any[], chartImages
 
     autoTable(pdf, {
         startY: (pdf as any).lastAutoTable.finalY + 10,
-        head: [['Prueba', 'Temperatura. Disparo (°C)', 'Temperatua. Repone (°C)', 'Contacto']],
+        head: [['Prueba', 'Temp. Disparo (°C)', 'Temp. Repone (°C)', 'Contacto']],
         body: tests.map((t, i) => [
             `#${i + 1}`,
             t.tempDisparo,
@@ -109,7 +112,7 @@ export const generateThermostatPDF = async (data: any, tests: any[], chartImages
         styles: { fontSize: 10, halign: 'center' }
     });
 
-    if (chartImages) {
+    if (chartImages && chartImages.length > 0) {
         const labels = ['ANÁLISIS TÉRMICO', 'ESTADO DE CONTACTOS'];
         chartImages.forEach((img, i) => {
             pdf.addPage();
@@ -123,8 +126,6 @@ export const generateThermostatPDF = async (data: any, tests: any[], chartImages
 // --- 3. GENERAR PRESOSTATO ---
 export const generatePressureSwitchPDF = async (data: any, tests: any[], chartImages?: string[]) => {
     const pdf = new jsPDF();
-    
-    // BIEN: Evitamos el Top-Level Await moviendo la carga aquí
     const b64 = await getBase64(logo);
     
     pdf.addImage(b64, 'PNG', 20, 12, 50, 20);
@@ -144,7 +145,7 @@ export const generatePressureSwitchPDF = async (data: any, tests: any[], chartIm
 
     autoTable(pdf, {
         startY: (pdf as any).lastAutoTable.finalY + 10,
-        head: [[`Presion. Disparo (${data.unity || 'PSI'})`, `Presion. Repone (${data.unity || 'PSI'})`, 'Estado Contacto']],
+        head: [[`P. Disparo (${data.unity || 'PSI'})`, `P. Repone (${data.unity || 'PSI'})`, 'Estado Contacto']],
         body: tests.map((t) => [
             t.presionDisparada,
             t.presionRepone,
@@ -154,7 +155,7 @@ export const generatePressureSwitchPDF = async (data: any, tests: any[], chartIm
         styles: { fontSize: 10, halign: 'center' }
     });
 
-    if (chartImages) {
+    if (chartImages && chartImages.length > 0) {
         const labels = ['CICLO DE PRESIÓN', 'COMPORTAMIENTO DE CONTACTOS'];
         chartImages.forEach((img, i) => {
             pdf.addPage();
