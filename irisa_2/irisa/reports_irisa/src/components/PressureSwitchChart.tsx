@@ -6,8 +6,8 @@ import {
 import { toPng } from 'html-to-image';
 
 export interface PressureSwitchTest {
-    presionDisparo: string;
-    presionRepone: string;
+    presiondeDisparo: string;
+    presiondeRepone: string;
     isNO: boolean;
     isNC: boolean;
 }
@@ -30,13 +30,13 @@ const PressureSwitchChart = forwardRef<any, PressureSwitchChartProps>(({ tests, 
     const processedData = useMemo(() => {
         const source = rawData.length > 0 ? rawData : [];
         return source.map((test, index) => {
-            const disparada = parseFloat(test.presionDisparo) || 0;
-            const repone = parseFloat(test.presionRepone) || 0;
+            const disparada = parseFloat(test.presiondeDisparo) || 0;
+            const repone = parseFloat(test.presiondeRepone) || 0;
             
             return {
                 index: index + 1,
-                presionDisparo: disparada,
-                presionRepone: repone,
+                presiondeDisparo: disparada,
+                presiondeRepone: repone,
                 differential: parseFloat(Math.abs(disparada - repone).toFixed(2)),
                 estado: `${test.isNO ? 'N.O' : ''} ${test.isNC ? 'N.C' : ''}`.trim()
             };
@@ -90,8 +90,8 @@ const PressureSwitchChart = forwardRef<any, PressureSwitchChartProps>(({ tests, 
                     <YAxis unit=" PSI" domain={[0, (dataMax: number) => Math.ceil(dataMax + 5)]} />
                     <Tooltip />
                     <Legend verticalAlign="top" align="center" wrapperStyle={{ paddingBottom: '20px' }} />
-                    <Line type="monotone" dataKey="presionDisparo" stroke="#f59e0b" name="Presion. Disparada" strokeWidth={3} dot={{ r: 6 }} isAnimationActive={false} />
-                    <Line type="monotone" dataKey="presionRepone" stroke="#10b981" name="Presion. Repone" strokeWidth={3} dot={{ r: 6 }} isAnimationActive={false} />
+                    <Line type="monotone" dataKey="presiondeDisparo" stroke="#f59e0b" name="Presion. Disparada" strokeWidth={3} dot={{ r: 6 }} isAnimationActive={false} />
+                    <Line type="monotone" dataKey="presiondeRepone" stroke="#10b981" name="Presion. Repone" strokeWidth={3} dot={{ r: 6 }} isAnimationActive={false} />
                 </LineChart>
             </ResponsiveContainer>
         </div>

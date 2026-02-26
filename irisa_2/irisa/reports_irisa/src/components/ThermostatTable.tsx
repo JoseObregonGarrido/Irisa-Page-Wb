@@ -2,8 +2,8 @@ import React from 'react';
 
 // Interfaz alineada
 export interface ThermostatTest {
-    temperaturaDisparo: string;
-    temperaturaRepone: string;
+    temperaturadeDisparo: string;
+    temperaturadeRepone: string;
     isNO: boolean;
     isNC: boolean;
 }
@@ -31,7 +31,7 @@ const TableInput = ({ value, onChange, placeholder }: any) => (
 const ThermostatTable: React.FC<ThermostatTableProps> = ({ tests, onTestsChange }) => {
 
     const handleAddRow = () => {
-        onTestsChange([...tests, { temperaturaDisparo: '', temperaturaRepone: '', isNO: false, isNC: false }]);
+        onTestsChange([...tests, { temperaturadeDisparo: '', temperaturadeRepone: '', isNO: false, isNC: false }]);
     };
 
     const handleDeleteRow = (indexToDelete: number) => {
@@ -79,12 +79,12 @@ const ThermostatTable: React.FC<ThermostatTableProps> = ({ tests, onTestsChange 
                             
                             <div className="space-y-3">
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-500 mb-1 ">Temp. Disparo (°C)</label>
-                                    <TableInput value={test.temperaturaDisparo} onChange={(e:any) => handleChange(index, 'temperaturaDisparo', e.target.value)} />
+                                    <label className="block text-xs font-bold text-gray-500 mb-1 ">Temperatura de disparo(°C)</label>
+                                    <TableInput value={test.temperaturadeDisparo} onChange={(e:any) => handleChange(index, 'temperaturadeDisparo', e.target.value)} />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Temp. Repone (°C)</label>
-                                    <TableInput value={test.temperaturaRepone} onChange={(e:any) => handleChange(index, 'temperaturaRepone', e.target.value)} />
+                                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Temperatura de repone(°C)</label>
+                                    <TableInput value={test.temperaturadeRepone} onChange={(e:any) => handleChange(index, 'temperaturadeRepone', e.target.value)} />
                                 </div>
                                 <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
                                     <label className="block text-xs font-bold text-gray-500 mb-2 uppercase">Estado contacto</label>
@@ -107,8 +107,8 @@ const ThermostatTable: React.FC<ThermostatTableProps> = ({ tests, onTestsChange 
                     <table className="w-full text-sm">
                         <thead className="bg-gray-50 border-b border-gray-200">
                             <tr>
-                                <th className="px-4 py-4 text-left font-bold text-gray-600  tracking-wider">Temp. Disparo</th>
-                                <th className="px-4 py-4 text-left font-bold text-gray-600  tracking-wider">Temp. Repone</th>
+                                <th className="px-4 py-4 text-left font-bold text-gray-600  tracking-wider">Temperatura de disparo</th>
+                                <th className="px-4 py-4 text-left font-bold text-gray-600  tracking-wider">Temperatura de Repone</th>
                                 <th className="px-4 py-4 text-center font-bold text-gray-600  tracking-wider">Estado Contacto</th>
                                 <th className="px-4 py-4 text-center font-bold text-gray-600  tracking-wider">Acción</th>
                             </tr>
@@ -117,10 +117,10 @@ const ThermostatTable: React.FC<ThermostatTableProps> = ({ tests, onTestsChange 
                             {tests.map((test, index) => (
                                 <tr key={index} className="hover:bg-gray-50 transition-colors">
                                     <td className="px-4 py-3">
-                                        <TableInput value={test.temperaturaDisparo} onChange={(e:any) => handleChange(index, 'temperaturaDisparo', e.target.value)} />
+                                        <TableInput value={test.temperaturadeDisparo} onChange={(e:any) => handleChange(index, 'temperaturadeDisparo', e.target.value)} />
                                     </td>
                                     <td className="px-4 py-3">
-                                        <TableInput value={test.temperaturaRepone} onChange={(e:any) => handleChange(index, 'temperaturaRepone', e.target.value)} />
+                                        <TableInput value={test.temperaturadeRepone} onChange={(e:any) => handleChange(index, 'temperaturadeRepone', e.target.value)} />
                                     </td>
                                     <td className="px-4 py-3">
                                         <div className="flex justify-center gap-6">

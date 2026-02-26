@@ -2,8 +2,8 @@ import React from 'react';
 
 // Interfaz limpia para Presostato
 export interface PressureSwitchTest {
-    presionDisparo: string;
-    presionRepone: string;
+    presiondeDisparo: string;
+    presiondeRepone: string;
     isNO: boolean;
     isNC: boolean;
     setPoint?: string; // Agregado para coincidir con el PDF si se usa
@@ -32,7 +32,7 @@ const TableInput = ({ value, onChange, placeholder }: any) => (
 const PressureSwitchTable: React.FC<PressureSwitchTableProps> = ({ tests, onTestsChange }) => {
 
     const handleAddRow = () => {
-        onTestsChange([...tests, { presionDisparo: '', presionRepone: '', isNO: false, isNC: false }]);
+        onTestsChange([...tests, { presiondeDisparo: '', presiondeRepone: '', isNO: false, isNC: false }]);
     };
 
     const handleDeleteRow = (indexToDelete: number) => {
@@ -80,11 +80,11 @@ const PressureSwitchTable: React.FC<PressureSwitchTableProps> = ({ tests, onTest
                             <div className="space-y-3">
                                 <div>
                                     <label className="block text-xs font-bold text-gray-500 mb-1 ">Presion de disparo</label>
-                                    <TableInput value={test.presionDisparo} onChange={(e:any) => handleChange(index, 'presionDisparo', e.target.value)} />
+                                    <TableInput value={test.presiondeDisparo} onChange={(e:any) => handleChange(index, 'presiondeDisparo', e.target.value)} />
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold text-gray-500 mb-1 ">Presion de repone</label>
-                                    <TableInput value={test.presionRepone} onChange={(e:any) => handleChange(index, 'presionRepone', e.target.value)} />
+                                    <TableInput value={test.presiondeRepone} onChange={(e:any) => handleChange(index, 'presiondeRepone', e.target.value)} />
                                 </div>
                                 <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
                                     <label className="block text-xs font-bold text-gray-500 mb-2 ">Estado contacto</label>
@@ -117,10 +117,10 @@ const PressureSwitchTable: React.FC<PressureSwitchTableProps> = ({ tests, onTest
                             {tests.map((test, index) => (
                                 <tr key={index} className="hover:bg-gray-50 transition-colors">
                                     <td className="px-4 py-3">
-                                        <TableInput value={test.presionDisparo} onChange={(e:any) => handleChange(index, 'presionDisparo', e.target.value)} />
+                                        <TableInput value={test.presiondeDisparo} onChange={(e:any) => handleChange(index, 'presiondeDisparo', e.target.value)} />
                                     </td>
                                     <td className="px-4 py-3">
-                                        <TableInput value={test.presionRepone} onChange={(e:any) => handleChange(index, 'presionRepone', e.target.value)} />
+                                        <TableInput value={test.presiondeRepone} onChange={(e:any) => handleChange(index, 'presiondeRepone', e.target.value)} />
                                     </td>
                                     <td className="px-4 py-3">
                                         <div className="flex justify-center gap-6">
