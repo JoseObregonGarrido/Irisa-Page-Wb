@@ -25,11 +25,10 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
     const responseRef = useRef<HTMLDivElement>(null);
     const isOhm = outputUnit === 'ohm';
 
-    // Labels dinámicos sincronizados con la tabla y el nuevo requerimiento RTD
     const labels = {
         title: isOhm ? 'Análisis RTD (Sensor)' : 'Análisis del Transmisor',
         xAxis: isOhm ? 'Escala (mA sensor)' : 'Escala (mA)',
-        yAxis: 'Rango UE',
+        yAxis: 'Rango UE / Desviación',
         unit: isOhm ? 'RTD' : 'mA'
     };
 
@@ -38,30 +37,28 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
             percentage: parseFloat(m.percentage) || 0,
             idealUE: parseFloat(m.idealUE || (m as any).idealUe) || 0,
             ueTransmitter: parseFloat(m.ueTransmitter) || 0,
-            // El eje X se mantiene en mA (4-20) para ver la linealidad del lazo
             idealValue: parseFloat(m.idealmA) || 0, 
-            measuredValue: parseFloat(m.maTransmitter) || 0, 
+            measuredValue: parseFloat(m.maTransmitter) || 0,
+            deviation: parseFloat(m.errormA) || 0 // Agregamos la desviación de corriente
         })).sort((a, b) => a.idealValue - b.idealValue);
     };
 
     const processedData = processDataForChart();
 
+    // LÓGICA DE SALTOS DE 4 EN 4
     const getYTicks = () => {
-        if (processedData.length === 0) return [];
+        if (processedData.length === 0) return [0, 4, 8, 12, 16, 20];
+        
         const allValues = processedData.flatMap(d => [d.idealUE, d.ueTransmitter]);
         const maxVal = Math.max(...allValues);
-        const minVal = Math.min(...allValues);
+        const minVal = Math.min(...allValues, 0); // Empezamos desde 0 o el mínimo para ver errores negativos
         
-        const range = maxVal - minVal;
-        let step = 10;
-        if (range <= 10) step = 1;
-        else if (range <= 50) step = 5;
-
         const ticks = [];
-        const start = Math.floor(minVal / step) * step;
-        const end = Math.ceil(maxVal / step) * step;
+        // Forzamos el inicio al múltiplo de 4 inferior y el fin al superior
+        const start = Math.floor(minVal / 4) * 4;
+        const end = Math.ceil(maxVal / 4) * 4;
         
-        for (let i = start; i <= end; i += step) {
+        for (let i = start; i <= end; i += 4) {
             ticks.push(i);
         }
         return ticks;
@@ -72,7 +69,6 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
     useImperativeHandle(ref, () => ({
         captureAllCharts: async () => {
             if (responseRef.current) {
-                // Forzamos el renderizado antes de la captura para evitar espacios en blanco
                 const dataUrl = await toPng(responseRef.current, { 
                     backgroundColor: '#ffffff', 
                     pixelRatio: 2,
@@ -86,18 +82,16 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
 
     return (
         <div className="mt-8 shadow-lg rounded-xl overflow-hidden border border-gray-100 bg-white">
-            {/* Header del Chart */}
             <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-5 text-white">
                 <div className="flex items-center gap-4">
                     <span className="text-3xl">📊</span>
                     <div>
                         <h3 className="text-xl font-bold">{labels.title} ({labels.unit})</h3>
-                        <p className="text-blue-100 text-sm opacity-90">Visualización detallada de curva de error</p>
+                        <p className="text-blue-100 text-sm opacity-90">Visualización con saltos de 4 unidades y desviación</p>
                     </div>
                 </div>
             </div>
 
-            {/* Contenedor Capturable */}
             <div className="p-6 bg-white" ref={responseRef}>
                 <h4 className="text-lg font-semibold text-gray-700 mb-4 text-center">Curva de Respuesta vs Ideal</h4>
                 <div className="h-96 w-full">
@@ -114,13 +108,14 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
                             />
                             
                             <YAxis 
-                                domain={['dataMin - 2', 'dataMax + 2']} 
-                                ticks={yTicks}
+                                domain={[yTicks[0], yTicks[yTicks.length - 1]]} 
+                                ticks={yTicks} // AQUÍ SE APLICAN LOS SALTOS DE 4 EN 4
                                 label={{ value: labels.yAxis, angle: -90, position: 'insideLeft', fontWeight: 'bold', fontSize: 12 }}
                             />
                             
                             <Tooltip 
                                 contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                formatter={(value: any) => [value.toFixed(3), ""]}
                             />
                             <Legend verticalAlign="top" height={36}/>
                             
@@ -130,8 +125,7 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
                                 stroke="#3b82f6" 
                                 name="Ideal UE" 
                                 strokeWidth={3} 
-                                dot={{ r: 6, fill: '#3b82f6' }} 
-                                activeDot={{ r: 8 }}
+                                dot={{ r: 5, fill: '#3b82f6' }} 
                                 isAnimationActive={false} 
                             />
                             
@@ -139,12 +133,21 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
                                 type="monotone" 
                                 dataKey="ueTransmitter" 
                                 stroke="#ef4444" 
-                                name="UE transmisor (Real)" 
+                                name="UE Real" 
                                 strokeWidth={3} 
-                                strokeDasharray="8 4"
-                                dot={{ r: 6, fill: '#ef4444', strokeWidth: 2, stroke: '#fff' }} 
-                                activeDot={{ r: 8 }}
-                                connectNulls 
+                                strokeDasharray="5 5"
+                                dot={{ r: 5, fill: '#ef4444' }} 
+                                isAnimationActive={false} 
+                            />
+
+                            {/* LÍNEA DE DESVIACIÓN DE CORRIENTE (mA) */}
+                            <Line 
+                                type="monotone" 
+                                dataKey="deviation" 
+                                stroke="#f59e0b" 
+                                name="Desviación mA" 
+                                strokeWidth={2} 
+                                dot={{ r: 3, fill: '#f59e0b' }} 
                                 isAnimationActive={false} 
                             />
                         </LineChart>

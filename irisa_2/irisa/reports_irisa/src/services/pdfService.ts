@@ -109,24 +109,18 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
 
         // --- TABLA TRANSMISORES ---
         if (data.deviceType === 'transmitter' && measurements.length) {
-            // Título de sección cambia a RTD si corresponde
             addHeader(`Resultados de las mediciones (Unidad: ${isOhm ? 'RTD' : 'mA'})`);
             
-            // Construcción de Headers
+            // Construcción de Headers dinámicos
             const headers = ['Ideal UE', 'Ideal mA'];
             if (isOhm) headers.push('Ideal ohm');
             headers.push('Patrón UE');
-            if (hasUE) headers.push('UE transmisor');
-            
-            // Refleja "mA sensor" si es RTD (Ohm)
-            headers.push(isOhm ? 'mA sensor' : 'mA transmisor');
-            
-            if (isOhm) headers.push('ohm sensor');
+            if (hasUE) headers.push('UE trans.');
+            headers.push(isOhm ? 'mA sens.' : 'mA trans.');
+            if (isOhm) headers.push('ohm sens.');
             headers.push('% Rango');
-            if (hasUE) headers.push('Error UE');
-            
-            // REQUERIMIENTO: Mantener Error mA incluso en modo Ohm
-            headers.push('Error mA', 'Error %');
+            if (hasUE) headers.push('Err UE');
+            headers.push('Err mA', 'Err %');
 
             const body = measurements.map(m => {
                 const row = [m.idealUE || m.idealUe, m.idealmA]; 
@@ -137,7 +131,8 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 if (isOhm) row.push(m.ohmTransmitter || '0');
                 row.push(m.percentage);
                 if (hasUE) row.push(m.errorUE || m.errorUe);
-                row.push(m.errormA || m.errorMa, m.errorPercentage);
+                // Aseguramos que tome el valor de error mA que calculamos
+                row.push(m.errormA || m.errorMa || '0', m.errorPercentage);
                 return row;
             });
 
@@ -146,8 +141,11 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 head: [headers],
                 body: body,
                 theme: 'grid',
-                headStyles: { fillColor: colors.risaraldaGreen, halign: 'center', fontSize: 6, fontStyle: 'bold' },
-                styles: { fontSize: 6.5, halign: 'center', cellPadding: 1.5 }
+                headStyles: { fillColor: colors.risaraldaGreen, halign: 'center', fontSize: 5.5, fontStyle: 'bold' },
+                styles: { fontSize: 6, halign: 'center', cellPadding: 1 },
+                columnStyles: {
+                    // Estilizamos columnas de error en rojo tenue si es posible (opcional)
+                }
             });
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }
@@ -161,8 +159,8 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             const unitLabel = data.unity || (isThermostat ? '°C' : 'psi');
             
             const headers = [
-                isThermostat ? `Temperatura disparo (${unitLabel})` : `Presión disparo (${unitLabel})`,
-                isThermostat ? `Temperatura repone (${unitLabel})` : `Presión repone (${unitLabel})`,
+                isThermostat ? `Temp. disparo (${unitLabel})` : `Presión disparo (${unitLabel})`,
+                isThermostat ? `Temp. repone (${unitLabel})` : `Presión repone (${unitLabel})`,
                 'Estado contacto'
             ];
 
@@ -183,12 +181,15 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }
 
-        // --- GRÁFICOS ---
+        // --- GRÁFICOS (Capturados desde TransmitterChart con los nuevos cambios) ---
         if (chartImages && chartImages.length > 0) {
             chartImages.forEach((img) => {
-                if (yPos + 85 > 280) { pdf.addPage(); yPos = 20; }
-                pdf.addImage(img, 'PNG', 25, yPos, 160, 80);
-                yPos += 85; 
+                if (yPos + 95 > 280) { pdf.addPage(); yPos = 20; }
+                // Título para el gráfico
+                pdf.setFontSize(10).setFont('helvetica', 'bold').text("Curva de calibración y linealidad", 20, yPos);
+                yPos += 5;
+                pdf.addImage(img, 'PNG', 20, yPos, 170, 85);
+                yPos += 95; 
             });
         }
 
@@ -199,7 +200,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             autoTable(pdf, {
                 startY: yPos,
                 margin: { left: 20, right: 20 },
-                body: [[capitalize(data.observations)]],
+                body: [[data.observations]],
                 styles: { fontSize: 9, cellPadding: 5, fillColor: colors.white, textColor: 60 },
                 theme: 'plain'
             });
