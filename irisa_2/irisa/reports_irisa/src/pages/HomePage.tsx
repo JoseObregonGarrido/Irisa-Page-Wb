@@ -60,8 +60,6 @@ const HomePage: React.FC = () => {
     };
 
     const handleGeneratePdf = async () => {
-        // Se elimina la validación que obligaba a activar 'Ver Gráfico'
-
         const reportData = {
             instrumentistName,
             instrumentistCode,
@@ -87,23 +85,19 @@ const HomePage: React.FC = () => {
         try {
             let chartImages: string[] = [];
 
-            // Captura asíncrona SOLO si showChart es true y la referencia existe
-            if (showChart) {
-                if (deviceType === 'transmitter' && transmitterChartRef.current) {
-                    chartImages = await transmitterChartRef.current.captureAllCharts();
-                } else if (deviceType === 'pressure_switch' && pressureSwitchChartRef.current) {
-                    chartImages = await pressureSwitchChartRef.current.captureAllCharts();
-                } else if (deviceType === 'thermostat' && thermostatChartRef.current) {
-                    chartImages = await thermostatChartRef.current.captureAllCharts();
-                }
+            if (deviceType === 'transmitter' && transmitterChartRef.current) {
+                chartImages = await transmitterChartRef.current.captureAllCharts();
+            } else if (deviceType === 'pressure_switch' && pressureSwitchChartRef.current) {
+                chartImages = await pressureSwitchChartRef.current.captureAllCharts();
+            } else if (deviceType === 'thermostat' && thermostatChartRef.current) {
+                chartImages = await thermostatChartRef.current.captureAllCharts();
             }
 
-            // Llamada al servicio PDF (si chartImages está vacío, el PDF se genera sin imágenes)
             await generatePDFReport(reportData, chartImages);
             
         } catch (error) {
             console.error("Error al generar PDF:", error);
-            alert("Hubo un error al generar el PDF.");
+            alert("Hubo un error al generar las gráficas para el PDF.");
         }
     };
 
@@ -188,6 +182,7 @@ const HomePage: React.FC = () => {
 
                     <div className="p-8">
                         <form className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                            {/* Información Personal y de Trabajo */}
                             <div className="space-y-2">
                                 <label className="block text-sm font-semibold text-gray-700">Nombre del Instrumentista</label>
                                 <input type="text" value={instrumentistName} onChange={(e) => setInstrumentistName(e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none" placeholder="Ingrese el nombre completo" required />
@@ -218,6 +213,7 @@ const HomePage: React.FC = () => {
                                 <input type="datetime-local" value={reviewDate} onChange={(e) => setReviewDate(e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none" />
                             </div>
 
+                            {/* Detalles del Equipo */}
                             <div className="space-y-2">
                                 <label className="block text-sm font-semibold text-gray-700">Nombre del equipo</label>
                                 <input type="text" value={deviceName} onChange={(e) => setDeviceName(e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none" placeholder="Ej: Medidor nivel..." />
@@ -297,7 +293,7 @@ const HomePage: React.FC = () => {
                                     Generar PDF
                                 </button>
                                 <button onClick={handleClearForm} className="w-full sm:w-auto flex items-center justify-center px-6 py-3 bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white font-semibold rounded-lg shadow-md transition-all duration-200 transform hover:scale-105">
-                                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1-1v3M4 7h16" /></svg>
+                                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                     Limpiar Formulario
                                 </button>
                             </div>
@@ -313,7 +309,7 @@ const HomePage: React.FC = () => {
                                         </span>
                                         Análisis Gráfico: {getDeviceTypeLabel(deviceType)}
                                     </h3>
-                                    {deviceType === 'transmitter' && <TransmitterChart ref={transmitterChartRef} data={transmitterMeasurements} outputUnit={outputUnit} />}
+                                    {deviceType === 'transmitter' && <TransmitterChart ref={transmitterChartRef} data={transmitterMeasurements} />}
                                     {deviceType === 'pressure_switch' && <PressureSwitchChart ref={pressureSwitchChartRef} tests={pressureSwitchTests} />}
                                     {deviceType === 'thermostat' && <ThermostatChart ref={thermostatChartRef} tests={thermostatTests} />}
                                 </div>
