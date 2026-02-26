@@ -79,7 +79,7 @@ const PressureSwitchChart = forwardRef<any, PressureSwitchChartProps>(({ tests, 
             <ResponsiveContainer width="100%" height="90%">
                 <LineChart data={processedData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-                    <XAxis dataKey="index" label={{ value: 'Disparada VS Response', position: 'insideBottom', offset: -5 }} />
+                    <XAxis dataKey="index" label={{ value: 'Disparada VS Repone', position: 'insideBottom', offset: -5 }} />
                     <YAxis unit=" PSI" />
                     <Tooltip />
                     <Legend verticalAlign="top" height={36}/>
