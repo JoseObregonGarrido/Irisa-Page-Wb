@@ -9,14 +9,26 @@ export default defineConfig({
     tailwindcss(),
   ],
   base: "./",
+  build: {
+    // Esto ayuda a que Rollup no falle con estructuras complejas de dependencias
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'jspdf', 'jspdf-autotable'],
+        },
+      },
+    },
+    // Aumenta el límite para evitar advertencias de tamaño de chunk
+    chunkSizeWarningLimit: 1000,
+  },
   server: {
-    host: true,        // Esto es igual a 0.0.0.0, permite conexiones externas
+    host: true,
     port: 5173,
     watch: {
-      usePolling: true // Necesario para que detecte cambios de archivos en Windows (WSL/Docker)
+      usePolling: true 
     },
     hmr: {
-      clientPort: 5173 // Asegura que el navegador sepa a qué puerto conectar el WebSocket
+      clientPort: 5173 
     }
   }
 })
