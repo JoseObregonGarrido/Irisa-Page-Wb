@@ -75,11 +75,11 @@ const PressureSwitchChart = forwardRef<any, PressureSwitchChartProps>(({ tests, 
     // Títulos sincronizados con el PDF
     const renderSequenceChart = () => (
         <div className="h-80 w-full bg-white p-6">
-            <h4 className="text-sm font-bold text-gray-500 mb-6 text-center uppercase tracking-wider">CURVA DE RESPUESTA</h4>
+            <h4 className="text-sm font-bold text-gray-500 mb-6 text-center uppercase tracking-wider">Disparada VS Response</h4>
             <ResponsiveContainer width="100%" height="90%">
                 <LineChart data={processedData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-                    <XAxis dataKey="index" label={{ value: 'Prueba #', position: 'insideBottom', offset: -5 }} />
+                    <XAxis dataKey="index" label={{ value: 'Disparada VS Response', position: 'insideBottom', offset: -5 }} />
                     <YAxis unit=" PSI" />
                     <Tooltip />
                     <Legend verticalAlign="top" height={36}/>
@@ -92,7 +92,7 @@ const PressureSwitchChart = forwardRef<any, PressureSwitchChartProps>(({ tests, 
 
     const renderDifferentialChart = () => (
         <div className="h-80 w-full bg-white p-6">
-            <h4 className="text-sm font-bold text-gray-500 mb-6 text-center uppercase tracking-wider">ANÁLISIS DE ERROR (Diferencial)</h4>
+            <h4 className="text-sm font-bold text-gray-500 mb-6 text-center uppercase tracking-wider">'Histérisis (Diferencial)</h4>
             <ResponsiveContainer width="100%" height="90%">
                 <AreaChart data={processedData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" />
@@ -108,7 +108,7 @@ const PressureSwitchChart = forwardRef<any, PressureSwitchChartProps>(({ tests, 
 
     const renderComplianceStats = () => (
         <div className="p-6 bg-white">
-            <h4 className="text-sm font-bold text-gray-500 mb-6 text-center uppercase tracking-wider">ANÁLISIS DE ESTADOS</h4>
+            <h4 className="text-sm font-bold text-gray-500 mb-6 text-center uppercase tracking-wider">ANÁLISIS DE CONTACTO</h4>
             <div className="grid grid-cols-2 gap-8">
                 <div className="rounded-xl border border-blue-100 bg-blue-50 p-8 text-center shadow-sm">
                     <p className="text-xs font-bold text-blue-600 uppercase mb-2">Contactos N.O</p>

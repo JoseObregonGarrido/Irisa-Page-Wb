@@ -92,7 +92,6 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
     };
 
     try {
-        // --- LOGO Y TÍTULO ---
         try {
             const b64Logo = await getBase64ImageFromUrl(logo);
             pdf.addImage(b64Logo, 'PNG', 20, 12, 50, 20);
@@ -101,7 +100,6 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         pdf.setFontSize(16).setFont('helvetica', 'bold').setTextColor(0).text('REPORTE DE CALIBRACIÓN', 80, 25);
         yPos = 45;
 
-        // --- 1. ESPECIFICACIONES ---
         addHeader('ESPECIFICACIONES DEL INSTRUMENTO');
         autoTable(pdf, {
             startY: yPos,
@@ -123,7 +121,6 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         });
         yPos = (pdf as any).lastAutoTable.finalY + 12;
 
-        // --- 2. TABLAS DE RESULTADOS ---
         if (data.deviceType === 'transmitter' && measurements.length) {
             addHeader(`RESULTADOS DE LAS MEDICIONES`);
             const headers = [
@@ -166,12 +163,14 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             const isPressure = data.deviceType === 'pressure_switch';
             addHeader(`RESULTADOS DE LAS PRUEBAS`);
             const unitLabel = data.unity || (isPressure ? 'PSI' : '°C');
-            const headers = [`Set Point (${unitLabel})`, `P. Disparada (${unitLabel})`, `P. Repone (${unitLabel})`, 'Diferencial', 'Estado Contacto'];
+            
+            // REMOVIDO: Set Point y Diferencial
+            const headers = [`P. Disparada (${unitLabel})`, `P. Repone (${unitLabel})`, 'Estado Contacto'];
 
             const body = switchTests.map(t => {
                 const disparo = parseFloat(t.presionDisparada || t.tempDisparada || t.pressureDisparada) || 0;
                 const repone = parseFloat(t.presionRepone || t.tempRepone || t.pressureRepone) || 0;
-                return [t.setPoint || 'N/A', disparo, repone, Math.abs(disparo - repone).toFixed(2), getContactLabel(t)];
+                return [disparo, repone, getContactLabel(t)];
             });
 
             autoTable(pdf, {
@@ -180,17 +179,15 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 body: body,
                 theme: 'plain',
                 headStyles: { fillColor: colors.risaraldaGreen, halign: 'center', fontSize: 8.5, fontStyle: 'bold', textColor: 255 },
-                styles: { fontSize: 8.5, halign: 'center', cellPadding: 3, textColor: 40 },
-                columnStyles: { 3: { fontStyle: 'italic' } }
+                styles: { fontSize: 8.5, halign: 'center', cellPadding: 3, textColor: 40 }
             });
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }
 
-        // --- 3. GRÁFICAS (Sincronización de Nombres y Espaciado) ---
         if (chartImages && chartImages.length > 0) {
             const chartTitles = [
-                'Disparada VS Response',
-                'Histérisis (Diferencial)',
+                'Disparada VS Repone',
+                'Histéresis (Diferencial)',
                 'Contactos'
             ];
 
@@ -198,11 +195,10 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 if (yPos + 95 > 280) { pdf.addPage(); yPos = 20; }
                 addHeader(chartTitles[index] || 'GRÁFICA DE ANÁLISIS');
                 pdf.addImage(img, 'PNG', 25, yPos, 160, 80);
-                yPos += 95; // Espacio suficiente para que no se vea pegado
+                yPos += 95;
             });
         }
 
-        // --- 4. OBSERVACIONES ---
         if (data.observations) {
             if (yPos + 40 > 280) { pdf.addPage(); yPos = 20; }
             addHeader('OBSERVACIONES Y NOTAS TÉCNICAS');
@@ -215,7 +211,6 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             });
         }
 
-        // --- PIE DE PÁGINA ---
         const pageCount = (pdf as any).internal.getNumberOfPages();
         for (let i = 1; i <= pageCount; i++) {
             pdf.setPage(i);
