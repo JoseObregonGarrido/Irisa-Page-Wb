@@ -102,11 +102,9 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         });
         yPos = (pdf as any).lastAutoTable.finalY + 12;
 
-        // --- TABLA TRANSMISORES (AHORA INCLUIDA Y DINÁMICA) ---
+        // --- TABLA TRANSMISORES ---
         if (data.deviceType === 'transmitter' && measurements.length) {
             addHeader(`RESULTADOS DE LAS MEDICIONES (UNIDAD: ${unit.toUpperCase()})`);
-            
-            // Configuración dinámica de cabeceras
             const headers = ['Ideal UE', 'Ideal mA'];
             if (isOhm) headers.push('Ideal Ohm');
             headers.push('Patrón UE');
@@ -115,7 +113,6 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             if (hasUE) headers.push('Err UE');
             headers.push('Err mA', 'Err %');
 
-            // Mapeo de datos de las filas
             const body = measurements.map(m => {
                 const row = [m.idealUe, m.idealmA];
                 if (isOhm) row.push(m.idealOhm || '0');
@@ -138,22 +135,24 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }
 
-        // --- TABLA PRESOSTATO / TERMOSTATO ---
-        const switchTests = data.thermostatTests || data.pressureSwitchTests || [];
-        if ((data.deviceType === 'pressure_switch' || data.deviceType === 'thermostat') && switchTests.length) {
+        // --- TABLA PRESOSTATO / TERMOSTATO (SIN SET POINT) ---
+        const switchTests = (data.deviceType === 'thermostat') ? data.thermostatTests : data.pressureSwitchTests;
+        
+        if ((data.deviceType === 'pressure_switch' || data.deviceType === 'thermostat') && switchTests && switchTests.length) {
             const isThermostat = data.deviceType === 'thermostat';
             addHeader(`RESULTADOS DE LAS PRUEBAS (${isThermostat ? 'TERMOSTATO' : 'PRESOSTATO'})`);
             
             const unitLabel = data.unity || (isThermostat ? '°C' : 'PSI');
+            
             const headers = [
-                isThermostat ? `T. Disparo (${unitLabel})` : `P. Disparada (${unitLabel})`,
-                isThermostat ? `T. Repone (${unitLabel})` : `P. Repone (${unitLabel})`,
+                isThermostat ? `Temp. Disparo (${unitLabel})` : `Presión Disparada (${unitLabel})`,
+                isThermostat ? `Temp. Repone (${unitLabel})` : `Presión Repone (${unitLabel})`,
                 'Estado Contacto'
             ];
 
             const body = switchTests.map(t => [
-                t.tempDisparo || t.presionDisparada || '0',
-                t.tempRepone || t.presionRepone || '0',
+                isThermostat ? (t.tempDisparo || '0') : (t.presionDisparada || '0'),
+                isThermostat ? (t.tempRepone || '0') : (t.presionRepone || '0'),
                 getContactLabel(t)
             ]);
 
@@ -162,19 +161,16 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 head: [headers],
                 body: body,
                 theme: 'grid',
-                headStyles: { fillColor: colors.risaraldaGreen, halign: 'center', fontSize: 8.5 },
-                styles: { fontSize: 8.5, halign: 'center', cellPadding: 3 }
+                headStyles: { fillColor: colors.risaraldaGreen, halign: 'center', fontSize: 8.5, fontStyle: 'bold' },
+                styles: { fontSize: 8.5, halign: 'center', cellPadding: 3, textColor: 40 }
             });
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }
 
-        // --- GRÁFICOS (SIN TÍTULOS) ---
+        // --- GRÁFICOS ---
         if (chartImages && chartImages.length > 0) {
             chartImages.forEach((img) => {
-                // Si el gráfico no cabe, saltamos de página
                 if (yPos + 85 > 280) { pdf.addPage(); yPos = 20; }
-                
-                // Renderizamos la imagen directamente sin llamar a addHeader()
                 pdf.addImage(img, 'PNG', 25, yPos, 160, 80);
                 yPos += 85; 
             });
