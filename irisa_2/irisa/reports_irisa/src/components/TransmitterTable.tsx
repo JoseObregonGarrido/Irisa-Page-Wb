@@ -118,7 +118,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
             <div className="bg-gradient-to-r from-teal-600 to-emerald-600 px-4 py-4 sm:px-6">
                 <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                     <div className="flex flex-wrap items-center gap-3">
-                        <h3 className="text-lg font-bold text-white tracking-tight">Mediciones de Sensor</h3>
+                        <h3 className="text-lg font-bold text-white tracking-tight">Mediciones de Transmisor</h3>
                         <div className="flex bg-black/20 p-1 rounded-lg border border-white/10">
                             <button type="button" onClick={() => setOutputUnit('mA')} className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${outputUnit === 'mA' ? 'bg-white text-teal-700 shadow' : 'text-white hover:bg-white/10'}`}>mA</button>
                             <button type="button" onClick={() => setOutputUnit('ohm')} className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${outputUnit === 'ohm' ? 'bg-white text-teal-700 shadow' : 'text-white hover:bg-white/10'}`}>Ohm</button>
