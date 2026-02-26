@@ -200,6 +200,6 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             pdf.text(`Página ${i} de ${pageCount}`, 190, 290, { align: 'right' });
         }
 
-        pdf.save(`Reporte_${data.deviceCode || 'Instrumentista'}.pdf`);
+        pdf.save(`Reporte_${data.deviceCode || 'Instrumento'}.pdf`);
     } catch (e) { console.error("Error generando PDF:", e); }
 };

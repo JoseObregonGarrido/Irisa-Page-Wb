@@ -1,9 +1,11 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useImperativeHandle, forwardRef } from 'react';
 import { 
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, 
-    ResponsiveContainer, ScatterChart, Scatter, ZAxis 
+    ResponsiveContainer, ScatterChart, Scatter, ReferenceLine, ZAxis 
 } from 'recharts';
+import { toPng } from 'html-to-image';
 
+// ACTUALIZACIÓN: Interfaz alineada con ThermostatTable y HomePage
 export interface ThermostatTest {
     tempDisparo: string;
     tempRepone: string;
@@ -12,16 +14,24 @@ export interface ThermostatTest {
 }
 
 interface ThermostatChartProps {
-    tests: ThermostatTest[];
+    tests?: ThermostatTest[];
+    data?: ThermostatTest[];
 }
 
 type ChartView = 'sequence' | 'contacts' | 'differential';
 
-const ThermostatChart: React.FC<ThermostatChartProps> = ({ tests }) => {
+const ThermostatChart = forwardRef<any, ThermostatChartProps>(({ tests, data }, ref) => {
+    const chartData = tests || data || [];
     const [activeView, setActiveView] = useState<ChartView>('sequence');
 
+    // Refs para capturas
+    const sequenceRef = useRef<HTMLDivElement>(null);
+    const contactsRef = useRef<HTMLDivElement>(null);
+    const differentialRef = useRef<HTMLDivElement>(null);
+
+    // Mapeo de los nuevos datos para Recharts
     const processedData = useMemo(() => {
-        return tests.map((test, index) => {
+        return chartData.map((test, index) => {
             const disparo = parseFloat(test.tempDisparo) || 0;
             const repone = parseFloat(test.tempRepone) || 0;
             
@@ -31,14 +41,42 @@ const ThermostatChart: React.FC<ThermostatChartProps> = ({ tests }) => {
                 tempRepone: repone,
                 noState: test.isNO ? 1 : 0,
                 ncState: test.isNC ? 1 : 0,
-                differential: Math.abs(disparo - repone),
+                differential: Math.abs(disparo - repone), // Diferencial térmico real
             };
         });
-    }, [tests]);
+    }, [chartData]);
+
+    // --- Función de Captura para PDF ---
+    const captureAllCharts = async () => {
+        const captures: string[] = [];
+        const refs = [sequenceRef, contactsRef, differentialRef];
+        
+        for (const chartRef of refs) {
+            if (chartRef.current) {
+                try {
+                    const dataUrl = await toPng(chartRef.current, { 
+                        backgroundColor: '#ffffff',
+                        pixelRatio: 2,
+                        cacheBust: true 
+                    });
+                    captures.push(dataUrl);
+                } catch (err) {
+                    console.error("Error capturando gráfico termostato:", err);
+                }
+            }
+        }
+        return captures;
+    };
+
+    useImperativeHandle(ref, () => ({
+        captureAllCharts
+    }));
+
+    // --- Renders Actualizados ---
 
     const renderSequence = () => (
         <div className="h-96 w-full bg-white p-4">
-            <h4 className="text-lg font-semibold text-gray-700 mb-4 text-center">Secuencia de temperaturas</h4>
+            <h4 className="text-lg font-semibold text-gray-700 mb-4 text-center">Secuencia de Temperaturas</h4>
             <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={processedData}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -46,8 +84,8 @@ const ThermostatChart: React.FC<ThermostatChartProps> = ({ tests }) => {
                     <YAxis label={{ value: '°C', angle: -90, position: 'insideLeft' }} />
                     <Tooltip />
                     <Legend verticalAlign="top" />
-                    <Line name="T. disparo" type="monotone" dataKey="tempDisparo" stroke="#ef4444" strokeWidth={3} dot={{ r: 6 }} isAnimationActive={false} />
-                    <Line name="T. repone" type="monotone" dataKey="tempRepone" stroke="#3b82f6" strokeWidth={3} dot={{ r: 6 }} isAnimationActive={false} />
+                    <Line name="T. Disparo" type="monotone" dataKey="tempDisparo" stroke="#ef4444" strokeWidth={3} dot={{ r: 6 }} isAnimationActive={false} />
+                    <Line name="T. Repone" type="monotone" dataKey="tempRepone" stroke="#3b82f6" strokeWidth={3} dot={{ r: 6 }} isAnimationActive={false} />
                 </LineChart>
             </ResponsiveContainer>
         </div>
@@ -55,17 +93,17 @@ const ThermostatChart: React.FC<ThermostatChartProps> = ({ tests }) => {
 
     const renderContacts = () => (
         <div className="h-96 w-full bg-white p-4">
-            <h4 className="text-lg font-semibold text-gray-700 mb-4 text-center">Estado de contactos (activo/inactivo)</h4>
+            <h4 className="text-lg font-semibold text-gray-700 mb-4 text-center">Estado de Contactos (Activo/Inactivo)</h4>
             <ResponsiveContainer width="100%" height="100%">
                 <ScatterChart margin={{ top: 20, right: 30, bottom: 20, left: 20 }}>
                     <CartesianGrid />
                     <XAxis type="number" dataKey="index" name="Prueba" unit="#" />
-                    <YAxis type="number" dataKey="state" name="Estado" ticks={[0, 1]} tickFormatter={(val) => val === 1 ? 'Activo' : 'Inactivo'} />
+                    <YAxis type="number" dataKey="state" name="Estado" ticks={[0, 1]} tickFormatter={(val) => val === 1 ? 'ACTIVO' : 'INACTIVO'} />
                     <ZAxis range={[100, 101]} />
                     <Tooltip cursor={{ strokeDasharray: '3 3' }} />
                     <Legend verticalAlign="top" />
-                    <Scatter name="N.O (Normal abierto)" data={processedData.map(d => ({ index: d.index, state: d.noState }))} fill="#10b981" shape="square" isAnimationActive={false} />
-                    <Scatter name="N.C (Normal cerrado)" data={processedData.map(d => ({ index: d.index, state: d.ncState }))} fill="#8b5cf6" shape="circle" isAnimationActive={false} />
+                    <Scatter name="N.O (Normal Abierto)" data={processedData.map(d => ({ index: d.index, state: d.noState }))} fill="#10b981" shape="square" isAnimationActive={false} />
+                    <Scatter name="N.C (Normal Cerrado)" data={processedData.map(d => ({ index: d.index, state: d.ncState }))} fill="#8b5cf6" shape="circle" isAnimationActive={false} />
                 </ScatterChart>
             </ResponsiveContainer>
         </div>
@@ -73,14 +111,14 @@ const ThermostatChart: React.FC<ThermostatChartProps> = ({ tests }) => {
 
     const renderDifferential = () => (
         <div className="h-96 w-full bg-white p-4">
-            <h4 className="text-lg font-semibold text-gray-700 mb-4 text-center">Análisis de diferencial (Hysteresis)</h4>
+            <h4 className="text-lg font-semibold text-gray-700 mb-4 text-center">Análisis de Diferencial (Hysteresis)</h4>
             <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={processedData}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="index" />
                     <YAxis label={{ value: 'Δ °C', angle: -90, position: 'insideLeft' }} />
                     <Tooltip />
-                    <Line name="Diferencial real" type="step" dataKey="differential" stroke="#f59e0b" strokeWidth={2} dot={{ r: 5 }} isAnimationActive={false} />
+                    <Line name="Diferencial Real" type="step" dataKey="differential" stroke="#f59e0b" strokeWidth={2} dot={{ r: 5 }} isAnimationActive={false} />
                 </LineChart>
             </ResponsiveContainer>
         </div>
@@ -97,7 +135,7 @@ const ThermostatChart: React.FC<ThermostatChartProps> = ({ tests }) => {
             <div className="bg-gradient-to-r from-slate-700 to-slate-900 rounded-t-xl px-6 py-5 shadow-lg text-white">
                 <div className="flex items-center">
                     <span className="text-2xl mr-3">🌡️</span>
-                    <h3 className="text-xl font-bold">Análisis de termostato</h3>
+                    <h3 className="text-xl font-bold">Análisis de Termostato</h3>
                 </div>
             </div>
 
@@ -122,11 +160,18 @@ const ThermostatChart: React.FC<ThermostatChartProps> = ({ tests }) => {
                         {activeView === 'sequence' && renderSequence()}
                         {activeView === 'contacts' && renderContacts()}
                         {activeView === 'differential' && renderDifferential()}
+
+                        {/* Oculto para exportación PDF */}
+                        <div style={{ position: 'absolute', left: '-9999px', top: 0, width: '800px' }}>
+                            <div ref={sequenceRef}>{renderSequence()}</div>
+                            <div ref={contactsRef}>{renderContacts()}</div>
+                            <div ref={differentialRef}>{renderDifferential()}</div>
+                        </div>
                     </>
                 )}
             </div>
         </div>
     );
-};
+});
 
 export default ThermostatChart;
