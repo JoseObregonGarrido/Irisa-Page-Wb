@@ -27,30 +27,10 @@ export interface ReportData {
     outputUnit?: 'mA' | 'ohm';    
     transmitterMeasurements?: any[];
     pressureSwitchTests?: any[];
-    thermostatTests?: any[]; // Alineado con el nuevo componente
+    thermostatTests?: any[]; 
 }
 
-const calculateRowErrors = (m: any, unit: 'mA' | 'ohm') => {
-    const patronUe = parseFloat(m.patronUe) || 0;
-    const ueTransmitter = parseFloat(m.ueTransmitter) || 0;
-    const idealOutput = parseFloat(m.idealmA) || 0;
-    const sensorOutput = parseFloat(m.maTransmitter) || 0;
-    
-    const errorUe = ueTransmitter - patronUe; 
-    const errorOutput = idealOutput - sensorOutput; 
-    
-    const divisor = unit === 'mA' ? 16 : 100; 
-    const errorPercentage = divisor !== 0 ? (errorOutput / divisor) * 100 : 0; 
-    
-    return {
-        errorUe: errorUe.toFixed(3),
-        errorOutput: errorOutput.toFixed(3),
-        errorPercentage: errorPercentage.toFixed(2)
-    };
-};
-
 const getContactLabel = (t: any) => {
-    // Soporte para ambos: el booleano isNO/isNC o un label directo
     if (t.isNO === true) return 'N.O (Abierto)';
     if (t.isNC === true) return 'N.C (Cerrado)';
     if (t.contactState) return t.contactState;
@@ -78,8 +58,6 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
 
     const colors: { [key: string]: [number, number, number] } = { 
         risaraldaGreen: [20, 110, 90], 
-        errorBg: [254, 242, 242],
-        errorText: [185, 28, 28],
         lightGray: [245, 245, 245],
         white: [252, 252, 252]
     };
@@ -116,7 +94,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 ['Orden de Trabajo', data.workOrder, 'Fecha de Revisión', data.reviewDate || 'N/A']
             ],
             theme: 'plain',
-            styles: { fontSize: 8.5, cellPadding: 3, lineWidth: 0, textColor: 50 },
+            styles: { fontSize: 8.5, cellPadding: 3, textColor: 50 },
             columnStyles: { 
                 0: { fontStyle: 'bold', fillColor: colors.lightGray, cellWidth: 40 },
                 2: { fontStyle: 'bold', fillColor: colors.lightGray, cellWidth: 40 }
@@ -124,10 +102,39 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         });
         yPos = (pdf as any).lastAutoTable.finalY + 12;
 
-        // --- TABLA TRANSMISORES ---
+        // --- TABLA TRANSMISORES (AHORA INCLUIDA Y DINÁMICA) ---
         if (data.deviceType === 'transmitter' && measurements.length) {
-            addHeader(`RESULTADOS DE LAS MEDICIONES`);
-            // ... (Lógica de transmisores se mantiene igual)
+            addHeader(`RESULTADOS DE LAS MEDICIONES (UNIDAD: ${unit.toUpperCase()})`);
+            
+            // Configuración dinámica de cabeceras
+            const headers = ['Ideal UE', 'Ideal mA'];
+            if (isOhm) headers.push('Ideal Ohm');
+            headers.push('Patrón UE');
+            if (hasUE) headers.push('UE Trans.');
+            headers.push('mA Sensor', '% Rango');
+            if (hasUE) headers.push('Err UE');
+            headers.push('Err mA', 'Err %');
+
+            // Mapeo de datos de las filas
+            const body = measurements.map(m => {
+                const row = [m.idealUe, m.idealmA];
+                if (isOhm) row.push(m.idealOhm || '0');
+                row.push(m.patronUe);
+                if (hasUE) row.push(m.ueTransmitter);
+                row.push(m.maTransmitter, m.percentage);
+                if (hasUE) row.push(m.errorUe);
+                row.push(m.errorMa, m.errorPercentage);
+                return row;
+            });
+
+            autoTable(pdf, {
+                startY: yPos,
+                head: [headers],
+                body: body,
+                theme: 'grid',
+                headStyles: { fillColor: colors.risaraldaGreen, halign: 'center', fontSize: 7, fontStyle: 'bold' },
+                styles: { fontSize: 7, halign: 'center', cellPadding: 2 }
+            });
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }
 
@@ -138,43 +145,38 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             addHeader(`RESULTADOS DE LAS PRUEBAS (${isThermostat ? 'TERMOSTATO' : 'PRESOSTATO'})`);
             
             const unitLabel = data.unity || (isThermostat ? '°C' : 'PSI');
-            const col1Label = isThermostat ? `T. Disparo (${unitLabel})` : `P. Disparada (${unitLabel})`;
-            const col2Label = isThermostat ? `T. Repone (${unitLabel})` : `P. Repone (${unitLabel})`;
+            const headers = [
+                isThermostat ? `T. Disparo (${unitLabel})` : `P. Disparada (${unitLabel})`,
+                isThermostat ? `T. Repone (${unitLabel})` : `P. Repone (${unitLabel})`,
+                'Estado Contacto'
+            ];
 
-            const headers = [col1Label, col2Label, 'Estado Contacto'];
-
-            const body = switchTests.map(t => {
-                // Normalización de acceso a propiedades (acepta ambos formatos de interfaz)
-                const disparo = t.tempDisparo || t.presionDisparada || t.pressureDisparada || '0';
-                const repone = t.tempRepone || t.presionRepone || t.pressureRepone || '0';
-                return [disparo, repone, getContactLabel(t)];
-            });
+            const body = switchTests.map(t => [
+                t.tempDisparo || t.presionDisparada || '0',
+                t.tempRepone || t.presionRepone || '0',
+                getContactLabel(t)
+            ]);
 
             autoTable(pdf, {
                 startY: yPos,
                 head: [headers],
                 body: body,
-                theme: 'plain',
-                headStyles: { fillColor: colors.risaraldaGreen, halign: 'center', fontSize: 8.5, fontStyle: 'bold', textColor: 255 },
-                styles: { fontSize: 8.5, halign: 'center', cellPadding: 3, textColor: 40 }
+                theme: 'grid',
+                headStyles: { fillColor: colors.risaraldaGreen, halign: 'center', fontSize: 8.5 },
+                styles: { fontSize: 8.5, halign: 'center', cellPadding: 3 }
             });
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }
 
-        // --- GRÁFICOS (Capturados desde ThermostatChart) ---
+        // --- GRÁFICOS (SIN TÍTULOS) ---
         if (chartImages && chartImages.length > 0) {
-            const chartTitles = [
-                'Comportamiento de Disparo y Reposición',
-                'Análisis de Estados de Contacto',
-                'Histéresis (Diferencial Térmico)'
-            ];
-
-            chartImages.forEach((img, index) => {
-                if (yPos + 95 > 280) { pdf.addPage(); yPos = 20; }
-                addHeader(chartTitles[index] || 'GRÁFICA DE ANÁLISIS');
-                // Ajuste de proporciones para que el gráfico no se vea estirado
+            chartImages.forEach((img) => {
+                // Si el gráfico no cabe, saltamos de página
+                if (yPos + 85 > 280) { pdf.addPage(); yPos = 20; }
+                
+                // Renderizamos la imagen directamente sin llamar a addHeader()
                 pdf.addImage(img, 'PNG', 25, yPos, 160, 80);
-                yPos += 95;
+                yPos += 85; 
             });
         }
 
