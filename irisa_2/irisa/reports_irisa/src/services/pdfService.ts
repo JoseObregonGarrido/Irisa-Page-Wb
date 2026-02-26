@@ -109,23 +109,24 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
 
         // --- TABLA TRANSMISORES ---
         if (data.deviceType === 'transmitter' && measurements.length) {
-            addHeader(`Resultados de las mediciones (Unidad: ${unit})`);
+            // Título de sección cambia a RTD si corresponde
+            addHeader(`Resultados de las mediciones (Unidad: ${isOhm ? 'RTD' : 'mA'})`);
             
-            // Construcción de Headers dinámica y coherente con la UI
+            // Construcción de Headers
             const headers = ['Ideal UE', 'Ideal mA'];
             if (isOhm) headers.push('Ideal ohm');
             headers.push('Patrón UE');
             if (hasUE) headers.push('UE transmisor');
             
-            // CAMBIO CLAVE: Aquí se refleja "mA sensor" si es Ohm
+            // Refleja "mA sensor" si es RTD (Ohm)
             headers.push(isOhm ? 'mA sensor' : 'mA transmisor');
             
             if (isOhm) headers.push('ohm sensor');
             headers.push('% Rango');
             if (hasUE) headers.push('Error UE');
             
-            // CAMBIO CLAVE: Aquí se refleja "Error ohm" si es Ohm
-            headers.push(isOhm ? 'Error ohm' : 'Error mA', 'Error %');
+            // REQUERIMIENTO: Mantener Error mA incluso en modo Ohm
+            headers.push('Error mA', 'Error %');
 
             const body = measurements.map(m => {
                 const row = [m.idealUE || m.idealUe, m.idealmA]; 
@@ -145,13 +146,13 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 head: [headers],
                 body: body,
                 theme: 'grid',
-                headStyles: { fillColor: colors.risaraldaGreen, halign: 'center', fontSize: 6.5, fontStyle: 'bold' },
+                headStyles: { fillColor: colors.risaraldaGreen, halign: 'center', fontSize: 6, fontStyle: 'bold' },
                 styles: { fontSize: 6.5, halign: 'center', cellPadding: 1.5 }
             });
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }
 
-        // --- TABLA PRESOSTATO / TERMOSTATO (MANTENIDO SIN CAMBIOS) ---
+        // --- TABLA PRESOSTATO / TERMOSTATO ---
         const isThermostat = data.deviceType === 'thermostat';
         const switchTests = isThermostat ? data.thermostatTests : data.pressureSwitchTests;
         
