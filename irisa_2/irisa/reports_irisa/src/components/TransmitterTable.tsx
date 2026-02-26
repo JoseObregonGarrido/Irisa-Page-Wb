@@ -74,16 +74,22 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
     const desktopMinWidth = isOhm ? 'lg:min-w-[1250px]' : 'lg:min-w-[1000px]';
 
     const calculateErrors = (measurement: Measurement) => {
-        const patronUe = parseFloat(measurement.patronUe) || 0;
-        const ueTransmitter = parseFloat(measurement.ueTransmitter) || 0;
-        
-        // LOGICA SOLICITADA: Error mA = Ideal mA - mA Sensor (maTransmitter)
+        // Valores base para el cálculo
+        const idealUeValue = parseFloat(measurement.idealUe) || 0;
+        const ueTransmitterValue = parseFloat(measurement.ueTransmitter) || 0;
         const idealMaValue = parseFloat(measurement.idealmA) || 0;
         const maSensorValue = parseFloat(measurement.maTransmitter) || 0;
         
-        const errorUe = ueTransmitter - patronUe; 
-        const errorMa = idealMaValue - maSensorValue; // Cambiado según tu instrucción
+        // 1. Error en Unidades de Ingeniería (UE)
+        // Se compara lo que marca el transmisor contra lo que idealmente debería marcar
+        const errorUe = ueTransmitterValue - idealUeValue; 
+
+        // 2. Error en mA (o Ohm si aplica)
+        // Se compara el ideal teórico contra lo medido por el sensor
+        const errorMa = maSensorValue - idealMaValue; 
         
+        // 3. Error Porcentual
+        // Se basa en el span del rango de salida (16 para mA, usualmente 100 para Ohm)
         const divisor = isOhm ? 100 : 16;
         const errorPercentage = (errorMa / divisor) * 100; 
         
@@ -100,7 +106,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
         newMeasurements[index] = { ...newMeasurements[index], [field]: value };
         
         // Recalcular si cambian campos críticos
-        const relevantFields: (keyof Measurement)[] = ["patronUe", "ueTransmitter", "idealmA", "maTransmitter", "idealOhm"];
+        const relevantFields: (keyof Measurement)[] = ["idealUe", "patronUe", "ueTransmitter", "idealmA", "maTransmitter", "idealOhm"];
         if (relevantFields.includes(field)) {
             newMeasurements[index] = calculateErrors(newMeasurements[index]);
         }
@@ -171,7 +177,6 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                                         <div className="lg:px-2 lg:py-3 lg:bg-red-50/20"><InputField label="Err UE" unit="UE" value={m.errorUe} isError readOnly /></div>
                                     )}
 
-                                    {/* Error mA SIEMPRE visible y calculado como (Ideal mA - mA Sensor) */}
                                     <div className="lg:px-2 lg:py-3 lg:bg-red-50/20"><InputField label="Err mA" unit="mA" value={m.errorMa} isError readOnly /></div>
                                     <div className="lg:px-2 lg:py-3 lg:bg-red-50/20"><InputField label="Err %" unit="%" value={m.errorPercentage} isError readOnly /></div>
 
