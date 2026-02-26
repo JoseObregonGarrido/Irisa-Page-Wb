@@ -49,13 +49,15 @@ const PressureSwitchChart = forwardRef<any, PressureSwitchChartProps>(({ tests, 
         total: rawData.length
     }), [rawData]);
 
+    // FUNCIÓN DE CAPTURA CORREGIDA
     const captureAllCharts = async () => {
         const captures: string[] = [];
-        // ORDEN PARA EL PDF: 1. Disparada VS Repone, 2. Histéresis, 3. Contactos
+        
+        // ESTE ORDEN DEBE SER IDÉNTICO AL DEL PDF SERVICE
         const chartElements = [
-            { ref: sequenceRef, name: 'Disparada VS Repone' },
-            { ref: differentialRef, name: 'Histéresis' },
-            { ref: complianceRef, name: 'Contactos' }
+            { ref: sequenceRef, name: 'Disparada VS Repone' }, // Índice 0
+            { ref: differentialRef, name: 'Histéresis' },      // Índice 1 -> Ahora sí irá bajo el título Histéresis
+            { ref: complianceRef, name: 'Contactos' }          // Índice 2 -> Ahora sí irá bajo el título Contactos
         ];
         
         for (const item of chartElements) {
@@ -80,7 +82,6 @@ const PressureSwitchChart = forwardRef<any, PressureSwitchChartProps>(({ tests, 
 
     const renderSequenceChart = (isCapture = false) => (
         <div className={`w-full bg-white ${isCapture ? 'p-10' : 'p-6 h-80'}`}>
-            {/* TÍTULO CORREGIDO AQUÍ */}
             <h4 className="text-sm font-bold text-gray-500 mb-6 text-center uppercase tracking-wider">Disparada VS Repone</h4>
             <ResponsiveContainer width="100%" height={isCapture ? 400 : "90%"}>
                 <LineChart data={processedData} margin={{ top: 40, right: 30, left: 20, bottom: 20 }}>
@@ -103,7 +104,7 @@ const PressureSwitchChart = forwardRef<any, PressureSwitchChartProps>(({ tests, 
                 <AreaChart data={processedData} margin={{ top: 40, right: 30, left: 20, bottom: 20 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="index" />
-                    <YAxis domain={[0, (dataMax: number) => Math.ceil(dataMax + 2)]} />
+                    <YAxis domain={[0, (dataMax: number) => Math.ceil(dataMax + 5)]} />
                     <Tooltip />
                     <Legend verticalAlign="top" align="center" wrapperStyle={{ paddingBottom: '20px' }} />
                     <ReferenceLine y={0} stroke="#ef4444" strokeDasharray="5 5" />
@@ -161,7 +162,7 @@ const PressureSwitchChart = forwardRef<any, PressureSwitchChartProps>(({ tests, 
                 {activeView === 'differential' && renderDifferentialChart()}
                 {activeView === 'compliance' && renderComplianceStats()}
 
-                {/* BLOQUE DE CAPTURA SINCRONIZADO */}
+                {/* BLOQUE DE CAPTURA CON EL ORDEN CORRECTO PARA EL PDF */}
                 <div style={{ position: 'absolute', left: '-9999px', top: 0, width: '1000px' }}>
                     <div ref={sequenceRef}>{renderSequenceChart(true)}</div>
                     <div ref={differentialRef}>{renderDifferentialChart(true)}</div>
