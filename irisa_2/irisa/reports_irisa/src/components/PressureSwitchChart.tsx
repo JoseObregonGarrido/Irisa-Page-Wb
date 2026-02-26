@@ -57,9 +57,9 @@ const PressureSwitchChart = forwardRef<any, PressureSwitchChartProps>(({ tests, 
                 try {
                     const dataUrl = await toPng(chartRef.current, { 
                         backgroundColor: '#ffffff',
-                        pixelRatio: 2,
+                        pixelRatio: 3, // Mayor densidad de pixeles para que no se pixele en el PDF
                         cacheBust: true,
-                        style: { padding: '20px' } // Evita que salga pegado en la captura
+                        style: { padding: '25px' } 
                     });
                     captures.push(dataUrl);
                 } catch (err) {
@@ -72,17 +72,19 @@ const PressureSwitchChart = forwardRef<any, PressureSwitchChartProps>(({ tests, 
 
     useImperativeHandle(ref, () => ({ captureAllCharts }));
 
-    // Títulos sincronizados con el PDF
     const renderSequenceChart = () => (
         <div className="h-80 w-full bg-white p-6">
-            <h4 className="text-sm font-bold text-gray-500 mb-6 text-center uppercase tracking-wider">Disparada VS Repone</h4>
+            <h4 className="text-sm font-bold text-gray-400 mb-2 text-center uppercase tracking-wider">Disparada VS Repone</h4>
             <ResponsiveContainer width="100%" height="90%">
-                <LineChart data={processedData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                {/* MARGIN TOP AUMENTADO A 40 PARA QUE LA LEYENDA NO CHOQUE */}
+                <LineChart data={processedData} margin={{ top: 40, right: 30, left: 20, bottom: 20 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
-                    <XAxis dataKey="index" label={{ value: 'Disparada VS Repone', position: 'insideBottom', offset: -5 }} />
-                    <YAxis unit=" PSI" />
+                    <XAxis dataKey="index" label={{ value: 'Muestras', position: 'insideBottom', offset: -10 }} />
+                    {/* DOMAIN CON 'dataMax + 2' PARA DAR AIRE ARRIBA SIEMPRE */}
+                    <YAxis unit=" PSI" domain={[0, (dataMax: number) => Math.ceil(dataMax + 2)]} />
                     <Tooltip />
-                    <Legend verticalAlign="top" height={36}/>
+                    {/* LEYENDA CON WRAPPERSTYLE PARA SEPARARLA DE LOS PUNTOS */}
+                    <Legend verticalAlign="top" align="center" wrapperStyle={{ paddingBottom: '20px' }} />
                     <Line type="monotone" dataKey="presionDisparada" stroke="#f59e0b" name="Presion. Disparada" strokeWidth={3} dot={{ r: 5 }} isAnimationActive={false} />
                     <Line type="monotone" dataKey="presionRepone" stroke="#10b981" name="Presion. Repone" strokeWidth={3} dot={{ r: 5 }} isAnimationActive={false} />
                 </LineChart>
@@ -92,13 +94,14 @@ const PressureSwitchChart = forwardRef<any, PressureSwitchChartProps>(({ tests, 
 
     const renderDifferentialChart = () => (
         <div className="h-80 w-full bg-white p-6">
-            <h4 className="text-sm font-bold text-gray-500 mb-6 text-center uppercase tracking-wider">'Histérisis (Diferencial)</h4>
+            <h4 className="text-sm font-bold text-gray-400 mb-2 text-center uppercase tracking-wider">Histéresis (Diferencial)</h4>
             <ResponsiveContainer width="100%" height="90%">
-                <AreaChart data={processedData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                <AreaChart data={processedData} margin={{ top: 40, right: 30, left: 20, bottom: 20 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="index" />
-                    <YAxis />
+                    <YAxis domain={[0, (dataMax: number) => Math.ceil(dataMax + 1)]} />
                     <Tooltip />
+                    <Legend verticalAlign="top" align="center" wrapperStyle={{ paddingBottom: '20px' }} />
                     <ReferenceLine y={0} stroke="#ef4444" strokeDasharray="5 5" />
                     <Area type="monotone" dataKey="differential" stroke="#6366f1" fill="#e0e7ff" name="Diferencial (PSI)" isAnimationActive={false} />
                 </AreaChart>
@@ -107,8 +110,8 @@ const PressureSwitchChart = forwardRef<any, PressureSwitchChartProps>(({ tests, 
     );
 
     const renderComplianceStats = () => (
-        <div className="p-6 bg-white">
-            <h4 className="text-sm font-bold text-gray-500 mb-6 text-center uppercase tracking-wider">ANÁLISIS DE CONTACTO</h4>
+        <div className="p-6 bg-white min-h-[320px] flex flex-col justify-center">
+            <h4 className="text-sm font-bold text-gray-400 mb-8 text-center uppercase tracking-wider">ANÁLISIS DE CONTACTO</h4>
             <div className="grid grid-cols-2 gap-8">
                 <div className="rounded-xl border border-blue-100 bg-blue-50 p-8 text-center shadow-sm">
                     <p className="text-xs font-bold text-blue-600 uppercase mb-2">Contactos N.O</p>
@@ -134,7 +137,7 @@ const PressureSwitchChart = forwardRef<any, PressureSwitchChartProps>(({ tests, 
             </div>
 
             <div className="flex border-b bg-gray-50/50">
-                {[{ id: 'sequence', name: 'Disparada VS Response', icon: '📈' }, { id: 'differential', name: 'Histérisis (Diferencial)', icon: '📊' }, { id: 'compliance', name: 'Contactos', icon: '🔘' }].map((view) => (
+                {[{ id: 'sequence', name: 'Disparada VS Response', icon: '📈' }, { id: 'differential', name: 'Histéresis (Diferencial)', icon: '📊' }, { id: 'compliance', name: 'Contactos', icon: '🔘' }].map((view) => (
                     <button
                         key={view.id}
                         onClick={() => setActiveView(view.id as ChartView)}
@@ -150,11 +153,11 @@ const PressureSwitchChart = forwardRef<any, PressureSwitchChartProps>(({ tests, 
                 {activeView === 'differential' && renderDifferentialChart()}
                 {activeView === 'compliance' && renderComplianceStats()}
 
-                {/* Contenedor oculto para capturas PDF */}
-                <div style={{ position: 'absolute', left: '-9999px', top: 0, width: '800px' }}>
-                    <div ref={sequenceRef}>{renderSequenceChart()}</div>
-                    <div ref={differentialRef}>{renderDifferentialChart()}</div>
-                    <div ref={complianceRef}>{renderComplianceStats()}</div>
+                {/* Contenedor oculto optimizado para capturas PDF */}
+                <div style={{ position: 'absolute', left: '-9999px', top: 0, width: '1000px' }}>
+                    <div ref={sequenceRef} style={{ width: '1000px', height: '500px' }}>{renderSequenceChart()}</div>
+                    <div ref={differentialRef} style={{ width: '1000px', height: '500px' }}>{renderDifferentialChart()}</div>
+                    <div ref={complianceRef} style={{ width: '1000px', height: '500px' }}>{renderComplianceStats()}</div>
                 </div>
 
                 <div className="mt-4 flex gap-6 border-t border-gray-100 pt-6 px-4 text-xs font-bold text-gray-400 uppercase">
