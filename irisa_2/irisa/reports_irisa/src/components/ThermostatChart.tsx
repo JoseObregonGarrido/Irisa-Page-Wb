@@ -61,7 +61,7 @@ const ThermostatChart = forwardRef<any, ThermostatChartProps>(({ tests, data }, 
                     });
                     captures.push(dataUrl);
                 } catch (err) {
-                    console.error("Error capturando gráfico termostato:", err);
+                    console.error("error capturando gráfico termostato:", err);
                 }
             }
         }
@@ -76,16 +76,16 @@ const ThermostatChart = forwardRef<any, ThermostatChartProps>(({ tests, data }, 
 
     const renderSequence = () => (
         <div className="h-96 w-full bg-white p-4">
-            <h4 className="text-lg font-semibold text-gray-700 mb-4 text-center">Secuencia de Temperaturas</h4>
+            <h4 className="text-lg font-semibold text-gray-700 mb-4 text-center">secuencia de temperaturas</h4>
             <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={processedData}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="index" label={{ value: 'Prueba #', position: 'insideBottom', offset: -5 }} />
-                    <YAxis label={{ value: '°C', angle: -90, position: 'insideLeft' }} />
+                    <XAxis dataKey="index" label={{ value: 'prueba #', position: 'insideBottom', offset: -5 }} />
+                    <YAxis label={{ value: '°c', angle: -90, position: 'insideLeft' }} />
                     <Tooltip />
                     <Legend verticalAlign="top" />
-                    <Line name="T. Disparo" type="monotone" dataKey="temperaturadeDisparo" stroke="#ef4444" strokeWidth={3} dot={{ r: 6 }} isAnimationActive={false} />
-                    <Line name="T. Repone" type="monotone" dataKey="temperaturadeRepone" stroke="#3b82f6" strokeWidth={3} dot={{ r: 6 }} isAnimationActive={false} />
+                    <Line name="t. disparo" type="monotone" dataKey="temperaturadeDisparo" stroke="#ef4444" strokeWidth={3} dot={{ r: 6 }} isAnimationActive={false} />
+                    <Line name="t. repone" type="monotone" dataKey="temperaturadeRepone" stroke="#3b82f6" strokeWidth={3} dot={{ r: 6 }} isAnimationActive={false} />
                 </LineChart>
             </ResponsiveContainer>
         </div>
@@ -93,17 +93,17 @@ const ThermostatChart = forwardRef<any, ThermostatChartProps>(({ tests, data }, 
 
     const renderContacts = () => (
         <div className="h-96 w-full bg-white p-4">
-            <h4 className="text-lg font-semibold text-gray-700 mb-4 text-center">Estado de Contactos (Activo/Inactivo)</h4>
+            <h4 className="text-lg font-semibold text-gray-700 mb-4 text-center">estado de contactos (activo/inactivo)</h4>
             <ResponsiveContainer width="100%" height="100%">
                 <ScatterChart margin={{ top: 20, right: 30, bottom: 20, left: 20 }}>
                     <CartesianGrid />
-                    <XAxis type="number" dataKey="index" name="Prueba" unit="#" />
-                    <YAxis type="number" dataKey="state" name="Estado" ticks={[0, 1]} tickFormatter={(val) => val === 1 ? 'ACTIVO' : 'INACTIVO'} />
+                    <XAxis type="number" dataKey="index" name="prueba" unit="#" />
+                    <YAxis type="number" dataKey="state" name="estado" ticks={[0, 1]} tickFormatter={(val) => val === 1 ? 'activo' : 'inactivo'} />
                     <ZAxis range={[100, 101]} />
                     <Tooltip cursor={{ strokeDasharray: '3 3' }} />
                     <Legend verticalAlign="top" />
-                    <Scatter name="N.O (Normal Abierto)" data={processedData.map(d => ({ index: d.index, state: d.noState }))} fill="#10b981" shape="square" isAnimationActive={false} />
-                    <Scatter name="N.C (Normal Cerrado)" data={processedData.map(d => ({ index: d.index, state: d.ncState }))} fill="#8b5cf6" shape="circle" isAnimationActive={false} />
+                    <Scatter name="n.o (normal abierto)" data={processedData.map(d => ({ index: d.index, state: d.noState }))} fill="#10b981" shape="square" isAnimationActive={false} />
+                    <Scatter name="n.c (normal cerrado)" data={processedData.map(d => ({ index: d.index, state: d.ncState }))} fill="#8b5cf6" shape="circle" isAnimationActive={false} />
                 </ScatterChart>
             </ResponsiveContainer>
         </div>
@@ -111,23 +111,23 @@ const ThermostatChart = forwardRef<any, ThermostatChartProps>(({ tests, data }, 
 
     const renderDifferential = () => (
         <div className="h-96 w-full bg-white p-4">
-            <h4 className="text-lg font-semibold text-gray-700 mb-4 text-center">Análisis de Diferencial (Hysteresis)</h4>
+            <h4 className="text-lg font-semibold text-gray-700 mb-4 text-center">análisis de diferencial (histéresis)</h4>
             <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={processedData}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="index" />
-                    <YAxis label={{ value: 'Δ °C', angle: -90, position: 'insideLeft' }} />
+                    <YAxis label={{ value: 'Δ °c', angle: -90, position: 'insideLeft' }} />
                     <Tooltip />
-                    <Line name="Diferencial Real" type="step" dataKey="differential" stroke="#f59e0b" strokeWidth={2} dot={{ r: 5 }} isAnimationActive={false} />
+                    <Line name="diferencial real" type="step" dataKey="differential" stroke="#f59e0b" strokeWidth={2} dot={{ r: 5 }} isAnimationActive={false} />
                 </LineChart>
             </ResponsiveContainer>
         </div>
     );
 
     const chartViews = [
-        { id: 'sequence', name: 'Temperaturas', icon: '📈' },
-        { id: 'contacts', name: 'Contactos', icon: '🔌' },
-        { id: 'differential', name: 'Diferencial', icon: '📊' }
+        { id: 'sequence', name: 'temperaturas', icon: '📈' },
+        { id: 'contacts', name: 'contactos', icon: '🔌' },
+        { id: 'differential', name: 'diferencial', icon: '📊' }
     ];
 
     return (
@@ -135,7 +135,7 @@ const ThermostatChart = forwardRef<any, ThermostatChartProps>(({ tests, data }, 
             <div className="bg-gradient-to-r from-slate-700 to-slate-900 rounded-t-xl px-6 py-5 shadow-lg text-white">
                 <div className="flex items-center">
                     <span className="text-2xl mr-3">🌡️</span>
-                    <h3 className="text-xl font-bold">Análisis de Termostato</h3>
+                    <h3 className="text-xl font-bold">análisis de termostato</h3>
                 </div>
             </div>
 
@@ -154,7 +154,7 @@ const ThermostatChart = forwardRef<any, ThermostatChartProps>(({ tests, data }, 
 
             <div className="bg-white p-6 rounded-b-xl shadow-md border border-gray-100">
                 {processedData.length === 0 ? (
-                    <div className="py-20 text-center text-gray-400">No hay datos suficientes para graficar.</div>
+                    <div className="py-20 text-center text-gray-400">no hay datos suficientes para graficar.</div>
                 ) : (
                     <>
                         {activeView === 'sequence' && renderSequence()}

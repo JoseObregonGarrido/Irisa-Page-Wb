@@ -31,10 +31,10 @@ export interface ReportData {
 }
 
 const getContactLabel = (t: any) => {
-    if (t.isNO === true) return 'N.O (Abierto)';
-    if (t.isNC === true) return 'N.C (Cerrado)';
-    if (t.contactState) return t.contactState;
-    return 'N/A';
+    if (t.isNO === true) return 'n.o (abierto)';
+    if (t.isNC === true) return 'n.c (cerrado)';
+    if (t.contactState) return t.contactState.toLowerCase();
+    return 'n/a';
 };
 
 const getBase64ImageFromUrl = async (url: string): Promise<string> => {
@@ -66,7 +66,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         if (yPos + 40 > 280) { pdf.addPage(); yPos = 20; }
         pdf.setDrawColor(119, 158, 79).setLineWidth(0.8).line(20, yPos, 190, yPos);
         yPos += 10;
-        pdf.setFontSize(11).setFont('helvetica', 'bold').setTextColor(60).text(title, 20, yPos);
+        pdf.setFontSize(11).setFont('helvetica', 'bold').setTextColor(60).text(title.toLowerCase(), 20, yPos);
         yPos += 8;
     };
 
@@ -77,21 +77,21 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             pdf.addImage(b64Logo, 'PNG', 20, 12, 50, 20);
         } catch { console.warn("Logo no cargado"); }
         
-        pdf.setFontSize(16).setFont('helvetica', 'bold').setTextColor(0).text('REPORTE DE CALIBRACIÓN', 80, 25);
+        pdf.setFontSize(16).setFont('helvetica', 'bold').setTextColor(0).text('reporte de calibración', 80, 25);
         yPos = 45;
 
         // --- ESPECIFICACIONES ---
-        addHeader('ESPECIFICACIONES DEL INSTRUMENTO');
+        addHeader('especificaciones del instrumento');
         autoTable(pdf, {
             startY: yPos,
             margin: { left: 20, right: 20 },
             body: [
-                ['Nombre del equipo', data.deviceName, 'Código del Equipo', data.deviceCode],
-                ['Marca del Equipo', data.deviceBrand, 'Modelo del Equipo', data.deviceModel],
-                ['Serial del Instrumento', data.deviceSerial, 'Rango del instrumento', `${data.deviceRange} ${data.unity}`],
-                ['Área del Instrumento', data.instrumentArea, 'Tipo de Dispositivo', data.deviceType.toUpperCase()],
-                ['Nombre Instrumentista', data.instrumentistName, 'Código Instrumentista', data.instrumentistCode],
-                ['Orden de Trabajo', data.workOrder, 'Fecha de Revisión', data.reviewDate || 'N/A']
+                ['nombre del equipo', data.deviceName, 'código del equipo', data.deviceCode],
+                ['marca del equipo', data.deviceBrand, 'modelo del equipo', data.deviceModel],
+                ['serial del instrumento', data.deviceSerial, 'rango del instrumento', `${data.deviceRange} ${data.unity}`],
+                ['área del instrumento', data.instrumentArea, 'tipo de dispositivo', data.deviceType.toLowerCase()],
+                ['nombre instrumentista', data.instrumentistName, 'código instrumentista', data.instrumentistCode],
+                ['orden de trabajo', data.workOrder, 'fecha de revisión', data.reviewDate || 'n/a']
             ],
             theme: 'plain',
             styles: { fontSize: 8.5, cellPadding: 3, textColor: 50 },
@@ -104,14 +104,14 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
 
         // --- TABLA TRANSMISORES ---
         if (data.deviceType === 'transmitter' && measurements.length) {
-            addHeader(`RESULTADOS DE LAS MEDICIONES (UNIDAD: ${unit.toUpperCase()})`);
-            const headers = ['Ideal UE', 'Ideal mA'];
-            if (isOhm) headers.push('Ideal Ohm');
-            headers.push('Patrón UE');
-            if (hasUE) headers.push('UE Trans.');
-            headers.push('mA Sensor', '% Rango');
-            if (hasUE) headers.push('Err UE');
-            headers.push('Err mA', 'Err %');
+            addHeader(`resultados de las mediciones (unidad: ${unit.toLowerCase()})`);
+            const headers = ['ideal ue', 'ideal ma'];
+            if (isOhm) headers.push('ideal ohm');
+            headers.push('patrón ue');
+            if (hasUE) headers.push('ue trans.');
+            headers.push('ma sensor', '% rango');
+            if (hasUE) headers.push('err ue');
+            headers.push('err ma', 'err %');
 
             const body = measurements.map(m => {
                 const row = [m.idealUe, m.idealmA];
@@ -133,35 +133,27 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 styles: { fontSize: 7, halign: 'center', cellPadding: 2 }
             });
             yPos = (pdf as any).lastAutoTable.finalY + 12;
-
-            // --- GRÁFICOS (SOLO PARA TRANSMISORES) ---
-            if (chartImages && chartImages.length > 0) {
-                chartImages.forEach((img) => {
-                    if (yPos + 85 > 280) { pdf.addPage(); yPos = 20; }
-                    pdf.addImage(img, 'PNG', 25, yPos, 160, 80);
-                    yPos += 85; 
-                });
-            }
         }
 
-        // --- TABLA PRESOSTATO / TERMOSTATO (SIN GRÁFICOS) ---
-        const switchTests = (data.deviceType === 'thermostat') ? data.thermostatTests : data.pressureSwitchTests;
+        // --- TABLA PRESOSTATO / TERMOSTATO ---
+        const isThermostat = data.deviceType === 'thermostat';
+        const switchTests = isThermostat ? data.thermostatTests : data.pressureSwitchTests;
         
-        if ((data.deviceType === 'pressure_switch' || data.deviceType === 'thermostat') && switchTests && switchTests.length) {
-            const isThermostat = data.deviceType === 'thermostat';
-            addHeader(`RESULTADOS DE LAS PRUEBAS (${isThermostat ? 'TERMOSTATO' : 'PRESOSTATO'})`);
+        if ((data.deviceType === 'pressure_switch' || isThermostat) && switchTests && switchTests.length) {
+            addHeader(`resultados de las pruebas (${isThermostat ? 'termostato' : 'presostato'})`);
             
-            const unitLabel = data.unity || (isThermostat ? '°C' : 'PSI');
+            const unitLabel = data.unity || (isThermostat ? '°c' : 'psi');
             
             const headers = [
-                isThermostat ? `Temp. Disparo (${unitLabel})` : `Presión Disparada (${unitLabel})`,
-                isThermostat ? `Temp. Repone (${unitLabel})` : `Presión Repone (${unitLabel})`,
-                'Estado Contacto'
+                isThermostat ? `temp. disparo (${unitLabel})` : `presión disparada (${unitLabel})`,
+                isThermostat ? `temp. repone (${unitLabel})` : `presión repone (${unitLabel})`,
+                'estado contacto'
             ];
 
+            // AQUÍ LA CORRECCIÓN CLAVE: Mapear a las variables correctas que vienen del componente
             const body = switchTests.map(t => [
-                isThermostat ? (t.tempDisparo || '0') : (t.presionDisparo || '0'),
-                isThermostat ? (t.tempRepone || '0') : (t.presionRepone || '0'),
+                isThermostat ? (t.temperaturadeDisparo || '0') : (t.presiondeDisparo || '0'),
+                isThermostat ? (t.temperaturadeRepone || '0') : (t.presiondeRepone || '0'),
                 getContactLabel(t)
             ]);
 
@@ -176,14 +168,23 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }
 
+        // --- GRÁFICOS (PARA TODOS LOS TIPOS) ---
+        if (chartImages && chartImages.length > 0) {
+            chartImages.forEach((img) => {
+                if (yPos + 85 > 280) { pdf.addPage(); yPos = 20; }
+                pdf.addImage(img, 'PNG', 25, yPos, 160, 80);
+                yPos += 85; 
+            });
+        }
+
         // --- OBSERVACIONES ---
         if (data.observations) {
             if (yPos + 40 > 280) { pdf.addPage(); yPos = 20; }
-            addHeader('OBSERVACIONES Y NOTAS TÉCNICAS');
+            addHeader('observaciones y notas técnicas');
             autoTable(pdf, {
                 startY: yPos,
                 margin: { left: 20, right: 20 },
-                body: [[data.observations]],
+                body: [[data.observations.toLowerCase()]],
                 styles: { fontSize: 9, cellPadding: 5, fillColor: colors.white, textColor: 60 },
                 theme: 'plain'
             });
@@ -194,10 +195,10 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         for (let i = 1; i <= pageCount; i++) {
             pdf.setPage(i);
             pdf.setFontSize(8).setTextColor(150);
-            pdf.text(`Ingenio Risaralda - Generado el ${new Date().toLocaleDateString()}`, 105, 290, { align: 'center' });
-            pdf.text(`Página ${i} de ${pageCount}`, 190, 290, { align: 'right' });
+            pdf.text(`ingenio risaralda - generado el ${new Date().toLocaleDateString()}`, 105, 290, { align: 'center' });
+            pdf.text(`página ${i} de ${pageCount}`, 190, 290, { align: 'right' });
         }
 
-        pdf.save(`Reporte_${data.deviceCode || 'Instrumento'}.pdf`);
-    } catch (e) { console.error("Error generando PDF:", e); }
+        pdf.save(`reporte_${data.deviceCode || 'instrumento'}.pdf`);
+    } catch (e) { console.error("error generando pdf:", e); }
 };
