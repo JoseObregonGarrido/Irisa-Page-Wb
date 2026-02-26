@@ -24,7 +24,10 @@ const getBase64 = async (url: string): Promise<string> => {
 // --- 1. GENERAR TRANSMISOR ---
 export const generateTransmitterPDF = async (data: any, measurements: any[], chartImages?: string[]) => {
     const pdf = new jsPDF();
+    
+    // BIEN: El await está dentro de la función async (Esto evita errores en Render/Rollup)
     const b64 = await getBase64(logo);
+    
     pdf.addImage(b64, 'PNG', 20, 12, 50, 20);
     pdf.setFontSize(16).setFont('helvetica', 'bold').text(`REPORTE: ${THEMES.TRANSMITTER.title}`, 80, 25);
 
@@ -74,7 +77,10 @@ export const generateTransmitterPDF = async (data: any, measurements: any[], cha
 // --- 2. GENERAR TERMOSTATO ---
 export const generateThermostatPDF = async (data: any, tests: any[], chartImages?: string[]) => {
     const pdf = new jsPDF();
+    
+    // BIEN: El await ocurre dentro de la ejecución de la función
     const b64 = await getBase64(logo);
+    
     pdf.addImage(b64, 'PNG', 20, 12, 50, 20);
     pdf.setFontSize(16).setFont('helvetica', 'bold').text(`REPORTE: ${THEMES.THERMOSTAT.title}`, 80, 25);
 
@@ -92,7 +98,7 @@ export const generateThermostatPDF = async (data: any, tests: any[], chartImages
 
     autoTable(pdf, {
         startY: (pdf as any).lastAutoTable.finalY + 10,
-        head: [['Prueba', 'Temp. Disparo (°C)', 'Temp. Repone (°C)', 'Contacto']],
+        head: [['Prueba', 'Temperatura. Disparo (°C)', 'Temperatua. Repone (°C)', 'Contacto']],
         body: tests.map((t, i) => [
             `#${i + 1}`,
             t.tempDisparo,
@@ -117,7 +123,10 @@ export const generateThermostatPDF = async (data: any, tests: any[], chartImages
 // --- 3. GENERAR PRESOSTATO ---
 export const generatePressureSwitchPDF = async (data: any, tests: any[], chartImages?: string[]) => {
     const pdf = new jsPDF();
+    
+    // BIEN: Evitamos el Top-Level Await moviendo la carga aquí
     const b64 = await getBase64(logo);
+    
     pdf.addImage(b64, 'PNG', 20, 12, 50, 20);
     pdf.setFontSize(16).setFont('helvetica', 'bold').text(`REPORTE: ${THEMES.PRESSURE.title}`, 80, 25);
 
@@ -135,7 +144,7 @@ export const generatePressureSwitchPDF = async (data: any, tests: any[], chartIm
 
     autoTable(pdf, {
         startY: (pdf as any).lastAutoTable.finalY + 10,
-        head: [[`P. Disparo (${data.unity || 'PSI'})`, `P. Repone (${data.unity || 'PSI'})`, 'Estado Contacto']],
+        head: [[`Presion. Disparo (${data.unity || 'PSI'})`, `Presion. Repone (${data.unity || 'PSI'})`, 'Estado Contacto']],
         body: tests.map((t) => [
             t.presionDisparada,
             t.presionRepone,
