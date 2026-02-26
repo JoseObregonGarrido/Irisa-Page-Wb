@@ -111,19 +111,24 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         if (data.deviceType === 'transmitter' && measurements.length) {
             addHeader(`Resultados de las mediciones (Unidad: ${unit})`);
             
-            // Construcción de Headers sin abreviaciones y con nomenclatura correcta
+            // Construcción de Headers dinámica y coherente con la UI
             const headers = ['Ideal UE', 'Ideal mA'];
             if (isOhm) headers.push('Ideal ohm');
             headers.push('Patrón UE');
             if (hasUE) headers.push('UE transmisor');
-            headers.push('mA transmisor');
+            
+            // CAMBIO CLAVE: Aquí se refleja "mA sensor" si es Ohm
+            headers.push(isOhm ? 'mA sensor' : 'mA transmisor');
+            
             if (isOhm) headers.push('ohm sensor');
             headers.push('% Rango');
             if (hasUE) headers.push('Error UE');
+            
+            // CAMBIO CLAVE: Aquí se refleja "Error ohm" si es Ohm
             headers.push(isOhm ? 'Error ohm' : 'Error mA', 'Error %');
 
             const body = measurements.map(m => {
-                const row = [m.idealUE || m.idealUe, m.idealmA]; // Soporta ambas keys por si acaso
+                const row = [m.idealUE || m.idealUe, m.idealmA]; 
                 if (isOhm) row.push(m.idealohm || m.idealOhm || '0');
                 row.push(m.patronUE || m.patronUe);
                 if (hasUE) row.push(m.ueTransmitter);
@@ -140,13 +145,13 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 head: [headers],
                 body: body,
                 theme: 'grid',
-                headStyles: { fillColor: colors.risaraldaGreen, halign: 'center', fontSize: 7, fontStyle: 'bold' },
-                styles: { fontSize: 7, halign: 'center', cellPadding: 2 }
+                headStyles: { fillColor: colors.risaraldaGreen, halign: 'center', fontSize: 6.5, fontStyle: 'bold' },
+                styles: { fontSize: 6.5, halign: 'center', cellPadding: 1.5 }
             });
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }
 
-        // --- TABLA PRESOSTATO / TERMOSTATO ---
+        // --- TABLA PRESOSTATO / TERMOSTATO (MANTENIDO SIN CAMBIOS) ---
         const isThermostat = data.deviceType === 'thermostat';
         const switchTests = isThermostat ? data.thermostatTests : data.pressureSwitchTests;
         

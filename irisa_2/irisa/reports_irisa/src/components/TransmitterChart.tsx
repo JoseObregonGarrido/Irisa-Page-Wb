@@ -23,10 +23,14 @@ interface TransmitterChartProps {
 const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements, data, outputUnit = 'mA' }, ref) => {
     const chartData = measurements || data || [];
     const responseRef = useRef<HTMLDivElement>(null);
+    const isOhm = outputUnit === 'ohm';
 
+    // Labels dinámicos para que coincidan con la lógica de la tabla
     const labels = {
-        ideal: `Ideal ${outputUnit}`,
-        measured: `Medido ${outputUnit}`,
+        title: isOhm ? 'Análisis del Sensor' : 'Análisis del Transmisor',
+        xAxis: isOhm ? 'Escala (mA sensor)' : 'Escala (mA)',
+        yAxis: 'Rango UE',
+        measuredLine: isOhm ? 'mA sensor (Real)' : 'mA transmisor (Real)',
         unit: outputUnit
     };
 
@@ -35,6 +39,7 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
             percentage: parseFloat(m.percentage) || 0,
             idealUE: parseFloat(m.idealUE || (m as any).idealUe) || 0,
             ueTransmitter: parseFloat(m.ueTransmitter) || 0,
+            // Usamos maTransmitter para el eje X ya que es la variable común
             idealValue: parseFloat(m.idealmA) || 0, 
             measuredValue: parseFloat(m.maTransmitter) || 0, 
         })).sort((a, b) => a.idealValue - b.idealValue);
@@ -81,7 +86,7 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
                 <div className="flex items-center gap-4">
                     <span className="text-3xl">📊</span>
                     <div>
-                        <h3 className="text-xl font-bold">Análisis del Transmisor ({labels.unit})</h3>
+                        <h3 className="text-xl font-bold">{labels.title} ({labels.unit})</h3>
                         <p className="text-blue-100 text-sm opacity-90">Visualización detallada de curva de error</p>
                     </div>
                 </div>
@@ -99,13 +104,13 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
                                 type="number"
                                 domain={[4, 20]}
                                 ticks={[4, 8, 12, 16, 20]}
-                                label={{ value: 'Escala (mA)', position: 'insideBottom', offset: -15, fontWeight: 'bold' }} 
+                                label={{ value: labels.xAxis, position: 'insideBottom', offset: -15, fontWeight: 'bold' }} 
                             />
                             
                             <YAxis 
                                 domain={['dataMin - 2', 'dataMax + 2']} 
                                 ticks={yTicks}
-                                label={{ value: 'Rango UE', angle: -90, position: 'insideLeft', fontWeight: 'bold' }}
+                                label={{ value: labels.yAxis, angle: -90, position: 'insideLeft', fontWeight: 'bold' }}
                             />
                             
                             <Tooltip />
