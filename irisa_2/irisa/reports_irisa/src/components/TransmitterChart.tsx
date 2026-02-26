@@ -42,6 +42,30 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
 
     const processedData = processDataForChart();
 
+    // Lógica para calcular intervalos de 5 en 5 o 10 en 10 para el eje Y
+    const getYTicks = () => {
+        if (processedData.length === 0) return [];
+        
+        const allValues = processedData.flatMap(d => [d.idealUe, d.ueTransmitter]);
+        const maxVal = Math.max(...allValues);
+        const minVal = Math.min(...allValues);
+        
+        // Decidimos el salto: si el rango es pequeño (< 50) usamos saltos de 5, si no, de 10.
+        const step = (maxVal - minVal) <= 50 ? 5 : 10;
+        
+        const ticks = [];
+        // Redondeamos el inicio y fin para que los saltos sean limpios
+        const start = Math.floor(minVal / step) * step;
+        const end = Math.ceil(maxVal / step) * step;
+        
+        for (let i = start; i <= end; i += step) {
+            ticks.push(i);
+        }
+        return ticks;
+    };
+
+    const yTicks = getYTicks();
+
     useImperativeHandle(ref, () => ({
         captureAllCharts: async () => {
             if (responseRef.current) {
@@ -79,28 +103,51 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
                 <h4 className="text-lg font-semibold text-gray-700 mb-4 text-center">Curva de Respuesta</h4>
                 <div className="h-96 w-full">
                     <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={processedData} margin={{ top: 5, right: 30, left: 20, bottom: 25 }}>
+                        <LineChart data={processedData} margin={{ top: 20, right: 30, left: 20, bottom: 25 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                            {/* X: Escala de 4-20 mA con saltos */}
+                            
+                            {/* X: Escala de 4-20 mA con saltos fijos */}
                             <XAxis 
                                 dataKey="idealValue" 
                                 type="number"
                                 domain={[4, 20]}
                                 ticks={[4, 8, 12, 16, 20]}
-                                label={{ value: 'Escala (mA)', position: 'insideBottom', offset: -10 }} 
+                                label={{ value: 'Escala (mA)', position: 'insideBottom', offset: -15, fontWeight: 'bold' }} 
                             />
-                            {/* Y: Rango UE con saltos de 5 o 10 */}
+                            
+                            {/* Y: Rango UE con saltos de 5 o 10 calculados */}
                             <YAxis 
-                                label={{ value: 'Rango UE', angle: -90, position: 'insideLeft' }}
+                                ticks={yTicks.length > 0 ? yTicks : undefined}
+                                label={{ value: 'Rango UE', angle: -90, position: 'insideLeft', fontWeight: 'bold' }}
+                                domain={['auto', 'auto']}
                             />
+                            
                             <Tooltip />
-                            <Legend verticalAlign="top" />
+                            <Legend verticalAlign="top" height={36}/>
                             
                             {/* Primera: Ideal UE vs Ideal mA */}
-                            <Line type="monotone" dataKey="idealUe" stroke="#3b82f6" name="Ideal UE vs Ideal mA" strokeWidth={2} dot={{ r: 4 }} isAnimationActive={false} />
+                            <Line 
+                                type="monotone" 
+                                dataKey="idealUe" 
+                                stroke="#3b82f6" 
+                                name="Ideal UE vs Ideal mA" 
+                                strokeWidth={3} 
+                                dot={{ r: 5, fill: '#3b82f6' }} 
+                                isAnimationActive={false} 
+                            />
                             
-                            {/* Segunda: UE Transmisor vs mA Transmisor (Se oculta si no hay datos de UE) */}
-                            <Line type="monotone" dataKey="ueTransmitter" stroke="#ef4444" name="UE Transmisor vs mA Transmisor" strokeWidth={2} dot={{ r: 4 }} connectNulls isAnimationActive={false} />
+                            {/* Segunda: UE Transmisor vs mA Transmisor */}
+                            <Line 
+                                type="monotone" 
+                                dataKey="ueTransmitter" 
+                                stroke="#ef4444" 
+                                name="UE Transmisor vs mA Transmisor" 
+                                strokeWidth={2} 
+                                strokeDasharray="5 5"
+                                dot={{ r: 5, fill: '#ef4444' }} 
+                                connectNulls 
+                                isAnimationActive={false} 
+                            />
                         </LineChart>
                     </ResponsiveContainer>
                 </div>
