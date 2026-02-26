@@ -6,6 +6,7 @@ export interface PressureSwitchTest {
     presionRepone: string;
     isNO: boolean;
     isNC: boolean;
+    setPoint?: string; // Agregado para coincidir con el PDF si se usa
 }
 
 interface PressureSwitchTableProps {

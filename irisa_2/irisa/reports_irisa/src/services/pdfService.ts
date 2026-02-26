@@ -49,6 +49,16 @@ const calculateRowErrors = (m: any, unit: 'mA' | 'ohm') => {
     };
 };
 
+/**
+ * DETERMINA EL ESTATUS DEL CONTACTO BASADO EN LOS CAMPOS DEL COMPONENTE
+ */
+const getContactLabel = (t: any) => {
+    if (t.isNO) return 'N.O (Abierto)';
+    if (t.isNC) return 'N.C (Cerrado)';
+    if (t.contactState) return t.contactState;
+    return 'N/A';
+};
+
 export const generatePDFReport = async (data: ReportData, chartImages?: string[]): Promise<void> => {
     const pdf = new jsPDF();
     const measurements = data.transmitterMeasurements || [];
@@ -159,8 +169,9 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             const headers = [`Set Point (${unitLabel})`, `P. Disparada (${unitLabel})`, `P. Repone (${unitLabel})`, 'Diferencial', 'Estado Contacto'];
 
             const body = switchTests.map(t => {
-                const disparo = parseFloat(t.pressureDisparada || t.tempDisparada) || 0;
-                const repone = parseFloat(t.pressureRepone || t.tempRepone) || 0;
+                // Usamos los nombres exactos de tu componente: presionDisparada / presionRepone / tempDisparada / tempRepone
+                const disparo = parseFloat(t.presionDisparada || t.tempDisparada || t.pressureDisparada) || 0;
+                const repone = parseFloat(t.presionRepone || t.tempRepone || t.pressureRepone) || 0;
                 const diferencial = Math.abs(disparo - repone).toFixed(2);
                 
                 return [
@@ -168,7 +179,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                     disparo,
                     repone,
                     diferencial,
-                    t.contactState || (t.isNo ? 'N.O (Abierto)' : 'N.C (Cerrado)')
+                    getContactLabel(t) // <--- CORREGIDO: Ahora busca isNO / isNC
                 ];
             });
 
