@@ -4,7 +4,7 @@ import { getCurrentUser } from './authService';
 // Definimos y exportamos la interfaz aquí mismo
 export interface PressureSwitchTest {
     id?: number;
-    presionDisparada: string;
+    presionDisparo: string;
     presionRepone: string;
     isNO: boolean;
     isNC: boolean;

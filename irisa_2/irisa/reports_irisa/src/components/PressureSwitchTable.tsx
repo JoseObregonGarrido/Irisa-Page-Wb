@@ -2,7 +2,7 @@ import React from 'react';
 
 // Interfaz limpia para Presostato
 export interface PressureSwitchTest {
-    presionDisparada: string;
+    presionDisparo: string;
     presionRepone: string;
     isNO: boolean;
     isNC: boolean;
@@ -32,7 +32,7 @@ const TableInput = ({ value, onChange, placeholder }: any) => (
 const PressureSwitchTable: React.FC<PressureSwitchTableProps> = ({ tests, onTestsChange }) => {
 
     const handleAddRow = () => {
-        onTestsChange([...tests, { presionDisparada: '', presionRepone: '', isNO: false, isNC: false }]);
+        onTestsChange([...tests, { presionDisparo: '', presionRepone: '', isNO: false, isNC: false }]);
     };
 
     const handleDeleteRow = (indexToDelete: number) => {
@@ -80,7 +80,7 @@ const PressureSwitchTable: React.FC<PressureSwitchTableProps> = ({ tests, onTest
                             <div className="space-y-3">
                                 <div>
                                     <label className="block text-xs font-bold text-gray-500 mb-1 ">Presion disparada en valor de PSI</label>
-                                    <TableInput value={test.presionDisparada} onChange={(e:any) => handleChange(index, 'presionDisparada', e.target.value)} />
+                                    <TableInput value={test.presionDisparo} onChange={(e:any) => handleChange(index, 'presionDisparo', e.target.value)} />
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold text-gray-500 mb-1 ">Presion repone en valor de PSI</label>
@@ -117,7 +117,7 @@ const PressureSwitchTable: React.FC<PressureSwitchTableProps> = ({ tests, onTest
                             {tests.map((test, index) => (
                                 <tr key={index} className="hover:bg-gray-50 transition-colors">
                                     <td className="px-4 py-3">
-                                        <TableInput value={test.presionDisparada} onChange={(e:any) => handleChange(index, 'presionDisparada', e.target.value)} />
+                                        <TableInput value={test.presionDisparo} onChange={(e:any) => handleChange(index, 'presionDisparo', e.target.value)} />
                                     </td>
                                     <td className="px-4 py-3">
                                         <TableInput value={test.presionRepone} onChange={(e:any) => handleChange(index, 'presionRepone', e.target.value)} />

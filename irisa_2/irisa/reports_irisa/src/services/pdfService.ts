@@ -133,9 +133,18 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 styles: { fontSize: 7, halign: 'center', cellPadding: 2 }
             });
             yPos = (pdf as any).lastAutoTable.finalY + 12;
+
+            // --- GRÁFICOS (SOLO PARA TRANSMISORES) ---
+            if (chartImages && chartImages.length > 0) {
+                chartImages.forEach((img) => {
+                    if (yPos + 85 > 280) { pdf.addPage(); yPos = 20; }
+                    pdf.addImage(img, 'PNG', 25, yPos, 160, 80);
+                    yPos += 85; 
+                });
+            }
         }
 
-        // --- TABLA PRESOSTATO / TERMOSTATO (SIN SET POINT) ---
+        // --- TABLA PRESOSTATO / TERMOSTATO (SIN GRÁFICOS) ---
         const switchTests = (data.deviceType === 'thermostat') ? data.thermostatTests : data.pressureSwitchTests;
         
         if ((data.deviceType === 'pressure_switch' || data.deviceType === 'thermostat') && switchTests && switchTests.length) {
@@ -151,7 +160,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             ];
 
             const body = switchTests.map(t => [
-                isThermostat ? (t.tempDisparo || '0') : (t.presionDisparada || '0'),
+                isThermostat ? (t.tempDisparo || '0') : (t.presionDisparo || '0'),
                 isThermostat ? (t.tempRepone || '0') : (t.presionRepone || '0'),
                 getContactLabel(t)
             ]);
@@ -165,15 +174,6 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 styles: { fontSize: 8.5, halign: 'center', cellPadding: 3, textColor: 40 }
             });
             yPos = (pdf as any).lastAutoTable.finalY + 12;
-        }
-
-        // --- GRÁFICOS ---
-        if (chartImages && chartImages.length > 0) {
-            chartImages.forEach((img) => {
-                if (yPos + 85 > 280) { pdf.addPage(); yPos = 20; }
-                pdf.addImage(img, 'PNG', 25, yPos, 160, 80);
-                yPos += 85; 
-            });
         }
 
         // --- OBSERVACIONES ---
