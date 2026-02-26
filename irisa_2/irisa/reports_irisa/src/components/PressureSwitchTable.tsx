@@ -79,11 +79,11 @@ const PressureSwitchTable: React.FC<PressureSwitchTableProps> = ({ tests, onTest
                             
                             <div className="space-y-3">
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-500 mb-1 ">Presion disparada en valor de PSI</label>
+                                    <label className="block text-xs font-bold text-gray-500 mb-1 ">Presion de disparo</label>
                                     <TableInput value={test.presionDisparo} onChange={(e:any) => handleChange(index, 'presionDisparo', e.target.value)} />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-500 mb-1 ">Presion repone en valor de PSI</label>
+                                    <label className="block text-xs font-bold text-gray-500 mb-1 ">Presion de repone</label>
                                     <TableInput value={test.presionRepone} onChange={(e:any) => handleChange(index, 'presionRepone', e.target.value)} />
                                 </div>
                                 <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
@@ -107,8 +107,8 @@ const PressureSwitchTable: React.FC<PressureSwitchTableProps> = ({ tests, onTest
                     <table className="w-full text-sm">
                         <thead className="bg-gray-50 border-b border-gray-200">
                             <tr>
-                                <th className="px-4 py-4 text-left font-bold text-gray-600  tracking-wider">Presion disparada en valor de PSI</th>
-                                <th className="px-4 py-4 text-left font-bold text-gray-600  tracking-wider">Presion repone en valor de PSI</th>
+                                <th className="px-4 py-4 text-left font-bold text-gray-600  tracking-wider">Presion disparada</th>
+                                <th className="px-4 py-4 text-left font-bold text-gray-600  tracking-wider">Presion repone</th>
                                 <th className="px-4 py-4 text-center font-bold text-gray-600 uppercase tracking-wider">Estado contacto</th>
                                 <th className="px-4 py-4 text-center font-bold text-gray-600 uppercase tracking-wider">Acción</th>
                             </tr>

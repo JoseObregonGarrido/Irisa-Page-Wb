@@ -7,8 +7,8 @@ import { toPng } from 'html-to-image';
 
 // ACTUALIZACIÓN: Interfaz alineada con ThermostatTable y HomePage
 export interface ThermostatTest {
-    tempDisparo: string;
-    tempRepone: string;
+    temperaturaDisparo: string;
+    temperaturaRepone: string;
     isNO: boolean;
     isNC: boolean;
 }
@@ -32,13 +32,13 @@ const ThermostatChart = forwardRef<any, ThermostatChartProps>(({ tests, data }, 
     // Mapeo de los nuevos datos para Recharts
     const processedData = useMemo(() => {
         return chartData.map((test, index) => {
-            const disparo = parseFloat(test.tempDisparo) || 0;
-            const repone = parseFloat(test.tempRepone) || 0;
+            const disparo = parseFloat(test.temperaturaDisparo) || 0;
+            const repone = parseFloat(test.temperaturaRepone) || 0;
             
             return {
                 index: index + 1,
-                tempDisparo: disparo,
-                tempRepone: repone,
+                temperaturaDisparo: disparo,
+                temperaturaRepone: repone,
                 noState: test.isNO ? 1 : 0,
                 ncState: test.isNC ? 1 : 0,
                 differential: Math.abs(disparo - repone), // Diferencial térmico real
@@ -84,8 +84,8 @@ const ThermostatChart = forwardRef<any, ThermostatChartProps>(({ tests, data }, 
                     <YAxis label={{ value: '°C', angle: -90, position: 'insideLeft' }} />
                     <Tooltip />
                     <Legend verticalAlign="top" />
-                    <Line name="T. Disparo" type="monotone" dataKey="tempDisparo" stroke="#ef4444" strokeWidth={3} dot={{ r: 6 }} isAnimationActive={false} />
-                    <Line name="T. Repone" type="monotone" dataKey="tempRepone" stroke="#3b82f6" strokeWidth={3} dot={{ r: 6 }} isAnimationActive={false} />
+                    <Line name="T. Disparo" type="monotone" dataKey="temperaturaDisparo" stroke="#ef4444" strokeWidth={3} dot={{ r: 6 }} isAnimationActive={false} />
+                    <Line name="T. Repone" type="monotone" dataKey="temperaturaRepone" stroke="#3b82f6" strokeWidth={3} dot={{ r: 6 }} isAnimationActive={false} />
                 </LineChart>
             </ResponsiveContainer>
         </div>
