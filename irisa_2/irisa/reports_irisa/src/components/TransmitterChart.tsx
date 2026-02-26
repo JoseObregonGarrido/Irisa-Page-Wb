@@ -1,62 +1,72 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { toPng } from 'html-to-image';
-import React, { useState, useRef, useImperativeHandle, forwardRef } from 'react';
+import React, { useRef, useImperativeHandle, forwardRef } from 'react';
 
 export interface Measurement {
     percentage: string;
-    idealUE?: string;      // Soportamos ambas variantes de casing
-    idealUe?: string;
-    patronUE?: string;
-    patronUe?: string;
+    idealUE: string;
+    patronUE: string;
     ueTransmitter: string;
-    idealmA?: string;
-    idealMa?: string;
+    idealmA: string;
     maTransmitter: string;
-    errorUE?: string;
-    errorUe?: string;
-    errormA?: string;
-    errorMa?: string;
+    errorUE: string;
+    errormA: string;
     errorPercentage: string;
 }
 
 interface TransmitterChartProps {
     measurements?: Measurement[];
     data?: Measurement[];
-    outputUnit?: 'mA' | 'ohm' | string;
+    outputUnit?: 'mA' | 'ohm' | string; 
 }
-
-type ChartView = 'response' | 'errors' | 'percentage';
 
 const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements, data, outputUnit = 'mA' }, ref) => {
     const chartData = measurements || data || [];
-    const containerRef = useRef<HTMLDivElement>(null);
-    const [activeView, setActiveView] = useState<ChartView>('response');
+    const responseRef = useRef<HTMLDivElement>(null);
     const isOhm = outputUnit === 'ohm';
 
-    // Normalización y procesamiento de datos
+    const labels = {
+        title: isOhm ? 'Análisis RTD (Sensor)' : 'Análisis del Transmisor',
+        xAxis: isOhm ? 'Escala (mA sensor)' : 'Escala (mA)',
+        yAxis: 'Rango UE / Desviación',
+        unit: isOhm ? 'RTD' : 'mA'
+    };
+
     const processDataForChart = () => {
         return chartData.map((m) => ({
             percentage: parseFloat(m.percentage) || 0,
-            idealUE: parseFloat(m.idealUE || m.idealUe || "0"),
+            idealUE: parseFloat(m.idealUE || (m as any).idealUe) || 0,
+            patronUE: parseFloat(m.patronUE) || 0,
             ueTransmitter: parseFloat(m.ueTransmitter) || 0,
-            idealValue: parseFloat(m.idealmA || m.idealMa || "0"), // Usado para el eje X en lógica de mA
+            idealValue: parseFloat(m.idealmA) || 0, 
             measuredValue: parseFloat(m.maTransmitter) || 0,
-            errorValue: parseFloat(m.errormA || m.errorMa || "0"),
-            errorPercentage: parseFloat(m.errorPercentage) || 0,
-            errorUE: parseFloat(m.errorUE || m.errorUe || "0"),
-        })).sort((a, b) => a.percentage - b.percentage);
+            deviation: parseFloat(m.errormA) || 0 
+        })).sort((a, b) => a.idealValue - b.idealValue);
     };
 
     const processedData = processDataForChart();
 
-    // Exponer captura para PDF
+    const getYTicks = () => {
+        if (processedData.length === 0) return [0, 4, 8, 12, 16, 20];
+        const allValues = processedData.flatMap(d => [d.idealUE, d.ueTransmitter]);
+        const maxVal = Math.max(...allValues);
+        const minVal = Math.min(...allValues, 0);
+        const ticks = [];
+        const start = Math.floor(minVal / 4) * 4;
+        const end = Math.ceil(maxVal / 4) * 4;
+        for (let i = start; i <= end; i += 4) { ticks.push(i); }
+        return ticks;
+    };
+
+    const yTicks = getYTicks();
+
     useImperativeHandle(ref, () => ({
         captureAllCharts: async () => {
-            if (containerRef.current) {
-                const dataUrl = await toPng(containerRef.current, {
-                    backgroundColor: '#ffffff',
+            if (responseRef.current) {
+                const dataUrl = await toPng(responseRef.current, { 
+                    backgroundColor: '#ffffff', 
                     pixelRatio: 2,
-                    cacheBust: true
+                    cacheBust: true 
                 });
                 return [dataUrl];
             }
@@ -64,136 +74,85 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
         }
     }));
 
-    const chartViews = [
-        { 
-            id: 'response' as ChartView, 
-            name: 'Curva de Respuesta', 
-            icon: '📈',
-            description: 'Comparativa de valores ideales vs. medidos (UE y mA)'
-        },
-        { 
-            id: 'errors' as ChartView, 
-            name: 'Errores Absolutos', 
-            icon: '⚠️',
-            description: 'Desviaciones detectadas en la salida'
-        },
-        { 
-            id: 'percentage' as ChartView, 
-            name: 'Error Porcentual', 
-            icon: '%',
-            description: 'Precisión relativa sobre el fondo de escala'
-        }
-    ];
-
-    const renderActiveChart = () => {
-        if (processedData.length === 0) return null;
-
-        switch (activeView) {
-            case 'response':
-                return (
-                    <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={processedData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                            <XAxis 
-                                dataKey="percentage" 
-                                label={{ value: 'Escala (%)', position: 'insideBottom', offset: -10, fontSize: 12 }} 
-                            />
-                            <YAxis tick={{ fontSize: 10 }} />
-                            <Tooltip 
-                                contentStyle={{ borderRadius: '8px', fontSize: '12px' }}
-                                formatter={(value: any, name: string) => [value.toFixed(3), name]}
-                            />
-                            <Legend verticalAlign="top" height={36} />
-                            
-                            {/* Datos integrados del gráfico viejo y nuevo */}
-                            <Line type="monotone" dataKey="idealValue" stroke="#3b82f6" name="Ideal mA" strokeWidth={2} dot={{ r: 4 }} />
-                            <Line type="monotone" dataKey="measuredValue" stroke="#ef4444" name="Medido mA" strokeWidth={2} dot={{ r: 4 }} />
-                            <Line type="monotone" dataKey="idealUE" stroke="#10b981" name="Ideal UE" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} />
-                            <Line type="monotone" dataKey="ueTransmitter" stroke="#f59e0b" name="UE Transmisor" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} />
-                        </LineChart>
-                    </ResponsiveContainer>
-                );
-
-            case 'errors':
-                return (
-                    <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={processedData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                            <XAxis dataKey="percentage" />
-                            <YAxis />
-                            <Tooltip />
-                            <Legend />
-                            <Line type="monotone" dataKey="errorValue" stroke="#ea580c" name="Error mA" strokeWidth={2} />
-                            <Line type="monotone" dataKey="errorUE" stroke="#dc2626" name="Error UE" strokeWidth={2} />
-                        </LineChart>
-                    </ResponsiveContainer>
-                );
-
-            case 'percentage':
-                return (
-                    <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={processedData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                            <XAxis dataKey="percentage" />
-                            <YAxis label={{ value: '% Error', angle: -90, position: 'insideLeft' }} />
-                            <Tooltip formatter={(val: any) => [`${val}%`, 'Error']} />
-                            <Line type="monotone" dataKey="errorPercentage" stroke="#7c3aed" name="% Error" strokeWidth={3} dot={{ r: 5 }} />
-                        </LineChart>
-                    </ResponsiveContainer>
-                );
-        }
-    };
-
     return (
-        <div className="mt-8 shadow-lg rounded-xl overflow-hidden border border-gray-200 bg-white" ref={containerRef}>
-            {/* Header */}
+        <div className="mt-8 shadow-lg rounded-xl overflow-hidden border border-gray-100 bg-white">
             <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-5 text-white">
                 <div className="flex items-center gap-4">
                     <span className="text-3xl">📊</span>
                     <div>
-                        <h3 className="text-xl font-bold">
-                            {isOhm ? 'Análisis RTD (Sensor)' : 'Análisis del Transmisor'}
-                        </h3>
-                        <p className="text-blue-100 text-sm opacity-90">Visualización de Linealidad y Desviación</p>
+                        <h3 className="text-xl font-bold">{labels.title} ({labels.unit})</h3>
+                        <p className="text-blue-100 text-sm opacity-90">Gráfico de Linealidad y Desviación</p>
                     </div>
                 </div>
             </div>
 
-            {/* Tabs Selector */}
-            <div className="flex border-b border-gray-200 bg-gray-50">
-                {chartViews.map((view) => (
-                    <button
-                        key={view.id}
-                        onClick={() => setActiveView(view.id)}
-                        className={`px-6 py-3 text-sm font-medium transition-all border-b-2 ${
-                            activeView === view.id
-                                ? 'border-blue-500 text-blue-600 bg-white'
-                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-                        }`}
-                    >
-                        {view.icon} {view.name}
-                    </button>
-                ))}
-            </div>
+            {/* Este es el contenedor que se captura para el PDF */}
+            <div className="p-6 bg-white" ref={responseRef}>
+                <h4 className="text-lg font-semibold text-gray-700 mb-4 text-center">Curva de Respuesta vs Ideal</h4>
+                
+                <div className="h-80 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={processedData} margin={{ top: 20, right: 30, left: 20, bottom: 25 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                            <XAxis 
+                                dataKey="idealValue" 
+                                type="number"
+                                domain={[4, 20]}
+                                ticks={[4, 8, 12, 16, 20]}
+                                label={{ value: labels.xAxis, position: 'insideBottom', offset: -15, fontWeight: 'bold', fontSize: 10 }} 
+                            />
+                            <YAxis 
+                                domain={[yTicks[0], yTicks[yTicks.length - 1]]} 
+                                ticks={yTicks}
+                                label={{ value: labels.yAxis, angle: -90, position: 'insideLeft', fontWeight: 'bold', fontSize: 10 }}
+                            />
+                            <Tooltip 
+                                contentStyle={{ borderRadius: '8px', fontSize: '12px' }}
+                                // Aquí mostramos TODO lo que pediste en el Tooltip
+                                formatter={(value: any, name: string, props: any) => {
+                                    const { payload } = props;
+                                    if (name === "Ideal UE") return [value.toFixed(2), "Ideal UE"];
+                                    if (name === "UE Real") return [value.toFixed(2), "UE Transmisor"];
+                                    if (name === "Desviación mA") return [`${value.toFixed(3)} mA`, "Error"];
+                                    return [value, name];
+                                }}
+                            />
+                            <Legend verticalAlign="top" height={36} iconType="circle" />
+                            
+                            <Line type="monotone" dataKey="idealUE" stroke="#3b82f6" name="Ideal UE" strokeWidth={3} dot={{ r: 4 }} isAnimationActive={false} />
+                            <Line type="monotone" dataKey="ueTransmitter" stroke="#ef4444" name="UE Real" strokeWidth={3} strokeDasharray="5 5" dot={{ r: 4 }} isAnimationActive={false} />
+                            <Line type="monotone" dataKey="deviation" stroke="#f59e0b" name="Desviación mA" strokeWidth={2} dot={{ r: 3 }} isAnimationActive={false} />
+                        </LineChart>
+                    </ResponsiveContainer>
+                </div>
 
-            {/* Chart Area */}
-            <div className="p-6">
-                {processedData.length === 0 ? (
-                    <div className="text-center py-12 text-gray-400">
-                        <p>No hay datos suficientes para generar los gráficos.</p>
-                    </div>
-                ) : (
-                    <>
-                        <div className="mb-4 p-3 bg-blue-50 rounded-lg border-l-4 border-blue-400">
-                            <p className="text-sm text-blue-700">
-                                {chartViews.find(v => v.id === activeView)?.description}
-                            </p>
-                        </div>
-                        <div className="h-96 w-full">
-                            {renderActiveChart()}
-                        </div>
-                    </>
-                )}
+                {/* TABLA DE RESUMEN INFERIOR (Aparecerá en el PDF) */}
+                <div className="mt-6 overflow-hidden border border-gray-200 rounded-lg">
+                    <table className="w-full text-[10px] text-left">
+                        <thead className="bg-gray-50 text-gray-600 uppercase font-bold">
+                            <tr>
+                                <th className="px-3 py-2 border-b">% Rango</th>
+                                <th className="px-3 py-2 border-b">Ideal UE</th>
+                                <th className="px-3 py-2 border-b">Ideal mA</th>
+                                <th className="px-3 py-2 border-b">Patrón UE</th>
+                                <th className="px-3 py-2 border-b">UE Trans.</th>
+                                <th className="px-3 py-2 border-b">mA Trans.</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                            {processedData.map((d, i) => (
+                                <tr key={i} className="hover:bg-gray-50">
+                                    <td className="px-3 py-1.5 font-semibold text-blue-600">{d.percentage}%</td>
+                                    <td className="px-3 py-1.5">{d.idealUE}</td>
+                                    <td className="px-3 py-1.5">{d.idealValue}</td>
+                                    <td className="px-3 py-1.5">{d.patronUE}</td>
+                                    <td className="px-3 py-1.5 font-medium text-red-600">{d.ueTransmitter}</td>
+                                    <td className="px-3 py-1.5">{d.measuredValue}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     );
