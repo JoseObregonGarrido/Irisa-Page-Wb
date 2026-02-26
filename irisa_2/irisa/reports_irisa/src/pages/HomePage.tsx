@@ -60,11 +60,7 @@ const HomePage: React.FC = () => {
     };
 
     const handleGeneratePdf = async () => {
-        // Primero verificamos si el gráfico está visible para poder capturarlo
-        if (!showChart) {
-            alert("Por favor, active 'Ver Gráfico' antes de generar el PDF para incluir las imágenes.");
-            return;
-        }
+        // Se elimina la validación que obligaba a activar 'Ver Gráfico'
 
         const reportData = {
             instrumentistName,
@@ -91,21 +87,23 @@ const HomePage: React.FC = () => {
         try {
             let chartImages: string[] = [];
 
-            // Captura asíncrona dependiendo del tipo de dispositivo
-            if (deviceType === 'transmitter' && transmitterChartRef.current) {
-                chartImages = await transmitterChartRef.current.captureAllCharts();
-            } else if (deviceType === 'pressure_switch' && pressureSwitchChartRef.current) {
-                chartImages = await pressureSwitchChartRef.current.captureAllCharts();
-            } else if (deviceType === 'thermostat' && thermostatChartRef.current) {
-                chartImages = await thermostatChartRef.current.captureAllCharts();
+            // Captura asíncrona SOLO si showChart es true y la referencia existe
+            if (showChart) {
+                if (deviceType === 'transmitter' && transmitterChartRef.current) {
+                    chartImages = await transmitterChartRef.current.captureAllCharts();
+                } else if (deviceType === 'pressure_switch' && pressureSwitchChartRef.current) {
+                    chartImages = await pressureSwitchChartRef.current.captureAllCharts();
+                } else if (deviceType === 'thermostat' && thermostatChartRef.current) {
+                    chartImages = await thermostatChartRef.current.captureAllCharts();
+                }
             }
 
-            // Llamada al servicio PDF
+            // Llamada al servicio PDF (si chartImages está vacío, el PDF se genera sin imágenes)
             await generatePDFReport(reportData, chartImages);
             
         } catch (error) {
             console.error("Error al generar PDF:", error);
-            alert("Hubo un error al generar las gráficas para el PDF. Verifique que el gráfico sea visible.");
+            alert("Hubo un error al generar el PDF.");
         }
     };
 
