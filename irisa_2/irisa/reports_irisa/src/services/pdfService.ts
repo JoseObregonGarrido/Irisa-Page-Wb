@@ -58,7 +58,6 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
 
     let yPos = 20;
 
-    // Tipado estricto para evitar error: Target requires 3 element(s) but source may have fewer
     const colors: { [key: string]: [number, number, number] } = { 
         risaraldaGreen: [20, 110, 90], 
         errorBg: [254, 242, 242],
@@ -106,7 +105,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         });
         yPos = (pdf as any).lastAutoTable.finalY + 12;
 
-        // --- 2. TABLA DE MEDICIONES ---
+        // --- 2. TABLA DE MEDICIONES (TRANSMISORES) ---
         if (data.deviceType === 'transmitter' && measurements.length) {
             addHeader(`RESULTADOS DE LAS MEDICIONES`);
 
@@ -150,7 +149,42 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }
 
-        // --- 3. GRÁFICAS (Uso de chartImages) ---
+        // --- 2.1 TABLA DE MEDICIONES (PRESOSTATOS / TERMOSTATOS) ---
+        const switchTests = data.pressureSwitchTests || data.thermostatTests || [];
+        if ((data.deviceType === 'pressure_switch' || data.deviceType === 'thermostat') && switchTests.length) {
+            const isPressure = data.deviceType === 'pressure_switch';
+            addHeader(`RESULTADOS DE LAS PRUEBAS DE ${isPressure ? 'PRESIÓN' : 'TEMPERATURA'}`);
+
+            const unitLabel = data.unity || (isPressure ? 'PSI' : '°C');
+            const headers = [`Set Point (${unitLabel})`, `P. Disparada (${unitLabel})`, `P. Repone (${unitLabel})`, 'Diferencial', 'Estado Contacto'];
+
+            const body = switchTests.map(t => {
+                const disparo = parseFloat(t.pressureDisparada || t.tempDisparada) || 0;
+                const repone = parseFloat(t.pressureRepone || t.tempRepone) || 0;
+                const diferencial = Math.abs(disparo - repone).toFixed(2);
+                
+                return [
+                    t.setPoint || 'N/A',
+                    disparo,
+                    repone,
+                    diferencial,
+                    t.contactState || (t.isNo ? 'N.O (Abierto)' : 'N.C (Cerrado)')
+                ];
+            });
+
+            autoTable(pdf, {
+                startY: yPos,
+                head: [headers],
+                body: body,
+                theme: 'plain',
+                headStyles: { fillColor: colors.risaraldaGreen, halign: 'center', fontSize: 8.5, fontStyle: 'bold', textColor: 255 },
+                styles: { fontSize: 8.5, halign: 'center', cellPadding: 3, textColor: 40 },
+                columnStyles: { 3: { fontStyle: 'italic' } }
+            });
+            yPos = (pdf as any).lastAutoTable.finalY + 12;
+        }
+
+        // --- 3. GRÁFICAS ---
         if (chartImages && chartImages.length > 0) {
             chartImages.forEach((img, index) => {
                 if (yPos + 80 > 280) { pdf.addPage(); yPos = 20; }
