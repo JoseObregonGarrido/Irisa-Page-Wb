@@ -1,22 +1,24 @@
 import axios from "axios";
 import { getCurrentUser } from "./authService";
 
-// Cambia esto en tu service de charts:
 const API_URL = "https://irisa-page-web-backend.onrender.com/api/charts";
 
-export const getTransmitterChartsData = async (lrv : number, 
-    span : number,
-    measurements :Array<{
-        percentage: number,
-        patronUe: number,
-        ueTransmitter: number
-        maTransmitter: number
+export const getTransmitterChartsData = async (
+    lrv: number, 
+    span: number,
+    measurements: Array<{
+        percentage: number;
+        patronUe: number;
+        ueTransmitter: number;
+        maTransmitter: number;
     }>
 ) => {
     const user = getCurrentUser();
     const token = user?.token;
     try {
-        const response = await axios.post(`{$API_URL}/transmitter`, {
+        // CORRECCIÓN: Tenías {$API_URL} con llaves pero sin el símbolo $ fuera o con backticks mal puestos.
+        // Lo correcto es `${API_URL}`
+        const response = await axios.post(`${API_URL}/transmitter`, {
             lrv,
             span,
             measurements
