@@ -37,24 +37,25 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
             ueTransmitter: parseFloat(m.ueTransmitter) || 0,
             idealValue: parseFloat(m.idealmA) || 0, 
             measuredValue: parseFloat(m.maTransmitter) || 0, 
-        })).sort((a, b) => a.idealValue - b.idealValue); // Ordenado por mA (Eje X)
+        })).sort((a, b) => a.idealValue - b.idealValue);
     };
 
     const processedData = processDataForChart();
 
-    // Lógica para calcular intervalos de 5 en 5 o 10 en 10 para el eje Y
+    // CLAVE: Cálculo de ticks para que se note la separación
     const getYTicks = () => {
         if (processedData.length === 0) return [];
-        
         const allValues = processedData.flatMap(d => [d.idealUe, d.ueTransmitter]);
         const maxVal = Math.max(...allValues);
         const minVal = Math.min(...allValues);
         
-        // Decidimos el salto: si el rango es pequeño (< 50) usamos saltos de 5, si no, de 10.
-        const step = (maxVal - minVal) <= 50 ? 5 : 10;
-        
+        // Si el error es muy pequeño, reducimos el paso para dar más detalle
+        const range = maxVal - minVal;
+        let step = 10;
+        if (range <= 10) step = 1;
+        else if (range <= 50) step = 5;
+
         const ticks = [];
-        // Redondeamos el inicio y fin para que los saltos sean limpios
         const start = Math.floor(minVal / step) * step;
         const end = Math.ceil(maxVal / step) * step;
         
@@ -78,27 +79,16 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
 
     return (
         <div className="mt-8 shadow-lg rounded-xl overflow-hidden border border-gray-100 bg-white">
-            {/* Cabecera visual */}
             <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-5 text-white">
                 <div className="flex items-center gap-4">
                     <span className="text-3xl">📊</span>
                     <div>
                         <h3 className="text-xl font-bold">Análisis del Transmisor ({labels.unit})</h3>
-                        <p className="text-blue-100 text-sm opacity-90">Visualización de datos</p>
+                        <p className="text-blue-100 text-sm opacity-90">Visualización detallada de curva de error</p>
                     </div>
                 </div>
             </div>
 
-            {/* Menú de Pestañas (Solo Respuesta) */}
-            <div className="bg-gray-50 border-b flex overflow-x-auto shadow-inner">
-                <button
-                    className="px-6 py-4 text-sm font-semibold transition-all border-b-2 whitespace-nowrap flex items-center gap-2 border-blue-600 text-blue-700 bg-white"
-                >
-                    <span>📈</span> Respuesta
-                </button>
-            </div>
-
-            {/* Contenedor del Gráfico */}
             <div className="p-6 bg-white" ref={responseRef}>
                 <h4 className="text-lg font-semibold text-gray-700 mb-4 text-center">Curva de Respuesta</h4>
                 <div className="h-96 w-full">
@@ -106,7 +96,6 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
                         <LineChart data={processedData} margin={{ top: 20, right: 30, left: 20, bottom: 25 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                             
-                            {/* X: Escala de 4-20 mA con saltos fijos */}
                             <XAxis 
                                 dataKey="idealValue" 
                                 type="number"
@@ -115,36 +104,36 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
                                 label={{ value: 'Escala (mA)', position: 'insideBottom', offset: -15, fontWeight: 'bold' }} 
                             />
                             
-                            {/* Y: Rango UE con saltos de 5 o 10 calculados */}
                             <YAxis 
-                                ticks={yTicks.length > 0 ? yTicks : undefined}
+                                // CLAVE: Usamos 'auto' con padding para que las líneas se separen
+                                domain={['dataMin - 2', 'dataMax + 2']} 
+                                ticks={yTicks}
                                 label={{ value: 'Rango UE', angle: -90, position: 'insideLeft', fontWeight: 'bold' }}
-                                domain={['auto', 'auto']}
                             />
                             
                             <Tooltip />
                             <Legend verticalAlign="top" height={36}/>
                             
-                            {/* Primera: Ideal UE vs Ideal mA */}
+                            {/* Línea Ideal: Azul sólida */}
                             <Line 
                                 type="monotone" 
                                 dataKey="idealUe" 
                                 stroke="#3b82f6" 
-                                name="Ideal UE vs Ideal mA" 
+                                name="Ideal UE" 
                                 strokeWidth={3} 
-                                dot={{ r: 5, fill: '#3b82f6' }} 
+                                dot={{ r: 6, fill: '#3b82f6' }} 
                                 isAnimationActive={false} 
                             />
                             
-                            {/* Segunda: UE Transmisor vs mA Transmisor */}
+                            {/* Línea Medida: Roja discontinua para que se note la separación */}
                             <Line 
                                 type="monotone" 
                                 dataKey="ueTransmitter" 
                                 stroke="#ef4444" 
-                                name="UE Transmisor vs mA Transmisor" 
-                                strokeWidth={2} 
-                                strokeDasharray="5 5"
-                                dot={{ r: 5, fill: '#ef4444' }} 
+                                name="UE Transmisor (Real)" 
+                                strokeWidth={3} 
+                                strokeDasharray="8 4" // Esto hace que se entienda cuál es cuál incluso si están cerca
+                                dot={{ r: 6, fill: '#ef4444', strokeWidth: 2, stroke: '#fff' }} 
                                 connectNulls 
                                 isAnimationActive={false} 
                             />
