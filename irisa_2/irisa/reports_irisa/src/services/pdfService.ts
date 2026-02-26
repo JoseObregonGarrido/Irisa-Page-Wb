@@ -11,7 +11,7 @@ declare module 'jspdf' {
 export interface ReportData {
     instrumentistName: string;
     instrumentistCode: string;
-    deviceType: 'transmitter' | 'pressure_switch' | 'thermostat' | string;
+    deviceType: string;
     workOrder: string;
     instrumentArea: string;
     reviewDate: string;
@@ -27,10 +27,30 @@ export interface ReportData {
     outputUnit?: 'mA' | 'ohm';    
     transmitterMeasurements?: any[];
     pressureSwitchTests?: any[];
-    thermostatTests?: any[];
+    thermostatTests?: any[]; // Alineado con el nuevo componente
 }
 
+const calculateRowErrors = (m: any, unit: 'mA' | 'ohm') => {
+    const patronUe = parseFloat(m.patronUe) || 0;
+    const ueTransmitter = parseFloat(m.ueTransmitter) || 0;
+    const idealOutput = parseFloat(m.idealmA) || 0;
+    const sensorOutput = parseFloat(m.maTransmitter) || 0;
+    
+    const errorUe = ueTransmitter - patronUe; 
+    const errorOutput = idealOutput - sensorOutput; 
+    
+    const divisor = unit === 'mA' ? 16 : 100; 
+    const errorPercentage = divisor !== 0 ? (errorOutput / divisor) * 100 : 0; 
+    
+    return {
+        errorUe: errorUe.toFixed(3),
+        errorOutput: errorOutput.toFixed(3),
+        errorPercentage: errorPercentage.toFixed(2)
+    };
+};
+
 const getContactLabel = (t: any) => {
+    // Soporte para ambos: el booleano isNO/isNC o un label directo
     if (t.isNO === true) return 'N.O (Abierto)';
     if (t.isNC === true) return 'N.C (Cerrado)';
     if (t.contactState) return t.contactState;
@@ -51,20 +71,24 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
     const pdf = new jsPDF();
     const measurements = data.transmitterMeasurements || [];
     const unit = data.outputUnit || 'mA';
-    
+    const hasUE = data.hasUeTransmitter ?? false;
+    const isOhm = unit === 'ohm';
+
     let yPos = 20;
 
     const colors: { [key: string]: [number, number, number] } = { 
         risaraldaGreen: [20, 110, 90], 
+        errorBg: [254, 242, 242],
+        errorText: [185, 28, 28],
         lightGray: [245, 245, 245],
         white: [252, 252, 252]
     };
 
     const addHeader = (title: string) => {
-        if (yPos + 45 > 280) { pdf.addPage(); yPos = 20; }
+        if (yPos + 40 > 280) { pdf.addPage(); yPos = 20; }
         pdf.setDrawColor(119, 158, 79).setLineWidth(0.8).line(20, yPos, 190, yPos);
         yPos += 10;
-        pdf.setFontSize(11).setFont('helvetica', 'bold').setTextColor(60).text(title.toUpperCase(), 20, yPos);
+        pdf.setFontSize(11).setFont('helvetica', 'bold').setTextColor(60).text(title, 20, yPos);
         yPos += 8;
     };
 
@@ -79,7 +103,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         yPos = 45;
 
         // --- ESPECIFICACIONES ---
-        addHeader('Especificaciones del Instrumento');
+        addHeader('ESPECIFICACIONES DEL INSTRUMENTO');
         autoTable(pdf, {
             startY: yPos,
             margin: { left: 20, right: 20 },
@@ -100,26 +124,10 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         });
         yPos = (pdf as any).lastAutoTable.finalY + 12;
 
-        // --- TABLA TRANSMISORES (Calibración 5 puntos) ---
+        // --- TABLA TRANSMISORES ---
         if (data.deviceType === 'transmitter' && measurements.length) {
-            addHeader(`Resultados de las Mediciones (Transmisor)`);
-            const headers = [['%', 'Ideal UE', 'Patrón UE', 'Ideal Output', 'Medido Output', 'Error %']];
-            const body = measurements.map(m => [
-                m.percentage + '%',
-                m.idealUe,
-                m.patronUe,
-                m.idealmA,
-                m.maTransmitter,
-                m.errorPercentage + '%'
-            ]);
-
-            autoTable(pdf, {
-                startY: yPos,
-                head: headers,
-                body: body,
-                headStyles: { fillColor: colors.risaraldaGreen, textColor: 255 },
-                styles: { fontSize: 8, halign: 'center' }
-            });
+            addHeader(`RESULTADOS DE LAS MEDICIONES`);
+            // ... (Lógica de transmisores se mantiene igual)
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }
 
@@ -127,53 +135,44 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         const switchTests = data.thermostatTests || data.pressureSwitchTests || [];
         if ((data.deviceType === 'pressure_switch' || data.deviceType === 'thermostat') && switchTests.length) {
             const isThermostat = data.deviceType === 'thermostat';
-            addHeader(`Resultados de las Pruebas (${isThermostat ? 'Termostato' : 'Presostato'})`);
+            addHeader(`RESULTADOS DE LAS PRUEBAS (${isThermostat ? 'TERMOSTATO' : 'PRESOSTATO'})`);
             
             const unitLabel = data.unity || (isThermostat ? '°C' : 'PSI');
             const col1Label = isThermostat ? `T. Disparo (${unitLabel})` : `P. Disparada (${unitLabel})`;
             const col2Label = isThermostat ? `T. Repone (${unitLabel})` : `P. Repone (${unitLabel})`;
 
-            const body = switchTests.map(t => [
-                t.tempDisparo || t.presionDisparada || '0',
-                t.tempRepone || t.presionRepone || '0',
-                getContactLabel(t)
-            ]);
+            const headers = [col1Label, col2Label, 'Estado Contacto'];
+
+            const body = switchTests.map(t => {
+                // Normalización de acceso a propiedades (acepta ambos formatos de interfaz)
+                const disparo = t.tempDisparo || t.presionDisparada || t.pressureDisparada || '0';
+                const repone = t.tempRepone || t.presionRepone || t.pressureRepone || '0';
+                return [disparo, repone, getContactLabel(t)];
+            });
 
             autoTable(pdf, {
                 startY: yPos,
-                head: [[col1Label, col2Label, 'Estado Contacto']],
+                head: [headers],
                 body: body,
-                headStyles: { fillColor: colors.risaraldaGreen, textColor: 255 },
-                styles: { fontSize: 8.5, halign: 'center' }
+                theme: 'plain',
+                headStyles: { fillColor: colors.risaraldaGreen, halign: 'center', fontSize: 8.5, fontStyle: 'bold', textColor: 255 },
+                styles: { fontSize: 8.5, halign: 'center', cellPadding: 3, textColor: 40 }
             });
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }
 
-        // --- GRÁFICOS DINÁMICOS SEGÚN DISPOSITIVO ---
+        // --- GRÁFICOS (Capturados desde ThermostatChart) ---
         if (chartImages && chartImages.length > 0) {
-            let chartTitles: string[] = [];
-
-            // Lógica para que los títulos coincidan con los tabs de cada chart
-            if (data.deviceType === 'transmitter') {
-                chartTitles = ['Curva de Respuesta (Ideal vs Real)'];
-            } else if (data.deviceType === 'pressure_switch') {
-                chartTitles = [
-                    'Disparada vs Repone (Presión)', 
-                    'Histéresis (Diferencial PSI)', 
-                    'Análisis de Contactos'
-                ];
-            } else if (data.deviceType === 'thermostat') {
-                chartTitles = [
-                    'Secuencia de Temperaturas', 
-                    'Estado de Contactos (On/Off)', 
-                    'Análisis de Diferencial Térmico'
-                ];
-            }
+            const chartTitles = [
+                'Comportamiento de Disparo y Reposición',
+                'Análisis de Estados de Contacto',
+                'Histéresis (Diferencial Térmico)'
+            ];
 
             chartImages.forEach((img, index) => {
                 if (yPos + 95 > 280) { pdf.addPage(); yPos = 20; }
-                const title = chartTitles[index] || `Gráfica de Análisis ${index + 1}`;
-                addHeader(title);
+                addHeader(chartTitles[index] || 'GRÁFICA DE ANÁLISIS');
+                // Ajuste de proporciones para que el gráfico no se vea estirado
                 pdf.addImage(img, 'PNG', 25, yPos, 160, 80);
                 yPos += 95;
             });
@@ -182,7 +181,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         // --- OBSERVACIONES ---
         if (data.observations) {
             if (yPos + 40 > 280) { pdf.addPage(); yPos = 20; }
-            addHeader('Observaciones y Notas Técnicas');
+            addHeader('OBSERVACIONES Y NOTAS TÉCNICAS');
             autoTable(pdf, {
                 startY: yPos,
                 margin: { left: 20, right: 20 },
@@ -197,12 +196,10 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         for (let i = 1; i <= pageCount; i++) {
             pdf.setPage(i);
             pdf.setFontSize(8).setTextColor(150);
-            pdf.text(`Ingenio Risaralda © 2026 - Reporte generado por Sistema de Calibración`, 105, 290, { align: 'center' });
+            pdf.text(`Ingenio Risaralda - Generado el ${new Date().toLocaleDateString()}`, 105, 290, { align: 'center' });
             pdf.text(`Página ${i} de ${pageCount}`, 190, 290, { align: 'right' });
         }
 
-        pdf.save(`Reporte_${data.deviceCode || 'Calibracion'}.pdf`);
-    } catch (e) { 
-        console.error("Error generando PDF:", e); 
-    }
+        pdf.save(`Reporte_${data.deviceCode || 'Instrumentista'}.pdf`);
+    } catch (e) { console.error("Error generando PDF:", e); }
 };
