@@ -57,7 +57,10 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
     const measurements = data.transmitterMeasurements || [];
     const unit = data.outputUnit || 'mA';
     const hasUE = data.hasUeTransmitter ?? false;
-    const isOhm = unit === 'ohm';
+    
+    // Identificamos el grupo tecnológico
+    const isMaRTD = unit === 'mA';
+    const isMvTX = unit === 'ohm'; // 'ohm' es el trigger que usamos para el grupo mV/TX en el componente
 
     let yPos = 20;
 
@@ -107,32 +110,42 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         });
         yPos = (pdf as any).lastAutoTable.finalY + 12;
 
-        // --- TABLA TRANSMISORES ---
+        // --- TABLA TRANSMISORES (CON LÓGICA DINÁMICA DE GRUPOS) ---
         if (data.deviceType === 'transmitter' && measurements.length) {
-            addHeader(`Resultados de las mediciones (Unidad: ${isOhm ? 'RTD' : 'mA'})`);
+            const labelTitulo = isMaRTD ? 'mA / RTD' : 'mV / TX';
+            addHeader(`Resultados de las mediciones (Modo: ${labelTitulo})`);
             
-            // Construcción de Headers dinámicos
-            const headers = ['Ideal UE', 'Ideal mA'];
-            if (isOhm) headers.push('Ideal ohm');
-            headers.push('Patrón UE');
-            if (hasUE) headers.push('UE trans.');
-            headers.push(isOhm ? 'mA sens.' : 'mA trans.');
-            if (isOhm) headers.push('ohm sens.');
-            headers.push('% Rango');
+            // Construcción de Headers según el grupo elegido
+            const headers = [];
+            if (isMaRTD) {
+                headers.push('Ideal UE', 'Ideal mA', 'Ideal Ω', 'Patrón UE');
+                if (hasUE) headers.push('UE trans.');
+                headers.push('mA sensor', 'Ω sensor', '% Rango');
+            } else {
+                // Modo mV / TX
+                headers.push('MV Ideal', 'Sens. mV', 'Tipo (J/K)', 'Ideal mA');
+                if (hasUE) headers.push('UE trans.');
+                headers.push('mA TX', 'Tipo (J/K)', '% Rango');
+            }
+            
             if (hasUE) headers.push('Err UE');
-            headers.push('Err mA', 'Err %');
+            headers.push(isMaRTD ? 'Err mA' : 'Err mV', 'Err %');
 
             const body = measurements.map(m => {
-                const row = [m.idealUE || m.idealUe, m.idealmA]; 
-                if (isOhm) row.push(m.idealohm || m.idealOhm || '0');
-                row.push(m.patronUE || m.patronUe);
-                if (hasUE) row.push(m.ueTransmitter);
-                row.push(m.maTransmitter);
-                if (isOhm) row.push(m.ohmTransmitter || '0');
-                row.push(m.percentage);
-                if (hasUE) row.push(m.errorUE || m.errorUe);
-                // Aseguramos que tome el valor de error mA que calculamos
-                row.push(m.errormA || m.errorMa || '0', m.errorPercentage);
+                const row = [];
+                if (isMaRTD) {
+                    row.push(m.idealUE, m.idealmA, m.idealohm || '0', m.patronUE);
+                    if (hasUE) row.push(m.ueTransmitter);
+                    row.push(m.maTransmitter, m.ohmTransmitter || '0', m.percentage);
+                } else {
+                    // Cuerpo para mV / TX
+                    row.push(m.idealmV || '0', m.mvTransmitter || '0', m.sensorTypeMV || 'J', m.idealmA);
+                    if (hasUE) row.push(m.ueTransmitter);
+                    row.push(m.maTransmitter, m.sensorTypeTX || 'J', m.percentage);
+                }
+
+                if (hasUE) row.push(m.errorUE);
+                row.push(m.errormA, m.errorPercentage);
                 return row;
             });
 
@@ -143,14 +156,11 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 theme: 'grid',
                 headStyles: { fillColor: colors.risaraldaGreen, halign: 'center', fontSize: 5.5, fontStyle: 'bold' },
                 styles: { fontSize: 6, halign: 'center', cellPadding: 1 },
-                columnStyles: {
-                    // Estilizamos columnas de error en rojo tenue si es posible (opcional)
-                }
             });
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }
 
-        // --- TABLA PRESOSTATO / TERMOSTATO ---
+        // --- LAS DEMÁS TABLAS SE MANTIENEN IGUAL ---
         const isThermostat = data.deviceType === 'thermostat';
         const switchTests = isThermostat ? data.thermostatTests : data.pressureSwitchTests;
         
@@ -181,11 +191,9 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }
 
-        // --- GRÁFICOS (Capturados desde TransmitterChart con los nuevos cambios) ---
         if (chartImages && chartImages.length > 0) {
             chartImages.forEach((img) => {
                 if (yPos + 95 > 280) { pdf.addPage(); yPos = 20; }
-                // Título para el gráfico
                 pdf.setFontSize(10).setFont('helvetica', 'bold').text("Curva de calibración y linealidad", 20, yPos);
                 yPos += 5;
                 pdf.addImage(img, 'PNG', 20, yPos, 170, 85);
@@ -193,7 +201,6 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             });
         }
 
-        // --- OBSERVACIONES ---
         if (data.observations) {
             if (yPos + 40 > 280) { pdf.addPage(); yPos = 20; }
             addHeader('Observaciones y notas técnicas');
@@ -206,7 +213,6 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             });
         }
 
-        // --- PIE DE PÁGINA ---
         const pageCount = (pdf as any).internal.getNumberOfPages();
         for (let i = 1; i <= pageCount; i++) {
             pdf.setPage(i);
