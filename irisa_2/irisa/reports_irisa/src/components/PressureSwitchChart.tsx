@@ -75,7 +75,7 @@ const PressureSwitchChart = forwardRef<any, PressureSwitchChartProps>(({ tests, 
     // Títulos sincronizados con el PDF
     const renderSequenceChart = () => (
         <div className="h-80 w-full bg-white p-6">
-            <h4 className="text-sm font-bold text-gray-500 mb-6 text-center uppercase tracking-wider">Disparada VS Response</h4>
+            <h4 className="text-sm font-bold text-gray-500 mb-6 text-center uppercase tracking-wider">Disparada VS Repone</h4>
             <ResponsiveContainer width="100%" height="90%">
                 <LineChart data={processedData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e5e7eb" />
@@ -83,8 +83,8 @@ const PressureSwitchChart = forwardRef<any, PressureSwitchChartProps>(({ tests, 
                     <YAxis unit=" PSI" />
                     <Tooltip />
                     <Legend verticalAlign="top" height={36}/>
-                    <Line type="monotone" dataKey="presionDisparada" stroke="#f59e0b" name="P. Disparada" strokeWidth={3} dot={{ r: 5 }} isAnimationActive={false} />
-                    <Line type="monotone" dataKey="presionRepone" stroke="#10b981" name="P. Repone" strokeWidth={3} dot={{ r: 5 }} isAnimationActive={false} />
+                    <Line type="monotone" dataKey="presionDisparada" stroke="#f59e0b" name="Presion. Disparada" strokeWidth={3} dot={{ r: 5 }} isAnimationActive={false} />
+                    <Line type="monotone" dataKey="presionRepone" stroke="#10b981" name="Presion. Repone" strokeWidth={3} dot={{ r: 5 }} isAnimationActive={false} />
                 </LineChart>
             </ResponsiveContainer>
         </div>
