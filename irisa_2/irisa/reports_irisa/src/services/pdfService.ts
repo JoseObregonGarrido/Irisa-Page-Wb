@@ -164,7 +164,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         const switchTests = data.pressureSwitchTests || data.thermostatTests || [];
         if ((data.deviceType === 'pressure_switch' || data.deviceType === 'thermostat') && switchTests.length) {
             const isPressure = data.deviceType === 'pressure_switch';
-            addHeader(`RESULTADOS DE LAS PRUEBAS DE ${isPressure ? 'PRESIÓN' : 'TEMPERATURA'}`);
+            addHeader(`RESULTADOS DE LAS PRUEBAS`);
             const unitLabel = data.unity || (isPressure ? 'PSI' : '°C');
             const headers = [`Set Point (${unitLabel})`, `P. Disparada (${unitLabel})`, `P. Repone (${unitLabel})`, 'Diferencial', 'Estado Contacto'];
 
@@ -189,9 +189,9 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         // --- 3. GRÁFICAS (Sincronización de Nombres y Espaciado) ---
         if (chartImages && chartImages.length > 0) {
             const chartTitles = [
-                'CURVA DE RESPUESTA',
-                'ANÁLISIS DE ERROR (Diferencial)',
-                'ANÁLISIS DE ESTADOS'
+                'Disparada VS Response',
+                'Histérisis (Diferencial)',
+                'Contactos'
             ];
 
             chartImages.forEach((img, index) => {

@@ -134,7 +134,7 @@ const PressureSwitchChart = forwardRef<any, PressureSwitchChartProps>(({ tests, 
             </div>
 
             <div className="flex border-b bg-gray-50/50">
-                {[{ id: 'sequence', name: 'Curva Respuesta', icon: '📈' }, { id: 'differential', name: 'Diferencial', icon: '📊' }, { id: 'compliance', name: 'Estados', icon: '🔘' }].map((view) => (
+                {[{ id: 'sequence', name: 'Disparada VS Response', icon: '📈' }, { id: 'differential', name: 'Histérisis (Diferencial)', icon: '📊' }, { id: 'compliance', name: 'Contactos', icon: '🔘' }].map((view) => (
                     <button
                         key={view.id}
                         onClick={() => setActiveView(view.id as ChartView)}
