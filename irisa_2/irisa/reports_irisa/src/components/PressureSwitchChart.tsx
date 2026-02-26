@@ -169,4 +169,4 @@ const PressureSwitchChart = forwardRef<any, PressureSwitchChartProps>(({ tests, 
     );
 });
 
-export default PressureSwitchChart;
+export default PressureSwitchChart; 

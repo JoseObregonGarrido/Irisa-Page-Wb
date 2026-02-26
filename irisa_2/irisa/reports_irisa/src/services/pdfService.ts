@@ -187,8 +187,8 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         if (chartImages && chartImages.length > 0) {
             const chartTitles = [
                 'Disparada VS Repone',
-                'Histéresis (Diferencial)',
-                'Contactos'
+                'Contactos',
+                'Histéresis (Diferencial)'
             ];
 
             chartImages.forEach((img, index) => {
