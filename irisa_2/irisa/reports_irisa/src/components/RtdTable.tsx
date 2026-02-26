@@ -18,7 +18,6 @@ const InputField = ({ label, value, onChange, unit, isError = false, readOnly = 
 );
 
 const RtdTable: React.FC<any> = ({ measurements, onChange, hasUeTransmitter, onRemove }) => {
-    // Definimos las columnas exactas para RTD
     const colsCount = 9 + (hasUeTransmitter ? 2 : 0);
     const gridCols = {
         9: 'lg:grid-cols-9',
@@ -45,7 +44,7 @@ const RtdTable: React.FC<any> = ({ measurements, onChange, hasUeTransmitter, onR
                     <div className="px-2 py-4 text-center">Acción</div>
                 </div>
 
-                {/* FILAS RTD CORREGIDAS */}
+                {/* FILAS RTD */}
                 <div className="p-4 lg:p-0 space-y-4 lg:space-y-0 lg:divide-y lg:divide-gray-200 bg-gray-50 lg:bg-white">
                     {measurements.map((m: Measurement, index: number) => (
                         <div key={index} className={`bg-white p-4 lg:p-0 grid grid-cols-2 sm:grid-cols-3 ${gridCols} lg:items-center hover:bg-emerald-50/30 transition-colors`}>
@@ -60,8 +59,8 @@ const RtdTable: React.FC<any> = ({ measurements, onChange, hasUeTransmitter, onR
                             {hasUeTransmitter && <div className="lg:px-2 lg:py-3 lg:bg-red-50/20"><InputField label="Error UE" unit="UE" value={m.errorUE} isError readOnly /></div>}
                             <div className="lg:px-2 lg:py-3 lg:bg-red-50/20"><InputField label="Error mA" unit="mA" value={m.errormA} isError readOnly /></div>
                             <div className="lg:px-2 lg:py-3 lg:bg-red-50/20"><InputField label="Error %" unit="%" value={m.errorPercentage} isError readOnly /></div>
-                            <div className="flex justify-center items-center lg:py-3">
-                                <button onClick={() => onRemove(index)} className="text-red-500 hover:bg-red-50 p-2 rounded-full">
+                            <div className="flex justify-center items-center lg:py-3 col-span-2 sm:col-span-3 lg:col-span-1">
+                                <button onClick={() => onRemove(index)} className="text-red-500 hover:bg-red-50 p-2 rounded-full transition-colors">
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                 </button>
                             </div>
