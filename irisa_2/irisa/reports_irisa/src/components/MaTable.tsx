@@ -28,7 +28,6 @@ const MaTable: React.FC<any> = ({ measurements, onChange, hasUeTransmitter, onRe
     return (
         <div className="overflow-x-auto">
             <div className="min-w-full lg:min-w-[1000px] inline-block align-middle">
-                {/* HEADERS */}
                 <div className={`hidden lg:grid ${gridCols} bg-gray-50 border-b border-gray-200 text-[10px] font-bold text-gray-500 tracking-wider`}>
                     <div className="px-2 py-4 text-center">Ideal UE</div>
                     <div className="px-2 py-4 text-center">Ideal mA</div>
@@ -42,7 +41,6 @@ const MaTable: React.FC<any> = ({ measurements, onChange, hasUeTransmitter, onRe
                     <div className="px-2 py-4 text-center">Acción</div>
                 </div>
 
-                {/* FILAS */}
                 <div className="p-4 lg:p-0 space-y-4 lg:space-y-0 lg:divide-y lg:divide-gray-200 bg-gray-50 lg:bg-white">
                     {measurements.map((m: Measurement, index: number) => (
                         <div key={index} className={`bg-white p-4 lg:p-0 grid grid-cols-2 sm:grid-cols-3 ${gridCols} lg:items-center hover:bg-teal-50/30 transition-colors`}>
@@ -55,7 +53,8 @@ const MaTable: React.FC<any> = ({ measurements, onChange, hasUeTransmitter, onRe
                             {hasUeTransmitter && <div className="lg:px-2 lg:py-3 lg:bg-red-50/20"><InputField label="Error UE" unit="UE" value={m.errorUE} isError readOnly /></div>}
                             <div className="lg:px-2 lg:py-3 lg:bg-red-50/20"><InputField label="Error mA" unit="mA" value={m.errormA} isError readOnly /></div>
                             <div className="lg:px-2 lg:py-3 lg:bg-red-50/20"><InputField label="Error %" unit="%" value={m.errorPercentage} isError readOnly /></div>
-                            <div className="flex justify-center items-center lg:py-3 col-span-2 sm:col-span-3 lg:col-span-1">
+                            {/* CORRECCIÓN AQUÍ: Quitamos los col-span para que sea una columna normal en LG */}
+                            <div className="flex justify-center items-center lg:py-3">
                                 <button onClick={() => onRemove(index)} className="text-red-500 hover:bg-red-50 p-2 rounded-full transition-colors">
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                 </button>
