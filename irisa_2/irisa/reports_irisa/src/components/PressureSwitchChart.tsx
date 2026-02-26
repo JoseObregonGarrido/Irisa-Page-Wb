@@ -90,8 +90,8 @@ const PressureSwitchChart = forwardRef<any, PressureSwitchChartProps>(({ tests, 
                     <YAxis unit=" PSI" domain={[0, (dataMax: number) => Math.ceil(dataMax + 5)]} />
                     <Tooltip />
                     <Legend verticalAlign="top" align="center" wrapperStyle={{ paddingBottom: '20px' }} />
-                    <Line type="monotone" dataKey="presionDisparada" stroke="#f59e0b" name="P. Disparada" strokeWidth={3} dot={{ r: 6 }} isAnimationActive={false} />
-                    <Line type="monotone" dataKey="presionRepone" stroke="#10b981" name="P. Repone" strokeWidth={3} dot={{ r: 6 }} isAnimationActive={false} />
+                    <Line type="monotone" dataKey="presionDisparada" stroke="#f59e0b" name="Presion. Disparada" strokeWidth={3} dot={{ r: 6 }} isAnimationActive={false} />
+                    <Line type="monotone" dataKey="presionRepone" stroke="#10b981" name="Presion. Repone" strokeWidth={3} dot={{ r: 6 }} isAnimationActive={false} />
                 </LineChart>
             </ResponsiveContainer>
         </div>
@@ -114,6 +114,7 @@ const PressureSwitchChart = forwardRef<any, PressureSwitchChartProps>(({ tests, 
         </div>
     );
 
+
     const renderComplianceStats = (isCapture = false) => (
         <div className={`w-full bg-white ${isCapture ? 'p-10' : 'p-6'}`}>
             <h4 className="text-sm font-bold text-gray-500 mb-8 text-center uppercase tracking-wider">ANÁLISIS DE CONTACTO</h4>
@@ -129,6 +130,7 @@ const PressureSwitchChart = forwardRef<any, PressureSwitchChartProps>(({ tests, 
             </div>
         </div>
     );
+
 
     return (
         <div className="mt-8 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-md">
