@@ -54,7 +54,7 @@ const PressureSwitchTable: React.FC<PressureSwitchTableProps> = ({ tests, onTest
                         <svg className="w-6 h-6 text-white mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
                         </svg>
-                        <h3 className="text-xl font-bold text-white  tracking-tight">Pruebas de Presostato</h3>
+                        <h3 className="text-xl font-bold text-white uppercase tracking-tight">Pruebas de Presostato</h3>
                     </div>
                     <button 
                         onClick={handleAddRow} 
@@ -71,7 +71,7 @@ const PressureSwitchTable: React.FC<PressureSwitchTableProps> = ({ tests, onTest
                     {tests.map((test, index) => (
                         <div key={index} className="p-4 space-y-4">
                             <div className="flex justify-between items-center">
-                                <span className="text-xs font-bold text-teal-600  tracking-wider">Prueba #{index + 1}</span>
+                                <span className="text-xs font-bold text-teal-600 uppercase tracking-wider">Prueba #{index + 1}</span>
                                 <button onClick={() => handleDeleteRow(index)} className="text-red-500 p-1 hover:bg-red-50 rounded">
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                 </button>
@@ -79,15 +79,15 @@ const PressureSwitchTable: React.FC<PressureSwitchTableProps> = ({ tests, onTest
                             
                             <div className="space-y-3">
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-500 mb-1 ">Presion disparada en valor de PSI</label>
+                                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Presion disparada en valor de PSI</label>
                                     <TableInput value={test.presionDisparada} onChange={(e:any) => handleChange(index, 'presionDisparada', e.target.value)} />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-500 mb-1 ">Presion repone en valor de PSI</label>
+                                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Presion repone en valor de PSI</label>
                                     <TableInput value={test.presionRepone} onChange={(e:any) => handleChange(index, 'presionRepone', e.target.value)} />
                                 </div>
                                 <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
-                                    <label className="block text-xs font-bold text-gray-500 mb-2 ">Estado contacto</label>
+                                    <label className="block text-xs font-bold text-gray-500 mb-2 uppercase">Estado contacto</label>
                                     <div className="flex gap-4">
                                         <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
                                             <input type="checkbox" checked={test.isNO} onChange={(e) => handleChange(index, 'isNO', e.target.checked)} className="w-5 h-5 text-teal-600 rounded" /> N.O
@@ -107,8 +107,8 @@ const PressureSwitchTable: React.FC<PressureSwitchTableProps> = ({ tests, onTest
                     <table className="w-full text-sm">
                         <thead className="bg-gray-50 border-b border-gray-200">
                             <tr>
-                                <th className="px-4 py-4 text-left font-bold text-gray-600  tracking-wider">Presion disparada en valor de PSI</th>
-                                <th className="px-4 py-4 text-left font-bold text-gray-600  tracking-wider">Presion repone en valor de PSI</th>
+                                <th className="px-4 py-4 text-left font-bold text-gray-600 uppercase tracking-wider">Presion disparada en valor de PSI</th>
+                                <th className="px-4 py-4 text-left font-bold text-gray-600 uppercase tracking-wider">Presion repone en valor de PSI</th>
                                 <th className="px-4 py-4 text-center font-bold text-gray-600 uppercase tracking-wider">Estado contacto</th>
                                 <th className="px-4 py-4 text-center font-bold text-gray-600 uppercase tracking-wider">Acción</th>
                             </tr>
@@ -147,7 +147,7 @@ const PressureSwitchTable: React.FC<PressureSwitchTableProps> = ({ tests, onTest
                 {tests.length === 0 && (
                     <div className="text-center py-12 px-4 bg-gray-50/50">
                         <p className="text-gray-500 font-medium mb-4">No hay registros de presostato.</p>
-                        <button onClick={handleAddRow} className="text-teal-600 font-bold hover:text-teal-700  text-sm tracking-wider">Agregar Prueba</button>
+                        <button onClick={handleAddRow} className="text-teal-600 font-bold hover:text-teal-700 uppercase text-sm tracking-wider">Agregar Prueba</button>
                     </div>
                 )}
             </div>
