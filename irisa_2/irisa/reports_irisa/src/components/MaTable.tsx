@@ -18,21 +18,14 @@ const InputField = ({ label, value, onChange, unit, isError = false, readOnly = 
 );
 
 const MaTable: React.FC<any> = ({ measurements, onChange, hasUeTransmitter, onRemove }) => {
-    // Calculamos columnas: base (7) + extras si hay UE Transmitter (2)
-    const cols = hasUeTransmitter ? 9 : 7;
-    const gridStyle = {
-        display: 'grid',
-        gridTemplateColumns: `repeat(${cols}, minmax(0, 1xl))`
-    };
+    // Definimos la clase de grid según las columnas necesarias
+    const gridColsClass = hasUeTransmitter ? 'lg:grid-cols-9' : 'lg:grid-cols-7';
 
     return (
-        <div className="overflow-x-auto">
-            <div className="min-w-full lg:min-w-[1000px]">
-                {/* HEADER - Forzamos el mismo grid que las filas */}
-                <div 
-                    className="hidden lg:grid bg-gray-50 border-b border-gray-200 text-[10px] font-bold text-gray-500 uppercase tracking-wider"
-                    style={gridStyle}
-                >
+        <div className="overflow-x-auto w-full">
+            <div className="min-w-full lg:min-w-[1000px] inline-block align-middle">
+                {/* HEADER */}
+                <div className={`hidden lg:grid ${gridColsClass} bg-gray-50 border-b border-gray-200 text-[10px] font-bold text-gray-500 uppercase tracking-wider`}>
                     <div className="px-2 py-4 text-center">Ideal UE</div>
                     <div className="px-2 py-4 text-center">Ideal mA</div>
                     <div className="px-2 py-4 text-center">Patrón UE</div>
@@ -45,14 +38,10 @@ const MaTable: React.FC<any> = ({ measurements, onChange, hasUeTransmitter, onRe
                     <div className="px-2 py-4 text-center">Acción</div>
                 </div>
 
-                {/* FILAS */}
+                {/* FILAS - Quitamos el style de JS y usamos clases puras */}
                 <div className="bg-white divide-y divide-gray-200">
                     {measurements.map((m: Measurement, index: number) => (
-                        <div 
-                            key={index} 
-                            className="p-4 lg:p-0 grid grid-cols-2 sm:grid-cols-3 lg:grid-none lg:items-center hover:bg-gray-50 transition-colors"
-                            style={window.innerWidth >= 1024 ? gridStyle : {}}
-                        >
+                        <div key={index} className={`grid grid-cols-2 sm:grid-cols-3 ${gridColsClass} p-4 lg:p-0 lg:items-center hover:bg-gray-50 transition-colors`}>
                             <div className="lg:p-2"><InputField label="Ideal UE" unit="UE" value={m.idealUE} onChange={(e:any) => onChange(index, 'idealUE', e.target.value)} /></div>
                             <div className="lg:p-2"><InputField label="Ideal mA" unit="mA" value={m.idealmA} onChange={(e:any) => onChange(index, 'idealmA', e.target.value)} /></div>
                             <div className="lg:p-2"><InputField label="Patrón UE" unit="UE" value={m.patronUE} onChange={(e:any) => onChange(index, 'patronUE', e.target.value)} /></div>
@@ -62,9 +51,7 @@ const MaTable: React.FC<any> = ({ measurements, onChange, hasUeTransmitter, onRe
                             {hasUeTransmitter && <div className="lg:p-2 lg:bg-red-50/30"><InputField label="Err UE" unit="UE" value={m.errorUE} isError readOnly /></div>}
                             <div className="lg:p-2 lg:bg-red-50/30"><InputField label="Err mA" unit="mA" value={m.errormA} isError readOnly /></div>
                             <div className="lg:p-2 lg:bg-red-50/30"><InputField label="Err %" unit="%" value={m.errorPercentage} isError readOnly /></div>
-                            
-                            {/* BOTÓN ACCIÓN: Ahora es una columna más */}
-                            <div className="flex justify-center items-center py-2 lg:py-0">
+                            <div className="flex justify-center items-center py-2 lg:py-0 col-span-2 sm:col-span-3 lg:col-span-1">
                                 <button onClick={() => onRemove(index)} className="text-red-500 hover:bg-red-50 p-2 rounded-full transition-colors">
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                 </button>
