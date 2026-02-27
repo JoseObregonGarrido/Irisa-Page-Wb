@@ -1,6 +1,6 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { toPng } from 'html-to-image';
-import { useRef, useImperativeHandle, forwardRef } from 'react';
+import { useRef, useImperativeHandle, forwardRef, FC } from 'react';
 
 export interface Measurement {
     percentage: string;
@@ -30,10 +30,10 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
     const containerRef = useRef<HTMLDivElement>(null);
     const isOhm = outputUnit === 'ohm';
 
-    // 1. PROCESAMIENTO DE DATOS
+    // Procesamos la data para que el eje X use valores de 4 a 20 mA basados en el porcentaje
     const processedData = chartData.map((m) => {
         const pct = parseFloat(m.percentage) || 0;
-        // Mapeo Eje X: 0% -> 4mA, 100% -> 20mA
+        // Mapeo: 0% -> 4mA, 100% -> 20mA
         const xValue = 4 + (pct / 100) * 16;
 
         return {
@@ -47,7 +47,7 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
         };
     }).sort((a, b) => a.xValue - b.xValue);
 
-    // 2. LÓGICA DE SALTOS DE 10 EN 10 (EJE Y)
+    // LÓGICA DE SALTOS DE 10 EN 10 PARA EL EJE Y (UE)
     const getYTicks = () => {
         if (processedData.length === 0) return [0, 10, 20, 30, 40, 50];
         
@@ -66,9 +66,8 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
     };
 
     const yTicks = getYTicks();
-    const xTicks = [4, 8, 12, 16, 20]; // Saltos de 4 en 4 para el eje X
+    const xTicks = [4, 8, 12, 16, 20]; // Saltos fijos de 4 en 4 para el lazo 4-20mA
 
-    // 3. EXPOSICIÓN DE CAPTURA PARA PDF
     useImperativeHandle(ref, () => ({
         captureAllCharts: async () => {
             if (containerRef.current) {
@@ -85,7 +84,6 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
 
     return (
         <div className="mt-8 shadow-lg rounded-xl overflow-hidden border border-gray-200 bg-white" ref={containerRef}>
-            {/* Header del Gráfico */}
             <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-5 text-white">
                 <div className="flex items-center gap-4">
                     <span className="text-3xl">📈</span>
@@ -93,12 +91,11 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
                         <h3 className="text-xl font-bold">
                             {isOhm ? 'Curva de Respuesta RTD' : 'Curva de Respuesta del Transmisor'}
                         </h3>
-                        <p className="text-blue-100 text-sm opacity-90">Eje X: 4-20 mA | Eje Y: Escala 10 unidades</p>
+                        <p className="text-blue-100 text-sm opacity-90">Eje X: Lazo 4-20 mA | Eje Y: Escala de 10 en 10</p>
                     </div>
                 </div>
             </div>
 
-            {/* Área del Gráfico */}
             <div className="p-6 bg-white">
                 {processedData.length === 0 ? (
                     <div className="text-center py-12 text-gray-400">
@@ -129,18 +126,18 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
                                 <Tooltip 
                                     contentStyle={{ borderRadius: '8px', fontSize: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                                     formatter={(value: any, name: string) => [value.toFixed(3), name]}
-                                    labelFormatter={(label) => `Punto de Control: ${label} mA`}
+                                    labelFormatter={(label) => `Señal: ${label} mA`}
                                 />
                                 <Legend verticalAlign="top" height={36} />
                                 
-                                {/* Línea de Referencia Ideal */}
+                                {/* Línea Ideal UE vs Señal mA */}
                                 <Line type="monotone" dataKey="idealUE" stroke="#10b981" name="Ideal UE" strokeWidth={3} dot={{ r: 4 }} isAnimationActive={false} />
                                 
-                                {/* Línea de Medición Real */}
+                                {/* Línea Medida UE vs Señal mA */}
                                 <Line type="monotone" dataKey="ueTransmitter" stroke="#f59e0b" name="Leído UE" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 4 }} isAnimationActive={false} />
                                 
-                                {/* Línea de Desviación (Error de Corriente) */}
-                                <Line type="monotone" dataKey="deviation" stroke="#ef4444" name="Desviación (Error mA)" strokeWidth={2} dot={{ r: 3 }} isAnimationActive={false} />
+                                {/* Desviación mapeada al eje Y */}
+                                <Line type="monotone" dataKey="deviation" stroke="#ef4444" name="Desviación (Error)" strokeWidth={2} dot={{ r: 3 }} isAnimationActive={false} />
                             </LineChart>
                         </ResponsiveContainer>
                     </div>
