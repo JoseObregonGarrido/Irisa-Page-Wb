@@ -1,6 +1,6 @@
 import React from 'react';
-import MaTable from './MaTable';
-import RtdTable from './RtdTable';
+import MaTable from '../components/MaTable';
+import RtdTable from '../components/RtdTable';
 
 export interface Measurement {
     percentage: string;
