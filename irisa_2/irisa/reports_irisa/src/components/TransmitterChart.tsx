@@ -37,7 +37,6 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
         ueTransmitter: parseFloat(m.ueTransmitter) || 0,
         idealValue: parseFloat(m.idealmA || m.idealMa || "0"),
         measuredValue: parseFloat(m.maTransmitter) || 0,
-        deviation: parseFloat(m.errormA || m.errorMa || "0"), // Desviación de corriente
     })).sort((a, b) => a.percentage - b.percentage);
 
     // LÓGICA DE SALTOS DE 4 EN 4 PARA EL EJE Y
@@ -126,8 +125,6 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
                                 <Line type="monotone" dataKey="idealUE" stroke="#10b981" name="Ideal UE" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} isAnimationActive={false} />
                                 <Line type="monotone" dataKey="ueTransmitter" stroke="#f59e0b" name="UE Transmisor" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} isAnimationActive={false} />
                                 
-                                {/* Línea de Desviación */}
-                                <Line type="monotone" dataKey="deviation" stroke="#8b5cf6" name="Desviación mA" strokeWidth={2} dot={{ r: 3 }} isAnimationActive={false} />
                             </LineChart>
                         </ResponsiveContainer>
                     </div>
