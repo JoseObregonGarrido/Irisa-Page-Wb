@@ -104,7 +104,7 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
                                 
                                 <XAxis 
                                     dataKey="percentage" 
-                                    label={{ value: 'Escala (%)', position: 'insideBottom', offset: -10, fontSize: 12, fontWeight: 'bold' }} 
+                                    label={{ value: '4-20 mA', position: 'insideBottom', offset: -10, fontSize: 12, fontWeight: 'bold' }} 
                                 />
 
                                 <YAxis 
