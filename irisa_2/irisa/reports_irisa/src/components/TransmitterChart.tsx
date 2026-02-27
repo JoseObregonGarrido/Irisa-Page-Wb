@@ -1,6 +1,6 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { toPng } from 'html-to-image';
-import React, { useRef, useImperativeHandle, forwardRef } from 'react';
+import { useRef, useImperativeHandle, forwardRef, FC } from 'react';
 
 export interface Measurement {
     percentage: string;
@@ -30,37 +30,44 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
     const containerRef = useRef<HTMLDivElement>(null);
     const isOhm = outputUnit === 'ohm';
 
-    // Normalización y procesamiento de datos incluyendo desviación
-    const processedData = chartData.map((m) => ({
-        percentage: parseFloat(m.percentage) || 0,
-        idealUE: parseFloat(m.idealUE || m.idealUe || "0"),
-        ueTransmitter: parseFloat(m.ueTransmitter) || 0,
-        idealValue: parseFloat(m.idealmA || m.idealMa || "0"),
-        measuredValue: parseFloat(m.maTransmitter) || 0,
-        deviation: parseFloat(m.errormA || m.errorMa || "0"), // Desviación de corriente
-    })).sort((a, b) => a.percentage - b.percentage);
+    // Procesamos la data para que el eje X use valores de 4 a 20 mA basados en el porcentaje
+    const processedData = chartData.map((m) => {
+        const pct = parseFloat(m.percentage) || 0;
+        // Mapeo: 0% -> 4mA, 100% -> 20mA
+        const xValue = 4 + (pct / 100) * 16;
 
-    // LÓGICA DE SALTOS DE 4 EN 4 PARA EL EJE Y
+        return {
+            xValue: parseFloat(xValue.toFixed(2)),
+            percentage: pct,
+            idealUE: parseFloat(m.idealUE || m.idealUe || "0"),
+            ueTransmitter: parseFloat(m.ueTransmitter) || 0,
+            idealValue: parseFloat(m.idealmA || m.idealMa || "0"),
+            measuredValue: parseFloat(m.maTransmitter) || 0,
+            deviation: parseFloat(m.errormA || m.errorMa || "0"),
+        };
+    }).sort((a, b) => a.xValue - b.xValue);
+
+    // LÓGICA DE SALTOS DE 10 EN 10 PARA EL EJE Y (UE)
     const getYTicks = () => {
-        if (processedData.length === 0) return [0, 4, 8, 12, 16, 20];
+        if (processedData.length === 0) return [0, 10, 20, 30, 40, 50];
         
         const allValues = processedData.flatMap(d => [d.idealUE, d.ueTransmitter]);
         const maxVal = Math.max(...allValues);
         const minVal = Math.min(...allValues, 0); 
         
         const ticks = [];
-        const start = Math.floor(minVal / 4) * 4;
-        const end = Math.ceil(maxVal / 4) * 4;
+        const start = Math.floor(minVal / 10) * 10;
+        const end = Math.ceil(maxVal / 10) * 10;
         
-        for (let i = start; i <= end; i += 4) {
+        for (let i = start; i <= end; i += 10) {
             ticks.push(i);
         }
         return ticks;
     };
 
     const yTicks = getYTicks();
+    const xTicks = [4, 8, 12, 16, 20]; // Saltos fijos de 4 en 4 para el lazo 4-20mA
 
-    // Exponer captura para PDF
     useImperativeHandle(ref, () => ({
         captureAllCharts: async () => {
             if (containerRef.current) {
@@ -77,7 +84,6 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
 
     return (
         <div className="mt-8 shadow-lg rounded-xl overflow-hidden border border-gray-200 bg-white" ref={containerRef}>
-            {/* Header */}
             <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-5 text-white">
                 <div className="flex items-center gap-4">
                     <span className="text-3xl">📈</span>
@@ -85,12 +91,11 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
                         <h3 className="text-xl font-bold">
                             {isOhm ? 'Curva de Respuesta RTD' : 'Curva de Respuesta del Transmisor'}
                         </h3>
-                        <p className="text-blue-100 text-sm opacity-90">Saltos de 4 unidades y análisis de desviación</p>
+                        <p className="text-blue-100 text-sm opacity-90">Eje X: Lazo 4-20 mA | Eje Y: Escala de 10 en 10</p>
                     </div>
                 </div>
             </div>
 
-            {/* Chart Area */}
             <div className="p-6 bg-white">
                 {processedData.length === 0 ? (
                     <div className="text-center py-12 text-gray-400">
@@ -103,31 +108,36 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
                                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                                 
                                 <XAxis 
-                                    dataKey="percentage" 
-                                    label={{ value: '4-20 mA', position: 'insideBottom', offset: -10, fontSize: 12, fontWeight: 'bold' }} 
+                                    dataKey="xValue" 
+                                    type="number"
+                                    domain={[4, 20]}
+                                    ticks={xTicks}
+                                    tick={{ fontSize: 11 }}
+                                    label={{ value: 'Señal de Salida (mA)', position: 'insideBottom', offset: -10, fontSize: 12, fontWeight: 'bold' }} 
                                 />
 
                                 <YAxis 
                                     ticks={yTicks} 
                                     domain={[yTicks[0], yTicks[yTicks.length - 1]]}
-                                    tick={{ fontSize: 10 }}
-                                    label={{ value: 'Rango UE / Desviación', angle: -90, position: 'insideLeft', fontWeight: 'bold', fontSize: 12 }}
+                                    tick={{ fontSize: 11 }}
+                                    label={{ value: 'Valor UE', angle: -90, position: 'insideLeft', fontWeight: 'bold', fontSize: 12 }}
                                 />
 
                                 <Tooltip 
                                     contentStyle={{ borderRadius: '8px', fontSize: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                                     formatter={(value: any, name: string) => [value.toFixed(3), name]}
+                                    labelFormatter={(label) => `Señal: ${label} mA`}
                                 />
                                 <Legend verticalAlign="top" height={36} />
                                 
-                                {/* Líneas principales de respuesta */}
-                                <Line type="monotone" dataKey="idealValue" stroke="#3b82f6" name="Ideal mA" strokeWidth={2} dot={{ r: 4 }} isAnimationActive={false} />
-                                <Line type="monotone" dataKey="measuredValue" stroke="#ef4444" name="Medido mA" strokeWidth={2} dot={{ r: 4 }} isAnimationActive={false} />
-                                <Line type="monotone" dataKey="idealUE" stroke="#10b981" name="Ideal UE" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} isAnimationActive={false} />
-                                <Line type="monotone" dataKey="ueTransmitter" stroke="#f59e0b" name="UE Transmisor" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} isAnimationActive={false} />
+                                {/* Línea Ideal UE vs Señal mA */}
+                                <Line type="monotone" dataKey="idealUE" stroke="#10b981" name="Ideal UE" strokeWidth={3} dot={{ r: 4 }} isAnimationActive={false} />
                                 
-                                {/* Línea de Desviación */}
-                                <Line type="monotone" dataKey="deviation" stroke="#8b5cf6" name="Desviación mA" strokeWidth={2} dot={{ r: 3 }} isAnimationActive={false} />
+                                {/* Línea Medida UE vs Señal mA */}
+                                <Line type="monotone" dataKey="ueTransmitter" stroke="#f59e0b" name="Leído UE" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 4 }} isAnimationActive={false} />
+                                
+                                {/* Desviación mapeada al eje Y */}
+                                <Line type="monotone" dataKey="deviation" stroke="#ef4444" name="Desviación (Error)" strokeWidth={2} dot={{ r: 3 }} isAnimationActive={false} />
                             </LineChart>
                         </ResponsiveContainer>
                     </div>
