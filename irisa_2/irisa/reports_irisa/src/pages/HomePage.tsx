@@ -139,9 +139,9 @@ const HomePage: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-            {/* Header */}
+            {/* Header - Aumentado a max-w-[95%] */}
             <header className="bg-white shadow-lg border-b-4 border-teal-500">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="max-w-[95%] mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center py-6">
                         <div className="flex items-center space-x-4">
                             <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-r from-teal-600 to-emerald-600 rounded-lg shadow-md">
@@ -168,7 +168,8 @@ const HomePage: React.FC = () => {
                 </div>
             </header>
 
-            <main className="max-w-7xl mx-auto p-6 lg:p-8">
+            {/* Main Content - Cambiado de max-w-7xl a max-w-[95%] para más espacio horizontal */}
+            <main className="max-w-[95%] mx-auto p-4 lg:p-8">
                 <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
                     <div className="bg-gradient-to-r from-teal-600 to-emerald-600 px-8 py-6">
                         <h2 className="text-2xl font-bold text-white flex items-center">
@@ -180,9 +181,9 @@ const HomePage: React.FC = () => {
                         <p className="text-teal-100 mt-2">Complete la información del instrumento y las mediciones correspondientes</p>
                     </div>
 
-                    <div className="p-8">
-                        <form className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-                            {/* Información Personal y de Trabajo */}
+                    <div className="p-4 lg:p-8">
+                        <form className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                            {/* Personal e Instrumentista */}
                             <div className="space-y-2">
                                 <label className="block text-sm font-semibold text-gray-700">Nombre del Instrumentista</label>
                                 <input type="text" value={instrumentistName} onChange={(e) => setInstrumentistName(e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none" placeholder="Ingrese el nombre completo" required />
@@ -242,9 +243,9 @@ const HomePage: React.FC = () => {
                                 <label className="block text-sm font-semibold text-gray-700">Codigo del Equipo</label>
                                 <input type="text" value={deviceCode} onChange={(e) => setDeviceCode(e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none" placeholder="Ej: 3344542" />
                             </div>
-                            <div className="space-y-2 md:col-span-2 lg:col-span-3">
+                            <div className="space-y-2 md:col-span-2 lg:col-span-3 xl:col-span-4">
                                 <label className="block text-sm font-semibold text-gray-700">Observaciones</label>
-                                <textarea value={observations} onChange={(e) => setObservations(e.target.value)} rows={4} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none resize-vertical" placeholder="Ingrese observaciones adicionales..." />
+                                <textarea value={observations} onChange={(e) => setObservations(e.target.value)} rows={3} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none resize-vertical" placeholder="Ingrese observaciones adicionales..." />
                             </div>
                         </form>
 
@@ -261,8 +262,8 @@ const HomePage: React.FC = () => {
                             </div>
                         )}
 
-                        {/* Sección de Tablas Dinámicas */}
-                        <div className="mt-8">
+                        {/* Sección de Tablas Dinámicas - Ahora tienen mucho más ancho */}
+                        <div className="mt-8 w-full overflow-hidden">
                             {deviceType === 'transmitter' && (
                                 <TransmitterTable 
                                     measurements={transmitterMeasurements} 
@@ -284,7 +285,6 @@ const HomePage: React.FC = () => {
                         {/* Botonera de Acciones */}
                         <div className="mt-8 p-6 bg-gray-50 rounded-xl border border-gray-200">
                             <div className="flex flex-col sm:flex-row flex-wrap gap-4 justify-center items-center">
-                                {/* EL BOTÓN SE MUESTRA SÓLO SI ES TRANSMISOR */}
                                 {deviceType === 'transmitter' && (
                                     <button onClick={() => setShowChart(!showChart)} className="w-full sm:w-auto flex items-center justify-center px-6 py-3 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-semibold rounded-lg shadow-md transition-all duration-200 transform hover:scale-105">
                                         <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
