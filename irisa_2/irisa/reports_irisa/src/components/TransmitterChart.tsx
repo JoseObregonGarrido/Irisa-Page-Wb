@@ -23,7 +23,6 @@ interface TransmitterChartProps {
     measurements?: Measurement[];
     data?: Measurement[];
     outputUnit?: 'mA' | 'ohm' | string;
-    // Agregamos la prop para controlar la visibilidad desde el padre
     hasUeTransmitter?: boolean; 
 }
 
@@ -31,36 +30,43 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({
     measurements, 
     data, 
     outputUnit = 'mA',
-    hasUeTransmitter = true // Por defecto visible, pero controlado por la tabla
+    hasUeTransmitter = true 
 }, ref) => {
     const chartData = measurements || data || [];
     const containerRef = useRef<HTMLDivElement>(null);
     const isOhm = outputUnit === 'ohm';
 
-    // Normalización y procesamiento de datos según los campos de la tabla
-    const processedData = chartData.map((m) => ({
-        percentage: parseFloat(m.percentage) || 0,
-        idealUE: parseFloat(m.idealUE || m.idealUe || "0"),
-        ueTransmitter: parseFloat(m.ueTransmitter) || 0,
-        idealValue: parseFloat(m.idealmA || m.idealMa || "0"), // Viene de idealmA (Eje X)
-        measuredValue: parseFloat(m.maTransmitter) || 0,      // Viene de maTransmitter
-    })).sort((a, b) => a.idealValue - b.idealValue);
+    // Normalización y procesamiento de datos
+    const processedData = chartData.map((m) => {
+        const idealMa = parseFloat(m.idealmA || m.idealMa || "0");
+        const ueTrans = m.ueTransmitter ? parseFloat(m.ueTransmitter) : null;
+        const idealUeVal = (m.idealUE || m.idealUe) ? parseFloat(m.idealUE || m.idealUe || "0") : null;
+
+        return {
+            percentage: parseFloat(m.percentage) || 0,
+            // Si no hay valor, mandamos null para que la línea no caiga a 0
+            idealUE: idealUeVal,
+            ueTransmitter: ueTrans,
+            idealValue: idealMa, 
+            measuredValue: parseFloat(m.maTransmitter) || 0,
+        };
+    }).sort((a, b) => a.idealValue - b.idealValue);
 
     // LÓGICA DE SALTOS DE 2 EN 2 PARA EL EJE Y
     const getYTicks = () => {
         if (processedData.length === 0) return [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20];
         
-        // Calculamos el rango basado en lo que se está mostrando
         const activeValues = processedData.flatMap(d => {
             const values = [d.idealValue, d.measuredValue];
             if (hasUeTransmitter) {
-                values.push(d.idealUE, d.ueTransmitter);
+                if (d.idealUE !== null) values.push(d.idealUE);
+                if (d.ueTransmitter !== null) values.push(d.ueTransmitter);
             }
             return values;
         });
 
-        const maxVal = Math.max(...activeValues);
-        const minVal = Math.min(...activeValues, 0); 
+        const maxVal = activeValues.length > 0 ? Math.max(...activeValues) : 20;
+        const minVal = activeValues.length > 0 ? Math.min(...activeValues, 0) : 0; 
         
         const ticks = [];
         const step = 2;
@@ -133,20 +139,19 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({
 
                                 <Tooltip 
                                     contentStyle={{ borderRadius: '8px', fontSize: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                    formatter={(value: any, name: string) => [value.toFixed(3), name]}
+                                    formatter={(value: any, name: string) => [value !== null ? value.toFixed(3) : '---', name]}
                                     labelFormatter={(label) => `Punto: ${label} mA`}
                                 />
                                 <Legend verticalAlign="top" height={36} />
                                 
-                                {/* LÍNEAS DE CORRIENTE (SIEMPRE VISIBLES) */}
                                 <Line type="monotone" dataKey="idealValue" stroke="#3b82f6" name="Ideal mA" strokeWidth={2} dot={{ r: 4 }} isAnimationActive={false} />
                                 <Line type="monotone" dataKey="measuredValue" stroke="#ef4444" name="Medido mA" strokeWidth={2} dot={{ r: 4 }} isAnimationActive={false} />
                                 
-                                {/* LÍNEAS DE UNIDADES DE INGENIERÍA (CONDICIONALES) */}
                                 {hasUeTransmitter && (
                                     <>
-                                        <Line type="monotone" dataKey="idealUE" stroke="#10b981" name="Ideal UE" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} isAnimationActive={false} />
-                                        <Line type="monotone" dataKey="ueTransmitter" stroke="#f59e0b" name="UE Transmisor" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} isAnimationActive={false} />
+                                        {/* connectNulls={false} asegura que no se invente una línea entre puntos si hay un hueco */}
+                                        <Line type="monotone" dataKey="idealUE" stroke="#10b981" name="Ideal UE" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} isAnimationActive={false} connectNulls={false} />
+                                        <Line type="monotone" dataKey="ueTransmitter" stroke="#f59e0b" name="UE Transmisor" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} isAnimationActive={false} connectNulls={false} />
                                     </>
                                 )}
                             </LineChart>
