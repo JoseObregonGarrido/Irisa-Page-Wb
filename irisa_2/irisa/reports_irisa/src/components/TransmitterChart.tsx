@@ -23,43 +23,59 @@ interface TransmitterChartProps {
     measurements?: Measurement[];
     data?: Measurement[];
     outputUnit?: 'mA' | 'ohm' | string;
+    // Agregamos la prop para controlar la visibilidad desde el padre
+    hasUeTransmitter?: boolean; 
 }
 
-const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements, data, outputUnit = 'mA' }, ref) => {
+const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ 
+    measurements, 
+    data, 
+    outputUnit = 'mA',
+    hasUeTransmitter = true // Por defecto visible, pero controlado por la tabla
+}, ref) => {
     const chartData = measurements || data || [];
     const containerRef = useRef<HTMLDivElement>(null);
     const isOhm = outputUnit === 'ohm';
 
-    // Normalización y procesamiento de datos incluyendo desviación
+    // Normalización y procesamiento de datos según los campos de la tabla
     const processedData = chartData.map((m) => ({
         percentage: parseFloat(m.percentage) || 0,
         idealUE: parseFloat(m.idealUE || m.idealUe || "0"),
         ueTransmitter: parseFloat(m.ueTransmitter) || 0,
-        idealValue: parseFloat(m.idealmA || m.idealMa || "0"),
-        measuredValue: parseFloat(m.maTransmitter) || 0,
-    })).sort((a, b) => a.percentage - b.percentage);
+        idealValue: parseFloat(m.idealmA || m.idealMa || "0"), // Viene de idealmA (Eje X)
+        measuredValue: parseFloat(m.maTransmitter) || 0,      // Viene de maTransmitter
+    })).sort((a, b) => a.idealValue - b.idealValue);
 
-    // LÓGICA DE SALTOS DE 4 EN 4 PARA EL EJE Y
+    // LÓGICA DE SALTOS DE 2 EN 2 PARA EL EJE Y
     const getYTicks = () => {
-        if (processedData.length === 0) return [0, 4, 8, 12, 16, 20];
+        if (processedData.length === 0) return [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20];
         
-        const allValues = processedData.flatMap(d => [d.idealUE, d.ueTransmitter]);
-        const maxVal = Math.max(...allValues);
-        const minVal = Math.min(...allValues, 0); 
+        // Calculamos el rango basado en lo que se está mostrando
+        const activeValues = processedData.flatMap(d => {
+            const values = [d.idealValue, d.measuredValue];
+            if (hasUeTransmitter) {
+                values.push(d.idealUE, d.ueTransmitter);
+            }
+            return values;
+        });
+
+        const maxVal = Math.max(...activeValues);
+        const minVal = Math.min(...activeValues, 0); 
         
         const ticks = [];
-        const start = Math.floor(minVal / 4) * 4;
-        const end = Math.ceil(maxVal / 4) * 4;
+        const step = 2;
+        const start = Math.floor(minVal / step) * step;
+        const end = Math.ceil(maxVal / step) * step;
         
-        for (let i = start; i <= end; i += 4) {
+        for (let i = start; i <= end; i += step) {
             ticks.push(i);
         }
         return ticks;
     };
 
     const yTicks = getYTicks();
+    const xTicks = [4, 8, 12, 16, 20];
 
-    // Exponer captura para PDF
     useImperativeHandle(ref, () => ({
         captureAllCharts: async () => {
             if (containerRef.current) {
@@ -76,7 +92,6 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
 
     return (
         <div className="mt-8 shadow-lg rounded-xl overflow-hidden border border-gray-200 bg-white" ref={containerRef}>
-            {/* Header */}
             <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-5 text-white">
                 <div className="flex items-center gap-4">
                     <span className="text-3xl">📈</span>
@@ -84,12 +99,11 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
                         <h3 className="text-xl font-bold">
                             {isOhm ? 'Curva de Respuesta RTD' : 'Curva de Respuesta del Transmisor'}
                         </h3>
-                        <p className="text-blue-100 text-sm opacity-90">Saltos de 4 unidades y análisis de desviación</p>
+                        <p className="text-blue-100 text-sm opacity-90">Eje X: Ideal mA | Eje Y: Unidades (Saltos de 2)</p>
                     </div>
                 </div>
             </div>
 
-            {/* Chart Area */}
             <div className="p-6 bg-white">
                 {processedData.length === 0 ? (
                     <div className="text-center py-12 text-gray-400">
@@ -102,29 +116,39 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
                                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                                 
                                 <XAxis 
-                                    dataKey="percentage" 
-                                    label={{ value: '4-20 mA', position: 'insideBottom', offset: -10, fontSize: 12, fontWeight: 'bold' }} 
+                                    dataKey="idealValue" 
+                                    type="number"
+                                    domain={[4, 20]}
+                                    ticks={xTicks}
+                                    tick={{ fontSize: 11 }}
+                                    label={{ value: 'Señal de Entrada (mA)', position: 'insideBottom', offset: -10, fontSize: 12, fontWeight: 'bold' }} 
                                 />
 
                                 <YAxis 
                                     ticks={yTicks} 
                                     domain={[yTicks[0], yTicks[yTicks.length - 1]]}
                                     tick={{ fontSize: 10 }}
-                                    label={{ value: 'Rango UE / Desviación', angle: -90, position: 'insideLeft', fontWeight: 'bold', fontSize: 12 }}
+                                    label={{ value: 'Valor UE / mA', angle: -90, position: 'insideLeft', fontWeight: 'bold', fontSize: 12 }}
                                 />
 
                                 <Tooltip 
                                     contentStyle={{ borderRadius: '8px', fontSize: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                                     formatter={(value: any, name: string) => [value.toFixed(3), name]}
+                                    labelFormatter={(label) => `Punto: ${label} mA`}
                                 />
                                 <Legend verticalAlign="top" height={36} />
                                 
-                                {/* Líneas principales de respuesta */}
+                                {/* LÍNEAS DE CORRIENTE (SIEMPRE VISIBLES) */}
                                 <Line type="monotone" dataKey="idealValue" stroke="#3b82f6" name="Ideal mA" strokeWidth={2} dot={{ r: 4 }} isAnimationActive={false} />
                                 <Line type="monotone" dataKey="measuredValue" stroke="#ef4444" name="Medido mA" strokeWidth={2} dot={{ r: 4 }} isAnimationActive={false} />
-                                <Line type="monotone" dataKey="idealUE" stroke="#10b981" name="Ideal UE" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} isAnimationActive={false} />
-                                <Line type="monotone" dataKey="ueTransmitter" stroke="#f59e0b" name="UE Transmisor" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} isAnimationActive={false} />
                                 
+                                {/* LÍNEAS DE UNIDADES DE INGENIERÍA (CONDICIONALES) */}
+                                {hasUeTransmitter && (
+                                    <>
+                                        <Line type="monotone" dataKey="idealUE" stroke="#10b981" name="Ideal UE" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} isAnimationActive={false} />
+                                        <Line type="monotone" dataKey="ueTransmitter" stroke="#f59e0b" name="UE Transmisor" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} isAnimationActive={false} />
+                                    </>
+                                )}
                             </LineChart>
                         </ResponsiveContainer>
                     </div>
