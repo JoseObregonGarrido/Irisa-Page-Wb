@@ -60,13 +60,12 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
     
     const isOhm = outputUnit === 'ohm';
     
-    // Contamos columnas exactas para escritorio
+    // Configuración de columnas para escritorio
     let colsCount = 8; 
     if (hasUeTransmitter) colsCount += 2; 
     if (isOhm) colsCount += 3; 
 
-    const gridStyle = {
-        display: 'grid',
+    const desktopGridStyle = {
         gridTemplateColumns: `repeat(${colsCount}, minmax(0, 1fr))`
     };
 
@@ -77,11 +76,10 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
         const ueTransmitterValue = parseFloat(measurement.ueTransmitter) || 0;
         const idealVal = parseFloat(measurement.idealmA) || 0;
         const measuredVal = parseFloat(measurement.maTransmitter) || 0;
-        
         const idealOhmVal = parseFloat(measurement.idealohm || "0") || 0;
         const sensorOhmVal = parseFloat(measurement.ohmTransmitter || "0") || 0;
+        
         const errorOhmValue = sensorOhmVal - idealOhmVal;
-
         const errorUEValue = ueTransmitterValue - idealUEValue; 
         const errorVal = measuredVal - idealVal; 
         const divisor = 16; 
@@ -109,6 +107,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
 
     return (
         <div className="mt-8 w-full bg-transparent lg:bg-white rounded-xl lg:shadow-lg lg:border border-gray-200 overflow-hidden">
+            {/* HEADER DE LA SECCIÓN */}
             <div className="bg-gradient-to-r from-teal-600 to-emerald-600 px-4 py-4 sm:px-6 rounded-t-xl lg:rounded-none">
                 <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                     <div className="flex flex-wrap items-center gap-3">
@@ -129,10 +128,11 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                 </div>
             </div>
 
-            <div className="overflow-x-auto lg:overflow-visible">
-                <div className={`min-w-full ${desktopMinWidth} inline-block align-middle`}>
-                    {/* HEADER (Solo Escritorio) */}
-                    <div style={gridStyle} className="hidden lg:grid bg-gray-50 border-b border-gray-200 text-[10px] font-bold text-gray-500 tracking-wider uppercase">
+            <div className="overflow-x-auto lg:overflow-x-auto">
+                <div className={`min-w-full ${desktopMinWidth} lg:inline-block align-middle`}>
+                    
+                    {/* HEADER ESCRITORIO (Solo visible en LG) */}
+                    <div style={desktopGridStyle} className="hidden lg:grid bg-gray-50 border-b border-gray-200 text-[10px] font-bold text-gray-500 tracking-wider uppercase">
                         <div className="px-2 py-4 text-center">Ideal UE</div>
                         <div className="px-2 py-4 text-center">Ideal mA</div>
                         {isOhm && <div className="px-2 py-4 text-center">Ideal ohm</div>}
@@ -148,14 +148,13 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                         <div className="px-2 py-4 text-center">Acción</div>
                     </div>
 
-                    {/* BODY / CARDS */}
+                    {/* CONTENIDO: Cards en Mobile, Grid en Escritorio */}
                     <div className="p-4 lg:p-0 space-y-4 lg:space-y-0 lg:divide-y lg:divide-gray-200 bg-gray-100 lg:bg-white">
                         {measurements.map((m, index) => (
                             <div key={index} className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 lg:border-none lg:rounded-none lg:p-0">
-                                {/* Contenedor Grid adaptable */}
                                 <div 
-                                    className="grid grid-cols-3 lg:grid-cols-none gap-3 lg:gap-0 lg:items-center hover:bg-teal-50/30 transition-colors"
-                                    style={window.innerWidth >= 1024 ? gridStyle : {}}
+                                    className="grid grid-cols-3 gap-3 lg:gap-0 lg:grid lg:items-center hover:bg-teal-50/30 transition-colors"
+                                    style={typeof window !== 'undefined' && window.innerWidth >= 1024 ? desktopGridStyle : { display: 'grid' }}
                                 >
                                     <div className="lg:px-2 lg:py-3"><InputField label="Ideal UE" unit="UE" value={m.idealUE} onChange={(e:any) => handleChange(index, 'idealUE', e.target.value)} /></div>
                                     <div className="lg:px-2 lg:py-3"><InputField label="Ideal mA" unit="mA" value={m.idealmA} onChange={(e:any) => handleChange(index, 'idealmA', e.target.value)} /></div>
@@ -172,7 +171,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                                     <div className="lg:px-2 lg:py-3 lg:bg-red-50/20"><InputField label="Error mA" unit="mA" value={m.errormA} isError readOnly /></div>
                                     <div className="lg:px-2 lg:py-3 lg:bg-red-50/20"><InputField label="Error %" unit="%" value={m.errorPercentage} isError readOnly /></div>
                                     
-                                    {/* BOTÓN ACCIÓN: En móvil ocupa el final del grid (3 columnas) */}
+                                    {/* BOTÓN ELIMINAR */}
                                     <div className="col-span-3 lg:col-span-1 flex justify-center mt-2 lg:mt-0 pt-2 lg:pt-0 border-t border-gray-100 lg:border-none">
                                         <button 
                                             onClick={() => onMeasurementsChange(measurements.filter((_, i) => i !== index))} 
