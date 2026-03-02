@@ -134,7 +134,7 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({
                                     ticks={yTicks} 
                                     domain={[yTicks[0], yTicks[yTicks.length - 1]]}
                                     tick={{ fontSize: 10 }}
-                                    label={{ value: 'Valor UE / mA', angle: -90, position: 'insideLeft', fontWeight: 'bold', fontSize: 12 }}
+                                    label={{ value: 'Rango UE / mA', angle: -90, position: 'insideLeft', fontWeight: 'bold', fontSize: 12 }}
                                 />
 
                                 <Tooltip 
