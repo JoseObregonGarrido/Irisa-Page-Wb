@@ -24,15 +24,15 @@ interface TransmitterTableProps {
     setHasUeTransmitter: (show: boolean) => void;
 }
 
-// INPUT QUE SE ADAPTA AL CONTENIDO
+// INPUT RESIZABLE: Con margen extra para que no quede apretado
 const InputField = ({ label, value, onChange, unit, isError = false, readOnly = false }: any) => {
-    // Calculamos el ancho basado en la longitud del texto + un pequeño padding para la unidad
-    // Mínimo 5 caracteres para que no se vea vacío (0.00)
-    const inputWidth = Math.max(value.toString().length, 5);
+    // Calculamos el ancho basado en caracteres. 
+    // Usamos un mínimo de 6 para el placeholder y sumamos 5 de padding/margen.
+    const inputWidth = Math.max(value.toString().length, 6) + 5;
 
     return (
-        <div className="flex flex-col items-start lg:items-center w-full lg:w-auto">
-            <label className="block text-[9px] font-black text-gray-400 uppercase mb-1 lg:hidden tracking-wider">
+        <div className="flex flex-col min-w-fit group">
+            <label className="block text-[9px] font-black text-gray-400 uppercase mb-1 tracking-wider whitespace-nowrap group-focus-within:text-teal-600 transition-colors">
                 {label}
             </label>
             <div className="relative inline-flex items-center">
@@ -41,15 +41,15 @@ const InputField = ({ label, value, onChange, unit, isError = false, readOnly = 
                     value={value}
                     onChange={onChange}
                     readOnly={readOnly}
-                    style={{ width: `${inputWidth + 3}ch` }} // El truco está aquí: ancho dinámico
-                    className={`px-2 py-2 pr-7 text-xs border rounded-lg focus:outline-none focus:ring-2 transition-all
+                    style={{ width: `${inputWidth}ch` }} 
+                    className={`px-3 py-2 pr-8 text-xs border rounded-lg focus:outline-none focus:ring-2 transition-all
                         ${isError 
                             ? 'border-red-200 bg-red-50 focus:ring-red-500 font-bold text-red-700' 
-                            : 'border-gray-300 bg-white focus:ring-teal-500 text-gray-700'
-                        } ${readOnly ? 'bg-gray-50 cursor-not-allowed opacity-80' : ''}`}
+                            : 'border-gray-300 bg-white focus:ring-teal-500 text-gray-700 hover:border-gray-400'
+                        } ${readOnly ? 'bg-gray-50 cursor-not-allowed opacity-80' : 'shadow-sm'}`}
                     placeholder="0.00"
                 />
-                <span className={`absolute right-1.5 text-[9px] font-bold ${isError ? 'text-red-400' : 'text-gray-400'}`}>
+                <span className={`absolute right-2 text-[9px] font-bold pointer-events-none ${isError ? 'text-red-400' : 'text-gray-400'}`}>
                     {unit}
                 </span>
             </div>
@@ -118,6 +118,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
 
     return (
         <div className="mt-8 w-full bg-transparent lg:bg-white rounded-xl lg:shadow-lg lg:border border-gray-200 overflow-hidden">
+            {/* Header / Toolbar */}
             <div className="bg-gradient-to-r from-teal-600 to-emerald-600 px-4 py-4 sm:px-6 rounded-t-xl lg:rounded-none">
                 <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                     <div className="flex flex-wrap items-center gap-3">
@@ -138,17 +139,17 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                 </div>
             </div>
 
-            <div className="overflow-x-auto lg:overflow-x-visible">
-                <div className={`min-w-full ${desktopMinWidth} inline-block align-middle`}>
+            <div className="overflow-x-auto">
+                <div className={`min-w-full ${desktopMinWidth}`}>
                     
-                    {/* Header para Desktop */}
+                    {/* Header solo para Desktop */}
                     <div className={`hidden lg:grid ${gridCols} bg-gray-50 border-b border-gray-200 text-[10px] font-bold text-gray-500 tracking-wider uppercase`}>
                         <div className="px-2 py-4 text-center">Ideal UE</div>
                         <div className="px-2 py-4 text-center">Ideal mA</div>
                         {isOhm && <div className="px-2 py-4 text-center">Ideal ohm</div>}
                         <div className="px-2 py-4 text-center">Patrón UE</div>
                         {hasUeTransmitter && <div className="px-2 py-4 text-center">UE transmisor</div>}
-                        <div className="px-2 py-4 text-center">{isOhm ? 'mA sensor' : 'mA transmisor'}</div>
+                        <div className="px-2 py-4 text-center">mA Salida</div>
                         {isOhm && <div className="px-2 py-4 text-center">ohm sensor</div>}
                         <div className="px-2 py-4 text-center">% Rango</div>
                         {hasUeTransmitter && <div className="px-2 py-4 text-center bg-red-50 text-red-700 border-l border-red-100 uppercase">Error UE</div>}
@@ -158,43 +159,47 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                         <div className="px-2 py-4 text-center uppercase">Acción</div>
                     </div>
 
-                    <div className="p-2 lg:p-0 space-y-4 lg:space-y-0 lg:divide-y lg:divide-gray-200 bg-gray-100 lg:bg-white text-center">
+                    {/* Contenedor de Filas */}
+                    <div className="p-3 lg:p-0 space-y-4 lg:space-y-0 lg:divide-y lg:divide-gray-200 bg-gray-100 lg:bg-white">
                         {measurements.map((m, index) => (
-                            <div key={index} className="relative bg-white p-4 lg:p-0 lg:grid lg:items-center hover:bg-teal-50/30 transition-colors rounded-xl lg:rounded-none shadow-sm border border-gray-200 lg:border-none">
+                            <div key={index} className="relative bg-white rounded-xl lg:rounded-none shadow-sm lg:shadow-none border border-gray-200 lg:border-none overflow-hidden">
                                 
                                 {/* Header Fila Mobile */}
-                                <div className="flex lg:hidden justify-between items-center mb-4 pb-2 border-b border-gray-50">
-                                    <span className="text-[10px] font-black bg-teal-600 text-white px-2 py-0.5 rounded uppercase tracking-tighter">Medición #{index + 1}</span>
+                                <div className="flex lg:hidden justify-between items-center px-4 py-2 bg-gray-50 border-b border-gray-100">
+                                    <span className="text-[10px] font-black text-teal-700 uppercase tracking-tighter">Medición #{index + 1}</span>
                                     <button 
                                         onClick={() => onMeasurementsChange(measurements.filter((_, i) => i !== index))}
-                                        className="text-red-500 bg-red-50 p-2 rounded-lg"
+                                        className="text-red-500 hover:bg-red-100 p-1.5 rounded-md transition-colors"
                                     >
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                     </button>
                                 </div>
 
-                                {/* Contenido con ancho adaptable */}
-                                <div className={`flex flex-wrap lg:grid ${gridCols} lg:contents gap-4 justify-start lg:justify-center items-end`}>
-                                    <div className="lg:px-2 lg:py-3"><InputField label="Ideal UE" unit="UE" value={m.idealUE} onChange={(e:any) => handleChange(index, 'idealUE', e.target.value)} /></div>
-                                    <div className="lg:px-2 lg:py-3"><InputField label="Ideal mA" unit="mA" value={m.idealmA} onChange={(e:any) => handleChange(index, 'idealmA', e.target.value)} /></div>
-                                    {isOhm && <div className="lg:px-2 lg:py-3"><InputField label="Ideal ohm" unit="Ω" value={m.idealohm} onChange={(e:any) => handleChange(index, 'idealohm', e.target.value)} /></div>}
-                                    <div className="lg:px-2 lg:py-3"><InputField label="Patrón UE" unit="UE" value={m.patronUE} onChange={(e:any) => handleChange(index, 'patronUE', e.target.value)} /></div>
-                                    {hasUeTransmitter && <div className="lg:px-2 lg:py-3"><InputField label="UE Trans." unit="UE" value={m.ueTransmitter} onChange={(e:any) => handleChange(index, 'ueTransmitter', e.target.value)} /></div>}
-                                    <div className="lg:px-2 lg:py-3"><InputField label={isOhm ? 'mA sensor' : 'mA trans.'} unit="mA" value={m.maTransmitter} onChange={(e:any) => handleChange(index, 'maTransmitter', e.target.value)} /></div>
-                                    {isOhm && <div className="lg:px-2 lg:py-3"><InputField label="ohm sensor" unit="Ω" value={m.ohmTransmitter} onChange={(e:any) => handleChange(index, 'ohmTransmitter', e.target.value)} /></div>}
-                                    <div className="lg:px-2 lg:py-3"><InputField label="% Rango" unit="%" value={m.percentage} onChange={(e:any) => handleChange(index, 'percentage', e.target.value)} /></div>
-                                    
-                                    {/* ERRORES */}
-                                    {hasUeTransmitter && <div className="lg:px-2 lg:py-3 lg:bg-red-50/20"><InputField label="Err UE" unit="UE" value={m.errorUE} isError readOnly /></div>}
-                                    {isOhm && <div className="lg:px-2 lg:py-3 lg:bg-red-50/20"><InputField label="Err Ω" unit="Ω" value={m.errorOhm} isError readOnly /></div>}
-                                    <div className="lg:px-2 lg:py-3 lg:bg-red-50/20"><InputField label="Err mA" unit="mA" value={m.errormA} isError readOnly /></div>
-                                    <div className="lg:px-2 lg:py-3 lg:bg-red-50/20"><InputField label="Err %" unit="%" value={m.errorPercentage} isError readOnly /></div>
-                                    
-                                    {/* Borrar Desktop */}
-                                    <div className="hidden lg:flex justify-center lg:px-2 lg:py-3">
-                                        <button onClick={() => onMeasurementsChange(measurements.filter((_, i) => i !== index))} className="text-red-500 hover:bg-red-50 p-2 rounded-full transition-colors">
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                        </button>
+                                {/* Scroll Horizontal Mobile */}
+                                <div className="overflow-x-auto lg:overflow-visible">
+                                    <div className={`flex flex-nowrap lg:grid ${gridCols} lg:items-center p-4 lg:p-0 gap-4 lg:gap-0 min-w-max lg:min-w-full`}>
+                                        
+                                        <div className="lg:px-2 lg:py-3"><InputField label="Ideal UE" unit="UE" value={m.idealUE} onChange={(e:any) => handleChange(index, 'idealUE', e.target.value)} /></div>
+                                        <div className="lg:px-2 lg:py-3"><InputField label="Ideal mA" unit="mA" value={m.idealmA} onChange={(e:any) => handleChange(index, 'idealmA', e.target.value)} /></div>
+                                        {isOhm && <div className="lg:px-2 lg:py-3"><InputField label="Ideal ohm" unit="Ω" value={m.idealohm} onChange={(e:any) => handleChange(index, 'idealohm', e.target.value)} /></div>}
+                                        <div className="lg:px-2 lg:py-3"><InputField label="Patrón UE" unit="UE" value={m.patronUE} onChange={(e:any) => handleChange(index, 'patronUE', e.target.value)} /></div>
+                                        {hasUeTransmitter && <div className="lg:px-2 lg:py-3"><InputField label="UE Trans." unit="UE" value={m.ueTransmitter} onChange={(e:any) => handleChange(index, 'ueTransmitter', e.target.value)} /></div>}
+                                        <div className="lg:px-2 lg:py-3"><InputField label={isOhm ? 'mA sensor' : 'mA trans.'} unit="mA" value={m.maTransmitter} onChange={(e:any) => handleChange(index, 'maTransmitter', e.target.value)} /></div>
+                                        {isOhm && <div className="lg:px-2 lg:py-3"><InputField label="ohm sensor" unit="Ω" value={m.ohmTransmitter} onChange={(e:any) => handleChange(index, 'ohmTransmitter', e.target.value)} /></div>}
+                                        <div className="lg:px-2 lg:py-3"><InputField label="% Rango" unit="%" value={m.percentage} onChange={(e:any) => handleChange(index, 'percentage', e.target.value)} /></div>
+                                        
+                                        {/* ERRORES */}
+                                        {hasUeTransmitter && <div className="lg:px-2 lg:py-3 lg:bg-red-50/30"><InputField label="Err UE" unit="UE" value={m.errorUE} isError readOnly /></div>}
+                                        {isOhm && <div className="lg:px-2 lg:py-3 lg:bg-red-50/30"><InputField label="Err Ω" unit="Ω" value={m.errorOhm} isError readOnly /></div>}
+                                        <div className="lg:px-2 lg:py-3 lg:bg-red-50/30"><InputField label="Err mA" unit="mA" value={m.errormA} isError readOnly /></div>
+                                        <div className="lg:px-2 lg:py-3 lg:bg-red-50/30"><InputField label="Err %" unit="%" value={m.errorPercentage} isError readOnly /></div>
+                                        
+                                        {/* Borrar Desktop */}
+                                        <div className="hidden lg:flex justify-center lg:px-2">
+                                            <button onClick={() => onMeasurementsChange(measurements.filter((_, i) => i !== index))} className="text-red-500 hover:bg-red-50 p-2 rounded-full transition-all active:scale-90">
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
