@@ -24,9 +24,10 @@ interface TransmitterTableProps {
     setHasUeTransmitter: (show: boolean) => void;
 }
 
+// COMPONENTE OPTIMIZADO: Label a la izquierda en mobile para ahorrar espacio vertical
 const InputField = ({ label, value, onChange, unit, isError = false, readOnly = false }: any) => (
-    <div className="flex flex-col w-full">
-        <label className="block text-[10px] font-bold text-gray-500 mb-1 lg:hidden truncate">
+    <div className="flex flex-row lg:flex-col items-center lg:items-start w-full gap-2">
+        <label className="block text-[9px] font-black text-gray-400 uppercase lg:hidden w-1/3 shrink-0 leading-tight">
             {label}
         </label>
         <div className="relative w-full">
@@ -35,14 +36,14 @@ const InputField = ({ label, value, onChange, unit, isError = false, readOnly = 
                 value={value}
                 onChange={onChange}
                 readOnly={readOnly}
-                className={`w-full px-2 py-2 pr-7 text-xs border rounded-lg focus:outline-none focus:ring-2 
+                className={`w-full px-2 py-1.5 lg:py-2 pr-7 text-xs border rounded-lg focus:outline-none focus:ring-2 
                     ${isError 
                         ? 'border-red-200 bg-red-50 focus:ring-red-500 font-bold text-red-700' 
                         : 'border-gray-300 bg-white focus:ring-teal-500 text-gray-700'
-                    } ${readOnly ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                    } ${readOnly ? 'bg-gray-50 cursor-not-allowed text-gray-500' : ''}`}
                 placeholder="0.00"
             />
-            <span className={`absolute right-1 top-2.5 text-[9px] font-bold ${isError ? 'text-red-400' : 'text-gray-400'}`}>
+            <span className={`absolute right-1.5 top-1.5 lg:top-2.5 text-[8px] lg:text-[9px] font-bold ${isError ? 'text-red-400' : 'text-gray-400'}`}>
                 {unit}
             </span>
         </div>
@@ -60,7 +61,6 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
     
     const isOhm = outputUnit === 'ohm';
     
-    // Configuración de columnas para escritorio
     let colsCount = 8; 
     if (hasUeTransmitter) colsCount += 2; 
     if (isOhm) colsCount += 3; 
@@ -128,10 +128,10 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                 </div>
             </div>
 
-            <div className="overflow-x-auto lg:overflow-x-auto">
+            <div className="overflow-x-auto lg:overflow-x-visible">
                 <div className={`min-w-full ${desktopMinWidth} lg:inline-block align-middle`}>
                     
-                    {/* HEADER ESCRITORIO (Solo visible en LG) */}
+                    {/* HEADER ESCRITORIO */}
                     <div style={desktopGridStyle} className="hidden lg:grid bg-gray-50 border-b border-gray-200 text-[10px] font-bold text-gray-500 tracking-wider uppercase">
                         <div className="px-2 py-4 text-center">Ideal UE</div>
                         <div className="px-2 py-4 text-center">Ideal mA</div>
@@ -148,42 +148,46 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                         <div className="px-2 py-4 text-center">Acción</div>
                     </div>
 
-                    {/* CONTENIDO: Cards en Mobile (384px), Grid en Escritorio */}
+                    {/* CONTENIDO: Cards compactas para móvil */}
                     <div className="p-3 lg:p-0 space-y-4 lg:space-y-0 lg:divide-y lg:divide-gray-200 bg-gray-50 lg:bg-white">
                         {measurements.map((m, index) => (
-                            <div key={index} className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 lg:border-none lg:rounded-none lg:p-0 transition-all hover:shadow-md lg:hover:shadow-none">
-                                {/* Badge de número de medición para mobile */}
-                                <div className="flex lg:hidden items-center mb-3">
-                                    <span className="bg-teal-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest">Medición #{index + 1}</span>
+                            <div key={index} className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 lg:border-none lg:rounded-none lg:p-0 transition-all">
+                                
+                                <div className="flex lg:hidden items-center justify-between mb-4 border-b border-gray-100 pb-2">
+                                    <span className="bg-teal-600 text-white text-[9px] font-black px-2 py-0.5 rounded-full uppercase">Medición #{index + 1}</span>
+                                    <button 
+                                        onClick={() => onMeasurementsChange(measurements.filter((_, i) => i !== index))}
+                                        className="text-red-400 hover:text-red-600"
+                                    >
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                    </button>
                                 </div>
 
                                 <div 
-                                    className="grid grid-cols-2 gap-x-3 gap-y-4 lg:gap-0 lg:grid lg:items-center hover:bg-teal-50/30 transition-colors"
-                                    style={typeof window !== 'undefined' && window.innerWidth >= 1024 ? desktopGridStyle : { display: 'grid' }}
+                                    className="grid grid-cols-1 md:grid-cols-2 lg:items-center gap-x-4 gap-y-2 lg:gap-0"
+                                    style={typeof window !== 'undefined' && window.innerWidth >= 1024 ? desktopGridStyle : {}}
                                 >
                                     <div className="lg:px-2 lg:py-3"><InputField label="Ideal UE" unit="UE" value={m.idealUE} onChange={(e:any) => handleChange(index, 'idealUE', e.target.value)} /></div>
                                     <div className="lg:px-2 lg:py-3"><InputField label="Ideal mA" unit="mA" value={m.idealmA} onChange={(e:any) => handleChange(index, 'idealmA', e.target.value)} /></div>
                                     {isOhm && <div className="lg:px-2 lg:py-3"><InputField label="Ideal ohm" unit="Ω" value={m.idealohm} onChange={(e:any) => handleChange(index, 'idealohm', e.target.value)} /></div>}
                                     <div className="lg:px-2 lg:py-3"><InputField label="Patrón UE" unit="UE" value={m.patronUE} onChange={(e:any) => handleChange(index, 'patronUE', e.target.value)} /></div>
-                                    {hasUeTransmitter && <div className="lg:px-2 lg:py-3"><InputField label="UE transmisor" unit="UE" value={m.ueTransmitter} onChange={(e:any) => handleChange(index, 'ueTransmitter', e.target.value)} /></div>}
+                                    {hasUeTransmitter && <div className="lg:px-2 lg:py-3"><InputField label="UE trans" unit="UE" value={m.ueTransmitter} onChange={(e:any) => handleChange(index, 'ueTransmitter', e.target.value)} /></div>}
                                     <div className="lg:px-2 lg:py-3"><InputField label={isOhm ? 'mA sensor' : 'mA trans.'} unit="mA" value={m.maTransmitter} onChange={(e:any) => handleChange(index, 'maTransmitter', e.target.value)} /></div>
                                     {isOhm && <div className="lg:px-2 lg:py-3"><InputField label="ohm sensor" unit="Ω" value={m.ohmTransmitter} onChange={(e:any) => handleChange(index, 'ohmTransmitter', e.target.value)} /></div>}
                                     <div className="lg:px-2 lg:py-3"><InputField label="% Rango" unit="%" value={m.percentage} onChange={(e:any) => handleChange(index, 'percentage', e.target.value)} /></div>
                                     
-                                    {/* ERRORES (En mobile ocupan el ancho completo para destacar) */}
-                                    {hasUeTransmitter && <div className="col-span-2 lg:col-span-1 lg:px-2 lg:py-3 lg:bg-red-50/20"><InputField label="Error UE" unit="UE" value={m.errorUE} isError readOnly /></div>}
-                                    {isOhm && <div className="col-span-2 lg:col-span-1 lg:px-2 lg:py-3 lg:bg-red-50/20"><InputField label="Error ohm" unit="Ω" value={m.errorOhm} isError readOnly /></div>}
-                                    <div className="lg:px-2 lg:py-3 lg:bg-red-50/20"><InputField label="Error mA" unit="mA" value={m.errormA} isError readOnly /></div>
-                                    <div className="lg:px-2 lg:py-3 lg:bg-red-50/20"><InputField label="Error %" unit="%" value={m.errorPercentage} isError readOnly /></div>
+                                    {/* ERRORES: Grid de 2 columnas en mobile para ahorrar mucho espacio */}
+                                    <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-dashed border-gray-100 lg:contents">
+                                        {hasUeTransmitter && <div className="lg:px-2 lg:py-3 lg:bg-red-50/20"><InputField label="Err UE" unit="UE" value={m.errorUE} isError readOnly /></div>}
+                                        {isOhm && <div className="lg:px-2 lg:py-3 lg:bg-red-50/20"><InputField label="Err Ω" unit="Ω" value={m.errorOhm} isError readOnly /></div>}
+                                        <div className="lg:px-2 lg:py-3 lg:bg-red-50/20"><InputField label="Err mA" unit="mA" value={m.errormA} isError readOnly /></div>
+                                        <div className="lg:px-2 lg:py-3 lg:bg-red-50/20"><InputField label="Err %" unit="%" value={m.errorPercentage} isError readOnly /></div>
+                                    </div>
                                     
-                                    {/* BOTÓN ELIMINAR */}
-                                    <div className="col-span-2 lg:col-span-1 flex justify-center mt-2 lg:mt-0 pt-3 lg:pt-0 border-t border-gray-100 lg:border-none">
-                                        <button 
-                                            onClick={() => onMeasurementsChange(measurements.filter((_, i) => i !== index))} 
-                                            className="w-full lg:w-auto flex items-center justify-center gap-2 text-red-500 bg-red-50/50 hover:bg-red-100 px-4 py-2 lg:p-2 rounded-lg lg:rounded-full transition-all active:scale-95"
-                                        >
+                                    {/* Botón eliminar (Desktop) */}
+                                    <div className="hidden lg:flex justify-center lg:px-2 lg:py-3">
+                                        <button onClick={() => onMeasurementsChange(measurements.filter((_, i) => i !== index))} className="text-red-500 hover:bg-red-50 p-2 rounded-full transition-all">
                                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                            <span className="lg:hidden text-[10px] font-black uppercase">Borrar Fila</span>
                                         </button>
                                     </div>
                                 </div>
