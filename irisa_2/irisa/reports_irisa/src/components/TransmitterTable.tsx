@@ -12,7 +12,7 @@ export interface Measurement {
     errorUE: string;
     errormA: string;
     errorPercentage: string;
-    errorOhm?: string; // Nuevo campo
+    errorOhm?: string; 
 }
 
 interface TransmitterTableProps {
@@ -60,19 +60,16 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
     
     const isOhm = outputUnit === 'ohm';
     
-    // Ajuste dinámico de columnas para incluir Error Ohm si es isOhm
+    // Contamos columnas exactas
     let colsCount = 8; 
-    if (hasUeTransmitter) colsCount += 2; 
-    if (isOhm) colsCount += 3; // +2 de los datos ohm + 1 del error ohm
+    if (hasUeTransmitter) colsCount += 2; // Error UE y UE Transmisor
+    if (isOhm) colsCount += 3; // Ideal Ohm, Ohm Sensor y Error Ohm
 
-    const gridCols = {
-        8: 'lg:grid-cols-8',
-        9: 'lg:grid-cols-9',
-        10: 'lg:grid-cols-10',
-        11: 'lg:grid-cols-11',
-        12: 'lg:grid-cols-12',
-        13: 'lg:grid-cols-[repeat(13,minmax(0,1fr))]', // Caso RTD completo
-    }[colsCount] || 'lg:grid-cols-12';
+    // ESTILO INLINE para asegurar que el grid funcione siempre
+    const gridStyle = {
+        display: 'grid',
+        gridTemplateColumns: `repeat(${colsCount}, minmax(0, 1fr))`
+    };
 
     const desktopMinWidth = isOhm ? 'lg:min-w-[1450px]' : 'lg:min-w-[1000px]';
 
@@ -82,7 +79,6 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
         const idealVal = parseFloat(measurement.idealmA) || 0;
         const measuredVal = parseFloat(measurement.maTransmitter) || 0;
         
-        // Lógica Error Ohm
         const idealOhmVal = parseFloat(measurement.idealohm || "0") || 0;
         const sensorOhmVal = parseFloat(measurement.ohmTransmitter || "0") || 0;
         const errorOhmValue = sensorOhmVal - idealOhmVal;
@@ -136,7 +132,8 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
 
             <div className="overflow-x-auto">
                 <div className={`min-w-full ${desktopMinWidth} inline-block align-middle`}>
-                    <div className={`hidden lg:grid ${gridCols} bg-gray-50 border-b border-gray-200 text-[10px] font-bold text-gray-500 tracking-wider`}>
+                    {/* HEADER */}
+                    <div style={gridStyle} className="hidden lg:grid bg-gray-50 border-b border-gray-200 text-[10px] font-bold text-gray-500 tracking-wider">
                         <div className="px-2 py-4 text-center">Ideal UE</div>
                         <div className="px-2 py-4 text-center">Ideal mA</div>
                         {isOhm && <div className="px-2 py-4 text-center">Ideal ohm</div>}
@@ -152,9 +149,10 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                         <div className="px-2 py-4 text-center">Acción</div>
                     </div>
 
+                    {/* BODY */}
                     <div className="p-4 lg:p-0 space-y-4 lg:space-y-0 lg:divide-y lg:divide-gray-200 bg-gray-50 lg:bg-white">
                         {measurements.map((m, index) => (
-                            <div key={index} className={`bg-white p-4 lg:p-0 lg:grid ${gridCols} lg:items-center hover:bg-teal-50/30 transition-colors`}>
+                            <div key={index} style={gridStyle} className="bg-white p-4 lg:p-0 lg:grid lg:items-center hover:bg-teal-50/30 transition-colors">
                                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:contents gap-4">
                                     <div className="lg:px-2 lg:py-3"><InputField label="Ideal UE" unit="UE" value={m.idealUE} onChange={(e:any) => handleChange(index, 'idealUE', e.target.value)} /></div>
                                     <div className="lg:px-2 lg:py-3"><InputField label="Ideal mA" unit="mA" value={m.idealmA} onChange={(e:any) => handleChange(index, 'idealmA', e.target.value)} /></div>
