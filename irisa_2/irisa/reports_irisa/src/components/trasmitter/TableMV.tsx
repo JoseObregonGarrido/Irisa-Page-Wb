@@ -2,17 +2,16 @@ import { InputField } from './InputField';
 
 export const TableMV = ({ measurements, onMeasurementsChange }: any) => {
     // 5 columnas: mV ideal, mV sensor, Tipo sensor, Error y Acción
-    const gridCols = 'lg:grid-cols-[1fr_1fr_120px_100px_80px]';
+    const gridCols = 'lg:grid-cols-[1fr_1fr_140px_1fr_80px]';
 
     const handleChange = (index: number, field: string, value: any) => {
         const newM = [...measurements];
         const updatedRow = { ...newM[index], [field]: value };
         
-        // Lógica de cálculo usando nombres en minúscula
+        // Lógica de cálculo: Error = Sensor - Ideal
         const idealVal = parseFloat(updatedRow.idealmV) || 0;
         const sensorVal = parseFloat(updatedRow.sensormV) || 0;
         
-        // Guardamos el error también siguiendo el patrón de minúsculas
         updatedRow.errormV = (sensorVal - idealVal).toFixed(3);
 
         newM[index] = updatedRow;
@@ -21,7 +20,7 @@ export const TableMV = ({ measurements, onMeasurementsChange }: any) => {
 
     return (
         <div className="overflow-x-auto">
-            <div className="min-w-full lg:min-w-[900px]">
+            <div className="min-w-full lg:min-w-[850px]">
                 {/* Header Desktop */}
                 <div className={`hidden lg:grid ${gridCols} bg-gray-50 border-b border-gray-200 text-xs font-bold text-gray-500 uppercase tracking-wider`}>
                     <div className="px-4 py-4 text-center">mV ideal</div>
@@ -57,10 +56,10 @@ export const TableMV = ({ measurements, onMeasurementsChange }: any) => {
                                     />
                                 </div>
                                 
-                                {/* TIPO SENSOR (J / K) */}
+                                {/* TIPO SENSOR (Checkboxes J / K) */}
                                 <div className="lg:px-4 lg:py-3 flex flex-col items-center justify-center">
                                     <label className="text-[10px] font-black text-gray-400 uppercase mb-2 lg:hidden">Tipo Sensor</label>
-                                    <div className="flex gap-4 bg-gray-50 p-2 rounded-lg border border-gray-200 shadow-sm">
+                                    <div className="flex gap-4 bg-gray-50 p-2 rounded-lg border border-gray-200 shadow-sm px-4">
                                         {['J', 'K'].map((type) => (
                                             <label key={type} className="flex items-center gap-2 cursor-pointer group">
                                                 <input 
@@ -69,7 +68,7 @@ export const TableMV = ({ measurements, onMeasurementsChange }: any) => {
                                                     onChange={() => handleChange(i, 'sensorType', type)} 
                                                     className="w-4 h-4 accent-orange-600 rounded border-gray-300 transition-transform group-hover:scale-110" 
                                                 />
-                                                <span className={`text-xs font-bold ${m.sensorType === type ? 'text-orange-700' : 'text-gray-400'}`}>
+                                                <span className={`text-sm font-bold ${m.sensorType === type ? 'text-orange-700' : 'text-gray-400'}`}>
                                                     {type}
                                                 </span>
                                             </label>
@@ -77,10 +76,10 @@ export const TableMV = ({ measurements, onMeasurementsChange }: any) => {
                                     </div>
                                 </div>
 
-                                {/* ERROR mV (Calculado) */}
+                                {/* ERROR mV (Solo lectura) */}
                                 <div className="lg:px-4 lg:py-3 lg:bg-red-50/30">
                                     <InputField 
-                                        label="Err mV" 
+                                        label="Error mV" 
                                         unit="mV" 
                                         value={m.errormV} 
                                         isError 
