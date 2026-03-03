@@ -147,14 +147,14 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                     <div className="flex flex-wrap items-center gap-3">
                         <h3 className="text-lg font-bold text-white tracking-tight">Mediciones de transmisor</h3>
                         <div className="flex bg-black/20 p-1 rounded-lg border border-white/10">
-                            {(['mA', 'ohm', 'mv'] as const).map((unit) => (
+                            {(['mA', 'ohm', 'mv', 'tx'] as const).map((unit) => (
                                 <button 
                                     key={unit}
                                     type="button" 
                                     onClick={() => setOutputUnit(unit)} 
                                     className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${outputUnit === unit ? 'bg-white text-teal-700 shadow' : 'text-white hover:bg-white/10'}`}
                                 >
-                                    {unit === 'ohm' ? 'RTD' : unit === 'mv' ? 'mV' : 'mA'}
+                                    {unit === 'ohm' ? 'RTD' : unit === 'mv' ? 'mV' : unit === 'tx' ? 'TX' : 'mA'}
                                 </button>
                             ))}
                         </div>

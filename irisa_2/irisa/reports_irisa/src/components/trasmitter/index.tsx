@@ -68,6 +68,12 @@ const TransmitterTable = ({
                         >
                             mV / TC
                         </button>
+                        <button 
+                            onClick={() => setOutputUnit('tx')} 
+                            className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${outputUnit === 'tx' ? 'bg-white text-teal-700 shadow' : 'text-white hover:bg-white/10'}`}
+                        >
+                            TX
+                        </button>
                     </div>
                 </div>
                 <button 
