@@ -1,4 +1,3 @@
-import React from 'react';
 import { TableMA } from './TableMA';
 import { TableRTD } from './TableRTD';
 import { TableMV } from './TableMV';
