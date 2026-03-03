@@ -125,7 +125,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                 return {
                     gridCols: 'lg:grid-cols-[1fr_1fr_140px_1fr_80px]', 
                     minWidth: 'lg:min-w-[850px]',
-                    headers: ['ideal mA', 'mA TX', 'Acción']
+                    headers: ['ideal mA', 'mA TX', 'Tipo sensor', 'Error mA', 'Acción']
                 };
             default: // mA
                 return {
@@ -158,7 +158,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                                 </button>
                             ))}
                         </div>
-                        {outputUnit !== 'mv' && (
+                        {outputUnit !== 'mv' && outputUnit !== 'tx' && (
                             <button
                                 type="button"
                                 onClick={() => setHasUeTransmitter(!hasUeTransmitter)}
@@ -229,7 +229,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                                                 ))}
                                             </div>
                                         </div>
-                                        <div className="lg:px-4 lg:py-3 lg:bg-red-50/20"><InputField label="Error mV" unit="mV" value={m.errormV} isError readOnly /></div>
+                                        <div className="lg:px-4 lg:py-3 lg:bg-red-50/20"><InputField label="Error mA" unit="mA" value={m.errormA} isError readOnly /></div>
                                     </>
                                 ): outputUnit === 'ohm' ? (
                                     /* --- VISTA RTD (OHM) --- */

@@ -10,8 +10,8 @@ export const TableTx = ({ measurements, onMeasurementsChange }: any) => {
         const idealMA = parseFloat(updatedRow.idealmA) || 0;
         const mATX = parseFloat(updatedRow.mATX || updatedRow.maTransmitter || 0) || 0;
 
-        // Guardamos el error en errormA (consistente con el resto)
-        updatedRow.errormA = (mATX - idealMA).toFixed(3);
+        // Guardamos el error en errormA: ideal menos medición TX
+        updatedRow.errormA = (idealMA - mATX).toFixed(3);
 
         newM[index] = updatedRow;
         onMeasurementsChange(newM);
@@ -21,7 +21,7 @@ export const TableTx = ({ measurements, onMeasurementsChange }: any) => {
         <div className="w-full overflow-hidden">
             <div className="w-full">
                 <div className={`hidden lg:grid ${gridCols} bg-gray-50 border-b border-gray-200 text-[10px] font-bold text-gray-500 uppercase tracking-wider w-full`}>
-                    <div className="px-4 py-4 text-center">Ideal mA</div>
+                    <div className="px-4 py-4 text-center">mA</div>
                     <div className="px-4 py-4 text-center">mA TX</div>
                     <div className="px-4 py-4 text-center">Tipo sensor</div>
                     <div className="px-4 py-4 text-center bg-red-50 text-red-700">Err mA</div>
