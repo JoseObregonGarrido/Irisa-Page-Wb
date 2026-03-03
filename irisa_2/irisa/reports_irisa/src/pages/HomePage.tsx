@@ -6,10 +6,10 @@ import { logout } from '../services/authService';
 import { generatePDFReport } from '../services/pdfService';
 
 // Components
-import TransmitterTable, { type Measurement } from '../components/TransmitterTable';
+import TransmitterTable, { type Measurement } from '../components/trasmitter/TransmitterTable';
 import PressureSwitchTable, { type PressureSwitchTest } from '../components/PressureSwitchTable';
 import ThermostatTable, { type ThermostatTest } from '../components/ThermostatTable';
-import TransmitterChart from '../components/TransmitterChart';
+import TransmitterChart from '../components/trasmitter/TransmitterChart';
 import PressureSwitchChart from '../components/PressureSwitchChart';
 import ThermostatChart from '../components/ThermostatChart';
 
@@ -43,7 +43,8 @@ const HomePage: React.FC = () => {
     const [thermostatTests, setThermostatTests] = useLocalStorage<ThermostatTest[]>('ir_table_therm', []);
 
     // --- ESTADOS PARA TRANSMISORES ---
-    const [outputUnit, setOutputUnit] = useLocalStorage<'mA' | 'ohm'>('ir_output_unit', 'mA');
+    // ACTUALIZADO: Se añade 'mv' al tipo para soportar la tabla de termopares
+    const [outputUnit, setOutputUnit] = useLocalStorage<'mA' | 'ohm' | 'mv'>('ir_output_unit', 'mA');
     const [hasUeTransmitter, setHasUeTransmitter] = useLocalStorage<boolean>('ir_has_ue', false);
 
     const [showChart, setShowChart] = useState(false);
@@ -146,7 +147,7 @@ const HomePage: React.FC = () => {
                         <div className="flex items-center space-x-4">
                             <div className="flex items-center justify-center w-12 h-12 bg-gradient-to-r from-teal-600 to-emerald-600 rounded-lg shadow-md">
                                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2-2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                                 </svg>
                             </div>
                             <div>
@@ -264,7 +265,7 @@ const HomePage: React.FC = () => {
                         {/* --- SECCIÓN CRÍTICA: TABLA CON SCROLL HORIZONTAL --- */}
                         <div className="mt-8">
                             <div className="w-full overflow-x-auto pb-4 custom-scrollbar">
-                                <div className="min-w-[1000px]"> {/* Forzamos un ancho mínimo para que no se colapsen las columnas */}
+                                <div className="min-w-[1000px]">
                                     {deviceType === 'transmitter' && (
                                         <TransmitterTable 
                                             measurements={transmitterMeasurements} 
@@ -283,7 +284,6 @@ const HomePage: React.FC = () => {
                                     )}
                                 </div>
                             </div>
-                            {/* Indicador visual de scroll si es necesario */}
                             <p className="text-xs text-gray-400 mt-1 italic sm:hidden">
                                 * Deslice hacia la derecha para ver todos los campos
                             </p>
