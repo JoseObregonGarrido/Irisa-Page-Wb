@@ -24,7 +24,7 @@ export interface ReportData {
     deviceCode: string;
     observations: string;
     hasUeTransmitter?: boolean; 
-    outputUnit?: 'mA' | 'ohm' | 'mv';    
+    outputUnit?: 'mA' | 'ohm' | 'mv' | 'tx';    
     transmitterMeasurements?: any[];
     pressureSwitchTests?: any[];
     thermostatTests?: any[]; 

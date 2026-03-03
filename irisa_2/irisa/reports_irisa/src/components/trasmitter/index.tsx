@@ -1,6 +1,7 @@
 import { TableMA } from './TableMA';
 import { TableRTD } from './TableRTD';
 import { TableMV } from './TableMV';
+import { TableTx } from './TableTX';
 
 const TransmitterTable = ({ 
     measurements, 
@@ -29,6 +30,9 @@ const TransmitterTable = ({
             idealMV: "",
             sensorMV: "",
             sensorType: "J", // Valor inicial por defecto
+
+            //TX 
+            mATX: "",
             
             // Errores
             errorUE: "", 
@@ -97,6 +101,14 @@ const TransmitterTable = ({
                         measurements={measurements} 
                         onMeasurementsChange={onMeasurementsChange} 
                         hasUeTransmitter={hasUeTransmitter} 
+                    />
+                )}
+
+                {outputUnit === 'tx' && (
+                    <TableTx 
+                        measurements={measurements} 
+                        onMeasurementsChange={onMeasurementsChange} 
+                        hasUeTransmitter={hasUeTransmitter}
                     />
                 )}
             </div>

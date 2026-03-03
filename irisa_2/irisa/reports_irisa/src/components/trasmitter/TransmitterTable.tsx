@@ -22,13 +22,18 @@ export interface Measurement {
     idealmV?: string;
     sensormV?: string;
     errormV?: string;
+
+    // Campos nuevos para la logica de tx pura
+    idealTx?: string;
+    mATX?: string;
+    sensorTypeTx?: 'J' | 'K';
 }
 
 interface TransmitterTableProps {
     measurements: Measurement[];
     onMeasurementsChange: (measurements: Measurement[]) => void;
-    outputUnit: 'mA' | 'ohm' | 'mv';
-    setOutputUnit: (unit: 'mA' | 'ohm' | 'mv') => void;
+    outputUnit: 'mA' | 'ohm' | 'mv'| 'tx';
+    setOutputUnit: (unit: 'mA' | 'ohm' | 'mv'| 'tx') => void;
     hasUeTransmitter: boolean;
     setHasUeTransmitter: (show: boolean) => void;
 }
@@ -116,12 +121,19 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                     minWidth: 'lg:min-w-[1300px]',
                     headers: ['Ideal UE', 'Ideal mA', 'Ideal Ohm', 'Patrón UE', ...(hasUeTransmitter ? ['UE Trans.'] : []), 'mA Sensor', 'Ohm Sensor', '% Rango', ...(hasUeTransmitter ? ['Err UE'] : []), 'Err Ohm', 'Acción']
                 };
+                case 'tx':
+                return {
+                    gridCols: 'lg:grid-cols-[1fr_1fr_140px_1fr_80px]', 
+                    minWidth: 'lg:min-w-[850px]',
+                    headers: ['ideal mA', 'mA TX', 'Acción']
+                };
             default: // mA
                 return {
                     gridCols: hasUeTransmitter ? 'lg:grid-cols-9' : 'lg:grid-cols-7',
                     minWidth: 'lg:min-w-[1000px]',
                     headers: ['Ideal UE', 'Ideal mA', 'Patrón UE', ...(hasUeTransmitter ? ['UE Trans.'] : []), 'mA Trans.', '% Rango', ...(hasUeTransmitter ? ['Err UE'] : []), 'Err %', 'Acción']
                 };
+
         }
     };
 
@@ -197,7 +209,29 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                                         </div>
                                         <div className="lg:px-4 lg:py-3 lg:bg-red-50/20"><InputField label="Error mV" unit="mV" value={m.errormV} isError readOnly /></div>
                                     </>
-                                ) : outputUnit === 'ohm' ? (
+                                ) : outputUnit === 'tx' ? (
+                                    /* --- VISTA TX PURA (NUEVA) --- */
+                                    <>
+                                        <div className="lg:px-2 lg:py-3"><InputField label="Ideal mA" unit="mA" value={m.idealmA} onChange={(e:any) => handleChange(index, 'idealmA', e.target.value)} /></div>
+                                        <div className="lg:px-2 lg:py-3"><InputField label="mA TX" unit="mA" value={m.maTransmitter} onChange={(e:any) => handleChange(index, 'maTransmitter', e.target.value)} /></div>
+                                        <div className="lg:px-2 lg:py-3 flex flex-col items-center justify-center">
+                                            <div className="flex gap-3 bg-gray-100 p-1.5 rounded-lg border border-gray-200 shadow-sm">
+                                                {['J', 'K'].map((type) => (
+                                                    <label key={type} className="flex items-center gap-1 cursor-pointer group">
+                                                        <input
+                                                            type="radio"
+                                                            checked={m.sensorType === type} 
+                                                            onChange={() => handleChange(index, 'sensorType', type)} 
+                                                            className="w-3.5 h-3.5 accent-orange-600" 
+                                                        />
+                                                        <span className={`text-xs font-bold ${m.sensorType === type ? 'text-orange-700' : 'text-gray-400'}`}>{type}</span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <div className="lg:px-4 lg:py-3 lg:bg-red-50/20"><InputField label="Error mV" unit="mV" value={m.errormV} isError readOnly /></div>
+                                    </>
+                                ): outputUnit === 'ohm' ? (
                                     /* --- VISTA RTD (OHM) --- */
                                     <>
                                         <div className="lg:px-2 lg:py-3"><InputField label="Ideal UE" unit="UE" value={m.idealUE} onChange={(e:any) => handleChange(index, 'idealUE', e.target.value)} /></div>

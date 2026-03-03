@@ -44,7 +44,7 @@ const HomePage: React.FC = () => {
 
     // --- ESTADOS PARA TRANSMISORES ---
     // ACTUALIZADO: Se añade 'mv' al tipo para soportar la tabla de termopares
-    const [outputUnit, setOutputUnit] = useLocalStorage<'mA' | 'ohm' | 'mv'>('ir_output_unit', 'mA');
+    const [outputUnit, setOutputUnit] = useLocalStorage<'mA' | 'ohm' | 'mv' | 'tx'>('ir_output_unit', 'mA');
     const [hasUeTransmitter, setHasUeTransmitter] = useLocalStorage<boolean>('ir_has_ue', false);
 
     const [showChart, setShowChart] = useState(false);
