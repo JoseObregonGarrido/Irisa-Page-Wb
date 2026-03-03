@@ -58,7 +58,6 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
     const unit = data.outputUnit || 'mA';
     const hasUE = data.hasUeTransmitter ?? false;
     
-    // Flags de tipo de reporte
     const isOhm = unit === 'ohm';
     const isMv = unit === 'mv';
 
@@ -66,6 +65,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
 
     const colors: { [key: string]: [number, number, number] } = { 
         risaraldaGreen: [20, 110, 90], 
+        orangeThermocouple: [230, 126, 34],
         lightGray: [245, 245, 245],
         white: [252, 252, 252]
     };
@@ -79,7 +79,6 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
     };
 
     try {
-        // --- LOGO Y TÍTULO ---
         try {
             const b64Logo = await getBase64ImageFromUrl(logo);
             pdf.addImage(b64Logo, 'PNG', 20, 12, 50, 20);
@@ -88,7 +87,6 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         pdf.setFontSize(16).setFont('helvetica', 'bold').setTextColor(0).text('REPORTE DE CALIBRACIÓN', 80, 25);
         yPos = 45;
 
-        // --- ESPECIFICACIONES ---
         addHeader('Especificaciones del instrumento');
         autoTable(pdf, {
             startY: yPos,
@@ -110,70 +108,63 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         });
         yPos = (pdf as any).lastAutoTable.finalY + 12;
 
-        // --- TABLA TRANSMISORES (mA / RTD / mV) ---
+        // --- TABLA TRANSMISORES (Sincronizada con TableMV) ---
         if (data.deviceType === 'transmitter' && measurements.length) {
             
-            // Definir el título corto basado en el tipo
-            const reportTypeLabel = isOhm ? 'RTD' : isMv ? 'mV' : 'mA';
+            const reportTypeLabel = isMv ? 'Termopar (mV)' : (isOhm ? 'RTD' : 'mA');
             addHeader(`Resultados de las mediciones - ${reportTypeLabel}`);
             
-            // --- CONSTRUCCIÓN DINÁMICA DE HEADERS ---
-            const headers = ['Ideal UE', 'Ideal mA'];
-            if (isOhm) headers.push('Ideal Ohm');
-            if (isMv) headers.push('Ideal mV');
-            
-            headers.push('Patrón UE');
-            if (hasUE) headers.push('UE Trans.');
-            
-            // Etiqueta para salida
-            headers.push(isOhm ? 'mA Sens.' : 'mA Trans.');
-            if (isOhm) headers.push('Ohm Sens.');
-            if (isMv) headers.push('mV Trans.');
+            let headers = [];
+            let body = [];
 
-            headers.push('% Rango');
-            if (hasUE) headers.push('Err UE');
-            headers.push('Err mA');
-            if (isMv) headers.push('Err mV');
-            headers.push('Err %');
-            if (isOhm) headers.push('Err Ohm');
+            if (isMv) {
+                // Headers simplificados para mV
+                headers = ['mV Ideal', 'mV Sensor', 'Tipo Sensor', 'Error mV'];
+                body = measurements.map(m => [
+                    m.idealmV || '0', 
+                    m.sensormV || '0', 
+                    m.sensorType || 'N/A', 
+                    m.errormV || '0'
+                ]);
+            } else {
+                // Lógica para mA / Ohm (Mantiene compatibilidad)
+                headers = ['Ideal UE', 'Ideal mA'];
+                if (isOhm) headers.push('Ideal Ohm');
+                headers.push('Patrón UE');
+                if (hasUE) headers.push('UE Trans.');
+                headers.push(isOhm ? 'mA Sens.' : 'mA Trans.');
+                if (isOhm) headers.push('Ohm Sens.');
+                headers.push('Err %');
 
-            // --- CONSTRUCCIÓN DINÁMICA DE CUERPO ---
-            const body = measurements.map(m => {
-                const row = [m.idealUE || m.idealUe, m.idealmA]; 
-                if (isOhm) row.push(m.idealohm || m.idealOhm || '0');
-                if (isMv) row.push(m.idealMv || m.idealmv || '0');
-
-                row.push(m.patronUE || m.patronUe);
-                if (hasUE) row.push(m.ueTransmitter);
-                
-                row.push(m.maTransmitter);
-                
-                if (isOhm) row.push(m.ohmTransmitter || '0');
-                if (isMv) row.push(m.mvTransmitter || '0');
-
-                row.push(m.percentage);
-                if (hasUE) row.push(m.errorUE || m.errorUe);
-                
-                row.push(m.errormA || m.errorMa || '0');
-                if (isMv) row.push(m.errorMv || m.errormv || '0');
-                row.push(m.errorPercentage);
-                if (isOhm) row.push(m.errorOhm || '0');
-                
-                return row;
-            });
+                body = measurements.map(m => {
+                    const row = [m.idealUE || m.idealUe, m.idealmA]; 
+                    if (isOhm) row.push(m.idealohm || m.idealOhm || '0');
+                    row.push(m.patronUE || m.patronUe);
+                    if (hasUE) row.push(m.ueTransmitter);
+                    row.push(m.maTransmitter);
+                    if (isOhm) row.push(m.ohmTransmitter || '0');
+                    row.push(m.errorPercentage);
+                    return row;
+                });
+            }
 
             autoTable(pdf, {
                 startY: yPos,
                 head: [headers],
                 body: body,
                 theme: 'grid',
-                headStyles: { fillColor: colors.risaraldaGreen, halign: 'center', fontSize: 5.5, fontStyle: 'bold' },
-                styles: { fontSize: 6, halign: 'center', cellPadding: 1 },
+                headStyles: { 
+                    fillColor: isMv ? colors.orangeThermocouple : colors.risaraldaGreen, 
+                    halign: 'center', 
+                    fontSize: 8, 
+                    fontStyle: 'bold' 
+                },
+                styles: { fontSize: 8, halign: 'center', cellPadding: 2 },
             });
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }
 
-        // --- TABLAS DE INTERRUPTORES (PRESOSTATO/TERMOSTATO) ---
+        // --- INTERRUPTORES / GRÁFICOS / OBSERVACIONES (IGUAL QUE ANTES) ---
         const isThermostat = data.deviceType === 'thermostat';
         const switchTests = isThermostat ? data.thermostatTests : data.pressureSwitchTests;
         
@@ -204,7 +195,6 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }
 
-        // --- GRÁFICOS ---
         if (chartImages && chartImages.length > 0) {
             chartImages.forEach((img) => {
                 if (yPos + 95 > 280) { pdf.addPage(); yPos = 20; }
@@ -215,7 +205,6 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             });
         }
 
-        // --- OBSERVACIONES ---
         if (data.observations) {
             if (yPos + 40 > 280) { pdf.addPage(); yPos = 20; }
             addHeader('OBSERVACIONES Y NOTAS TÉCNICAS');
@@ -228,7 +217,6 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             });
         }
 
-        // --- PIE DE PÁGINA ---
         const pageCount = (pdf as any).internal.getNumberOfPages();
         for (let i = 1; i <= pageCount; i++) {
             pdf.setPage(i);
