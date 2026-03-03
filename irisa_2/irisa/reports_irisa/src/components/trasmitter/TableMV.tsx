@@ -1,8 +1,8 @@
 import { InputField } from './InputField';
 
 export const TableMV = ({ measurements, onMeasurementsChange }: any) => {
-    // CAMBIO CLAVE: Usamos 1fr para que las columnas de datos se expandan equitativamente
-    // 140px para el tipo de sensor y 80px para la acción se mantienen fijos para no deformarse
+    // CAMBIO CLAVE: Usamos 1fr en las columnas de valores para que se expandan 
+    // y ocupen todo el ancho disponible del contenedor.
     const gridCols = 'lg:grid-cols-[1fr_1fr_140px_1fr_80px]';
 
     const handleChange = (index: number, field: string, value: any) => {
@@ -20,8 +20,10 @@ export const TableMV = ({ measurements, onMeasurementsChange }: any) => {
 
     return (
         <div className="w-full overflow-hidden">
+            {/* Contenedor principal con w-full */}
             <div className="w-full">
-                {/* Header Desktop - Ahora con w-full y el grid expansivo */}
+                
+                {/* Header Desktop - Ahora con w-full y grid expansivo */}
                 <div className={`hidden lg:grid ${gridCols} bg-gray-50 border-b border-gray-200 text-[10px] font-bold text-gray-500 uppercase tracking-wider w-full`}>
                     <div className="px-4 py-4 text-center">mV ideal</div>
                     <div className="px-4 py-4 text-center">mV sensor</div>
@@ -30,14 +32,14 @@ export const TableMV = ({ measurements, onMeasurementsChange }: any) => {
                     <div className="px-4 py-4 text-center">Acción</div>
                 </div>
 
-                {/* Filas */}
+                {/* Filas - Aseguramos que cada fila y su contenido sean w-full */}
                 <div className="divide-y divide-gray-200 bg-white w-full">
                     {measurements.map((m: any, i: number) => (
                         <div key={i} className="group hover:bg-teal-50/30 transition-colors w-full">
                             <div className={`flex flex-col lg:grid ${gridCols} lg:items-center w-full`}>
                                 
                                 {/* MV IDEAL */}
-                                <div className="p-4 lg:px-6 lg:py-3">
+                                <div className="p-4 lg:px-6 lg:py-3 w-full">
                                     <InputField 
                                         label="mV ideal" 
                                         unit="mV" 
@@ -47,7 +49,7 @@ export const TableMV = ({ measurements, onMeasurementsChange }: any) => {
                                 </div>
 
                                 {/* MV SENSOR */}
-                                <div className="p-4 lg:px-6 lg:py-3">
+                                <div className="p-4 lg:px-6 lg:py-3 w-full">
                                     <InputField 
                                         label="mV sensor" 
                                         unit="mV" 
@@ -76,7 +78,7 @@ export const TableMV = ({ measurements, onMeasurementsChange }: any) => {
                                 </div>
 
                                 {/* ERROR mV */}
-                                <div className="p-4 lg:px-6 lg:py-3 lg:bg-red-50/20 h-full flex items-center">
+                                <div className="p-4 lg:px-6 lg:py-3 lg:bg-red-50/20 h-full flex items-center w-full">
                                     <InputField 
                                         label="Error mV" 
                                         unit="mV" 
