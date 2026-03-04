@@ -11,8 +11,7 @@ import PressureSwitchTable, { type PressureSwitchTest } from '../components/Pres
 import ThermostatTable, { type ThermostatTest } from '../components/ThermostatTable';
 import TransmitterChart from '../components/trasmitter/TransmitterChart';
 import RTDChart from '../components/trasmitter/RTDChart';
-import MvChart from '../components/trasmitter/MvChart';
-import PressureSwitchChart from '../components/PressureSwitchChart';
+import MvChart from '../components/trasmitter/MvChart';import TXChart from '../components/trasmitter/TXChart';import PressureSwitchChart from '../components/PressureSwitchChart';
 import ThermostatChart from '../components/ThermostatChart';
 
 // Hooks
@@ -65,6 +64,7 @@ const HomePage: React.FC = () => {
     const transmitterChartRef = useRef<any>(null);
     const rtdChartRef = useRef<any>(null);
     const mvChartRef = useRef<any>(null);
+    const txChartRef = useRef<any>(null);
     const pressureSwitchChartRef = useRef<any>(null);
     const thermostatChartRef = useRef<any>(null);
 
@@ -104,6 +104,8 @@ const HomePage: React.FC = () => {
                 chartImages = await rtdChartRef.current.captureAllCharts();
             } else if (deviceType === 'transmitter' && outputUnit === 'mv' && mvChartRef.current) {
                 chartImages = await mvChartRef.current.captureAllCharts();
+            } else if (deviceType === 'transmitter' && outputUnit === 'tx' && txChartRef.current) {
+                chartImages = await txChartRef.current.captureAllCharts();
             } else if (deviceType === 'transmitter' && transmitterChartRef.current) {
                 chartImages = await transmitterChartRef.current.captureAllCharts();
             } else if (deviceType === 'pressure_switch' && pressureSwitchChartRef.current) {
@@ -339,7 +341,8 @@ const HomePage: React.FC = () => {
                                     </h3>
                                     {deviceType === 'transmitter' && outputUnit === 'ohm' && <RTDChart ref={rtdChartRef} measurements={transmitterMeasurements} hasUeTransmitter={hasUeTransmitter} />}
                                     {deviceType === 'transmitter' && outputUnit === 'mv' && <MvChart ref={mvChartRef} measurements={transmitterMeasurements} />}
-                                    {deviceType === 'transmitter' && outputUnit !== 'ohm' && outputUnit !== 'mv' && <TransmitterChart ref={transmitterChartRef} data={transmitterMeasurements} />}
+                                    {deviceType === 'transmitter' && outputUnit === 'tx' && <TXChart ref={txChartRef} measurements={transmitterMeasurements} />}
+                                    {deviceType === 'transmitter' && outputUnit !== 'ohm' && outputUnit !== 'mv' && outputUnit !== 'tx' && <TransmitterChart ref={transmitterChartRef} data={transmitterMeasurements} />}
                                     {deviceType === 'pressure_switch' && <PressureSwitchChart ref={pressureSwitchChartRef} tests={pressureSwitchTests} />}
                                     {deviceType === 'thermostat' && <ThermostatChart ref={thermostatChartRef} tests={thermostatTests} />}
                                 </div>

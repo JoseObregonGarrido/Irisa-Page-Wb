@@ -123,9 +123,9 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                 };
                 case 'tx':
                 return {
-                    gridCols: 'lg:grid-cols-[1fr_1fr_140px_1fr_80px]', 
-                    minWidth: 'lg:min-w-[850px]',
-                    headers: ['ideal mA', 'mA TX', 'Tipo sensor', 'Error mA', 'Acción']
+                    gridCols: 'lg:grid-cols-[1fr_1fr_1fr_140px_1fr_80px]', 
+                    minWidth: 'lg:min-w-[950px]',
+                    headers: ['Ideal UE','ideal mA', 'mA TX', 'Tipo sensor', 'Error mA', 'Acción']
                 };
             default: // mA
                 return {
@@ -213,6 +213,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                                 ) : outputUnit === 'tx' ? (
                                     /* --- VISTA TX PURA (NUEVA) --- */
                                     <>
+                                        <div className="lg:px-2 lg:py-3"><InputField label="Ideal UE" unit="UE" value={m.idealUE} onChange={(e:any) => handleChange(index, 'idealUE', e.target.value)} /></div>
                                         <div className="lg:px-2 lg:py-3"><InputField label="Ideal mA" unit="mA" value={m.idealmA} onChange={(e:any) => handleChange(index, 'idealmA', e.target.value)} /></div>
                                         <div className="lg:px-2 lg:py-3"><InputField label="mA TX" unit="mA" value={m.maTransmitter} onChange={(e:any) => handleChange(index, 'maTransmitter', e.target.value)} /></div>
                                         <div className="lg:px-2 lg:py-3 flex flex-col items-center justify-center">
