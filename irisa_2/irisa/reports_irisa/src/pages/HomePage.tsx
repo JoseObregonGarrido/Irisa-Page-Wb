@@ -6,7 +6,7 @@ import { logout } from '../services/authService';
 import { generatePDFReport } from '../services/pdfService';
 
 // Components
-import TransmitterTable, { type Measurement } from '../components/trasmitter';
+import TransmitterTable, { type Measurement } from '../components/trasmitter/TransmitterTable';
 import PressureSwitchTable, { type PressureSwitchTest } from '../components/PressureSwitchTable';
 import ThermostatTable, { type ThermostatTest } from '../components/ThermostatTable';
 import TransmitterChart from '../components/trasmitter/TransmitterChart';
@@ -50,7 +50,6 @@ const HomePage: React.FC = () => {
     const [showChart, setShowChart] = useState(false);
 
     // --- Refs para captura de gráficos ---
-    const transmitterTableRef = useRef<any>(null);
     const transmitterChartRef = useRef<any>(null);
     const pressureSwitchChartRef = useRef<any>(null);
     const thermostatChartRef = useRef<any>(null);
@@ -89,18 +88,6 @@ const HomePage: React.FC = () => {
 
             if (deviceType === 'transmitter' && transmitterChartRef.current) {
                 chartImages = await transmitterChartRef.current.captureAllCharts();
-                
-                // Capturar OhmChart si estamos en modo RTD (ohm)
-                if (outputUnit === 'ohm' && transmitterTableRef.current?.captureOhmChart) {
-                    const ohmChartImages = await transmitterTableRef.current.captureOhmChart();
-                    chartImages = [...chartImages, ...ohmChartImages];
-                }
-                
-                // Capturar MvChart si estamos en modo mV (termopar)
-                if (outputUnit === 'mv' && transmitterTableRef.current?.captureMvChart) {
-                    const mvChartImages = await transmitterTableRef.current.captureMvChart();
-                    chartImages = [...chartImages, ...mvChartImages];
-                }
             } else if (deviceType === 'pressure_switch' && pressureSwitchChartRef.current) {
                 chartImages = await pressureSwitchChartRef.current.captureAllCharts();
             } else if (deviceType === 'thermostat' && thermostatChartRef.current) {
@@ -281,7 +268,6 @@ const HomePage: React.FC = () => {
                                 <div className="min-w-[1000px]">
                                     {deviceType === 'transmitter' && (
                                         <TransmitterTable 
-                                            ref={transmitterTableRef}
                                             measurements={transmitterMeasurements} 
                                             onMeasurementsChange={setTransmitterMeasurements}
                                             outputUnit={outputUnit}

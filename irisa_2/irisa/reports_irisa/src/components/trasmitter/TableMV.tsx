@@ -1,18 +1,6 @@
-import { forwardRef, useRef, useImperativeHandle } from 'react';
 import { InputField } from './InputField';
-import MvChart from './MvChart';
 
-export const TableMV = forwardRef(({ measurements, onMeasurementsChange }: any, ref: any) => {
-    const chartRef = useRef<any>(null);
-
-    useImperativeHandle(ref, () => ({
-        captureMvChart: async () => {
-            if (chartRef.current?.captureChart) {
-                return [await chartRef.current.captureChart()];
-            }
-            return [];
-        }
-    }));
+export const TableMV = ({ measurements, onMeasurementsChange }: any) => {
     // CAMBIO CLAVE: Usamos 1fr para que las columnas de datos se expandan equitativamente
     // 140px para el tipo de sensor y 80px para la acción se mantienen fijos para no deformarse
     const gridCols = 'lg:grid-cols-[1fr_1fr_140px_1fr_80px]';
@@ -114,11 +102,6 @@ export const TableMV = forwardRef(({ measurements, onMeasurementsChange }: any, 
                     ))}
                 </div>
             </div>
-            <MvChart ref={chartRef} measurements={measurements} />
         </div>
     );
-});
-
-TableMV.displayName = 'TableMV';
-
-export default TableMV;
+};

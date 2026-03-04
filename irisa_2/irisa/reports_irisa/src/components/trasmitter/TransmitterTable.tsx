@@ -1,4 +1,4 @@
-import React, { forwardRef, useRef, useImperativeHandle } from 'react';
+import React from 'react';
 
 // --- INTERFACES ---
 export interface Measurement {
@@ -60,24 +60,14 @@ const InputField = ({ label, value, onChange, unit, isError = false, readOnly = 
     </div>
 );
 
-const TransmitterTable = forwardRef<any, TransmitterTableProps>(({ 
+const TransmitterTable: React.FC<TransmitterTableProps> = ({ 
     measurements, 
     onMeasurementsChange,
     outputUnit,
     setOutputUnit,
     hasUeTransmitter,
     setHasUeTransmitter
-}, ref) => {
-    const tableRtdRef = useRef<any>(null);
-
-    useImperativeHandle(ref, () => ({
-        captureOhmChart: async () => {
-            if (tableRtdRef.current?.captureOhmChart) {
-                return await tableRtdRef.current.captureOhmChart();
-            }
-            return [];
-        }
-    }));
+}) => {
     
     // --- LÓGICA DE CÁLCULO ---
     const calculateErrors = (m: Measurement) => {
