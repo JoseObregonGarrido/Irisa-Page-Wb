@@ -16,15 +16,15 @@ interface PressureSwitchTableProps {
 
 // --- COMPONENTE DE INPUT ---
 const TableInput = ({ value, onChange, placeholder }: any) => (
-    <div className="relative w-full">
+    <div className="relative w-full max-w-full">
         <input 
             type="text" 
             value={value} 
             onChange={onChange} 
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none" 
+            className="w-full max-w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none" 
             placeholder={placeholder || "0.00"} 
         />
-        <span className="absolute right-2 top-2 text-[10px] text-gray-400 font-bold uppercase">psi</span>
+        <span className="absolute right-1 top-2 text-[10px] text-gray-400 font-bold uppercase">psi</span>
     </div>
 );
 
@@ -67,10 +67,10 @@ const PressureSwitchTable: React.FC<PressureSwitchTableProps> = ({ tests, onTest
 
             <div className="bg-white rounded-b-xl shadow-lg border border-gray-200 overflow-hidden">
                 {/* --- MODO MOBILE --- */}
-                <div className="block md:hidden divide-y divide-gray-200 px-2">
+                <div className="block md:hidden divide-y divide-gray-200 px-2 overflow-x-hidden">
                     {tests.map((test, index) => (
                         <div key={index} className="p-3 space-y-3">
-                            <div className="flex justify-between items-center">
+                            <div className="flex flex-col sm:flex-row justify-between items-center gap-2">
                                 <span className="text-xs font-bold text-teal-600 tracking-wider">Prueba #{index + 1}</span>
                                 <button onClick={() => handleDeleteRow(index)} className="text-red-500 p-1 hover:bg-red-50 rounded">
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
