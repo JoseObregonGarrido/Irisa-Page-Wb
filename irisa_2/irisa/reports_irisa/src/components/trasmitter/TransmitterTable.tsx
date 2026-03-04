@@ -158,7 +158,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                                 </button>
                             ))}
                         </div>
-                        {outputUnit !== 'mv' && ou  tputUnit !== 'tx' && (
+                        {outputUnit !== 'mv' && outputUnit !== 'tx' && (
                             <button
                                 type="button"
                                 onClick={() => setHasUeTransmitter(!hasUeTransmitter)}
