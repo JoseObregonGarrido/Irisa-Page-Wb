@@ -47,8 +47,8 @@ const PressureSwitchTable: React.FC<PressureSwitchTableProps> = ({ tests, onTest
     };
 
     return (
-        <div className="mt-8 max-w-[384px] mx-auto">
-            <div className="bg-gradient-to-r from-teal-600 to-emerald-600 rounded-t-xl px-4 md:px-6 py-4">
+        <div className="mt-8 w-full">
+            <div className="bg-gradient-to-r from-teal-600 to-emerald-600 rounded-t-xl px-2 sm:px-4 md:px-6 py-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="flex items-center">
                         <svg className="w-6 h-6 text-white mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -67,7 +67,7 @@ const PressureSwitchTable: React.FC<PressureSwitchTableProps> = ({ tests, onTest
 
             <div className="bg-white rounded-b-xl shadow-lg border border-gray-200 overflow-hidden">
                 {/* --- MODO MOBILE --- */}
-                <div className="block md:hidden divide-y divide-gray-200 text-xs">
+                <div className="block md:hidden divide-y divide-gray-200 text-xs px-2">
                     {tests.map((test, index) => (
                         <div key={index} className="p-2 space-y-2 bg-white rounded-lg shadow-sm">
                             <div className="flex justify-between items-center text-sm mb-1">
