@@ -69,7 +69,7 @@ const PressureSwitchTable: React.FC<PressureSwitchTableProps> = ({ tests, onTest
                 {/* --- MODO MOBILE --- */}
                 <div className="block md:hidden divide-y divide-gray-200 text-xs px-2">
                     {tests.map((test, index) => (
-                        <div key={index} className="p-2 space-y-2 bg-white rounded-lg shadow-sm">
+                        <div key={index} className="p-2 pb-1 space-y-2 bg-white rounded-lg shadow-sm">
                             <div className="flex justify-between items-center text-sm mb-1">
                                 <span className="text-xs font-bold text-teal-600 tracking-wider">Prueba #{index + 1}</span>
                                 <button onClick={() => handleDeleteRow(index)} className="text-red-500 p-1 hover:bg-red-50 rounded">
@@ -141,6 +141,8 @@ const PressureSwitchTable: React.FC<PressureSwitchTableProps> = ({ tests, onTest
                             ))}
                         </tbody>
                     </table>
+                    <div className="block md:hidden mt-2"></div>
+                    <div className="hidden md:block text-gray-400 text-xs italic mt-2">* Deslice hacia la derecha para ver todos los campos</div>
                 </div>
 
                 {/* Empty State */}
