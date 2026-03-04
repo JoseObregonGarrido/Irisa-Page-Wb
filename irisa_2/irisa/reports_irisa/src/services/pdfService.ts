@@ -207,11 +207,11 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 : 'CURVA DE CALIBRACIÓN Y LINEALIDAD';
 
             chartImages.forEach((img) => {
-                if (yPos + 120 > 280) { pdf.addPage(); yPos = 20; }
+                if (yPos + 150 > 280) { pdf.addPage(); yPos = 20; }
                 pdf.setFontSize(10).setFont('helvetica', 'bold').text(chartTitle, 20, yPos);
-                yPos += 5;
-                pdf.addImage(img, 'PNG', 20, yPos, 170, 110);
-                yPos += 120; 
+                yPos += 7;
+                pdf.addImage(img, 'PNG', 15, yPos, 180, 130);
+                yPos += 135; 
             });
         }
 
