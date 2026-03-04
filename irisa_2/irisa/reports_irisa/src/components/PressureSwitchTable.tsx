@@ -16,15 +16,15 @@ interface PressureSwitchTableProps {
 
 // --- COMPONENTE DE INPUT ---
 const TableInput = ({ value, onChange, placeholder }: any) => (
-    <div className="relative w-full">
+    <div className="relative w-full flex justify-center">
         <input 
             type="text" 
             value={value} 
             onChange={onChange} 
-            className="w-full px-1.5 py-1.5 sm:px-2 sm:py-2 border border-gray-300 rounded-lg text-[11px] sm:text-xs lg:text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none box-border" 
+            className="w-full max-w-[220px] sm:max-w-[260px] md:max-w-[320px] lg:max-w-full px-1.5 py-1.5 sm:px-2 sm:py-2 border border-gray-300 rounded-lg text-[11px] sm:text-xs lg:text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none box-border" 
             placeholder={placeholder || "0.00"} 
         />
-        <span className="absolute right-0.5 top-0.5 text-[7px] sm:text-[8px] lg:text-[10px] text-gray-400 font-bold uppercase">psi</span>
+        <span className="absolute right-2 top-0.5 text-[7px] sm:text-[8px] lg:text-[10px] text-gray-400 font-bold uppercase">psi</span>
     </div>
 );
 
