@@ -196,12 +196,22 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         }
 
         if (chartImages && chartImages.length > 0) {
+            const chartTitle = data.deviceType === 'transmitter' 
+                ? (data.outputUnit === 'ohm' 
+                    ? 'DESVIACIÓN DE OHM (RTD)' 
+                    : data.outputUnit === 'mv' 
+                    ? 'DESVIACIÓN DE mV (TERMOPAR)' 
+                    : data.outputUnit === 'tx'
+                    ? 'IDEAL mA vs mA TX'
+                    : 'CURVA DE RESPUESTA DEL TRANSMISOR')
+                : 'CURVA DE CALIBRACIÓN Y LINEALIDAD';
+
             chartImages.forEach((img) => {
-                if (yPos + 95 > 280) { pdf.addPage(); yPos = 20; }
-                pdf.setFontSize(10).setFont('helvetica', 'bold').text("CURVA DE CALIBRACIÓN Y LINEALIDAD", 20, yPos);
+                if (yPos + 120 > 280) { pdf.addPage(); yPos = 20; }
+                pdf.setFontSize(10).setFont('helvetica', 'bold').text(chartTitle, 20, yPos);
                 yPos += 5;
-                pdf.addImage(img, 'PNG', 20, yPos, 170, 85);
-                yPos += 95; 
+                pdf.addImage(img, 'PNG', 20, yPos, 170, 110);
+                yPos += 120; 
             });
         }
 
