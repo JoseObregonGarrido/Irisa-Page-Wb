@@ -104,37 +104,37 @@ const PressureSwitchTable: React.FC<PressureSwitchTableProps> = ({ tests, onTest
 
                 {/* --- MODO DESKTOP --- */}
                 <div className="hidden md:block overflow-x-auto">
-                    <table className="w-full text-sm">
+                    <table className="w-full min-w-[480px] md:min-w-[640px] lg:min-w-[800px] xl:min-w-[950px] text-xs md:text-sm lg:text-base">
                         <thead className="bg-gray-50 border-b border-gray-200">
                             <tr>
-                                <th className="px-4 py-4 text-left font-bold text-gray-600 tracking-wider">Presión de disparo</th>
-                                <th className="px-4 py-4 text-left font-bold text-gray-600 tracking-wider">Presión de repone</th>
-                                <th className="px-4 py-4 text-center font-bold text-gray-600 tracking-wider">Estado del contacto</th>
-                                <th className="px-4 py-4 text-center font-bold text-gray-600 tracking-wider">Acción</th>
+                                <th className="px-2 py-2 md:px-3 md:py-3 lg:px-4 lg:py-4 text-left font-bold text-gray-600 tracking-wider whitespace-nowrap">Presión de disparo</th>
+                                <th className="px-2 py-2 md:px-3 md:py-3 lg:px-4 lg:py-4 text-left font-bold text-gray-600 tracking-wider whitespace-nowrap">Presión de repone</th>
+                                <th className="px-2 py-2 md:px-3 md:py-3 lg:px-4 lg:py-4 text-center font-bold text-gray-600 tracking-wider whitespace-nowrap">Estado del contacto</th>
+                                <th className="px-2 py-2 md:px-3 md:py-3 lg:px-4 lg:py-4 text-center font-bold text-gray-600 tracking-wider whitespace-nowrap">Acción</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-200">
                             {tests.map((test, index) => (
                                 <tr key={index} className="hover:bg-gray-50 transition-colors">
-                                    <td className="px-4 py-3">
+                                    <td className="px-2 py-2 md:px-3 md:py-3 lg:px-4 lg:py-4">
                                         <TableInput value={test.presiondeDisparo} onChange={(e:any) => handleChange(index, 'presiondeDisparo', e.target.value)} />
                                     </td>
-                                    <td className="px-4 py-3">
+                                    <td className="px-2 py-2 md:px-3 md:py-3 lg:px-4 lg:py-4">
                                         <TableInput value={test.presiondeRepone} onChange={(e:any) => handleChange(index, 'presiondeRepone', e.target.value)} />
                                     </td>
-                                    <td className="px-4 py-3">
-                                        <div className="flex justify-center gap-6">
-                                            <label className="flex items-center gap-2 font-bold text-gray-600 cursor-pointer">
-                                                <input type="checkbox" checked={test.isNO} onChange={(e) => handleChange(index, 'isNO', e.target.checked)} className="w-5 h-5 text-teal-600 rounded focus:ring-teal-500" /> N.O
+                                    <td className="px-2 py-2 md:px-3 md:py-3 lg:px-4 lg:py-4">
+                                        <div className="flex justify-center gap-2 md:gap-4 lg:gap-6">
+                                            <label className="flex items-center gap-1 md:gap-2 font-bold text-gray-600 cursor-pointer text-xs md:text-sm lg:text-base">
+                                                <input type="checkbox" checked={test.isNO} onChange={(e) => handleChange(index, 'isNO', e.target.checked)} className="w-4 h-4 md:w-5 md:h-5 text-teal-600 rounded focus:ring-teal-500" /> N.O
                                             </label>
-                                            <label className="flex items-center gap-2 font-bold text-gray-600 cursor-pointer">
-                                                <input type="checkbox" checked={test.isNC} onChange={(e) => handleChange(index, 'isNC', e.target.checked)} className="w-5 h-5 text-teal-600 rounded focus:ring-teal-500" /> N.C
+                                            <label className="flex items-center gap-1 md:gap-2 font-bold text-gray-600 cursor-pointer text-xs md:text-sm lg:text-base">
+                                                <input type="checkbox" checked={test.isNC} onChange={(e) => handleChange(index, 'isNC', e.target.checked)} className="w-4 h-4 md:w-5 md:h-5 text-teal-600 rounded focus:ring-teal-500" /> N.C
                                             </label>
                                         </div>
                                     </td>
-                                    <td className="px-4 py-3 text-center">
-                                        <button onClick={() => handleDeleteRow(index)} className="text-red-600 hover:text-red-800 p-2 hover:bg-red-50 rounded-full transition-colors">
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                    <td className="px-2 py-2 md:px-3 md:py-3 lg:px-4 lg:py-4 text-center">
+                                        <button onClick={() => handleDeleteRow(index)} className="text-red-600 hover:text-red-800 p-1 md:p-2 hover:bg-red-50 rounded-full transition-colors">
+                                            <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                         </button>
                                     </td>
                                 </tr>
