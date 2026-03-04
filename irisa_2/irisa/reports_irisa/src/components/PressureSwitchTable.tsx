@@ -48,7 +48,7 @@ const PressureSwitchTable: React.FC<PressureSwitchTableProps> = ({ tests, onTest
 
     return (
         <div className="mt-8">
-            <div className="bg-gradient-to-r from-teal-600 to-emerald-600 rounded-t-xl px-4 md:px-6 py-4">
+            <div className="bg-gradient-to-r from-teal-600 to-emerald-600 rounded-t-xl px-2 md:px-6 py-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div className="flex items-center">
                         <svg className="w-6 h-6 text-white mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -67,9 +67,9 @@ const PressureSwitchTable: React.FC<PressureSwitchTableProps> = ({ tests, onTest
 
             <div className="bg-white rounded-b-xl shadow-lg border border-gray-200 overflow-hidden">
                 {/* --- MODO MOBILE --- */}
-                <div className="block md:hidden divide-y divide-gray-200">
+                <div className="block md:hidden divide-y divide-gray-200 px-2">
                     {tests.map((test, index) => (
-                        <div key={index} className="p-4 space-y-4">
+                        <div key={index} className="p-3 space-y-3">
                             <div className="flex justify-between items-center">
                                 <span className="text-xs font-bold text-teal-600 tracking-wider">Prueba #{index + 1}</span>
                                 <button onClick={() => handleDeleteRow(index)} className="text-red-500 p-1 hover:bg-red-50 rounded">
@@ -77,17 +77,17 @@ const PressureSwitchTable: React.FC<PressureSwitchTableProps> = ({ tests, onTest
                                 </button>
                             </div>
                             
-                            <div className="space-y-3">
+                            <div className="space-y-2">
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-500 mb-1">Presión de disparo</label>
+                                    <label className="block text-[9px] font-bold text-gray-500 mb-1">Presión de disparo</label>
                                     <TableInput value={test.presiondeDisparo} onChange={(e:any) => handleChange(index, 'presiondeDisparo', e.target.value)} />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-500 mb-1">Presión de repone</label>
+                                    <label className="block text-[9px] font-bold text-gray-500 mb-1">Presión de repone</label>
                                     <TableInput value={test.presiondeRepone} onChange={(e:any) => handleChange(index, 'presiondeRepone', e.target.value)} />
                                 </div>
-                                <div className="p-3 bg-gray-50 rounded-lg border border-gray-100">
-                                    <label className="block text-xs font-bold text-gray-500 mb-2">Estado del contacto</label>
+                                <div className="p-2 bg-gray-50 rounded-lg border border-gray-100">
+                                    <label className="block text-[9px] font-bold text-gray-500 mb-2">Estado del contacto</label>
                                     <div className="flex gap-4">
                                         <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
                                             <input type="checkbox" checked={test.isNO} onChange={(e) => handleChange(index, 'isNO', e.target.checked)} className="w-5 h-5 text-teal-600 rounded" /> N.O
