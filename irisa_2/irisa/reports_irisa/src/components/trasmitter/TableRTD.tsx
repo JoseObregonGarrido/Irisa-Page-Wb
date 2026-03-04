@@ -1,6 +1,19 @@
 import { InputField } from './InputField';
+import { forwardRef, useImperativeHandle, useRef } from 'react';
+import OhmChart from './OhmChart';
 
-export const TableRTD = ({ measurements, onMeasurementsChange, hasUeTransmitter }: any) => {
+export const TableRTD = forwardRef(({ measurements, onMeasurementsChange, hasUeTransmitter }: any, ref: any) => {
+    const chartRef = useRef<any>(null);
+
+    useImperativeHandle(ref, () => ({
+        captureOhmChart: async () => {
+            if (chartRef.current?.captureChart) {
+                return [await chartRef.current.captureChart()];
+            }
+            return [];
+        }
+    }));
+    
     // SIN UE (10 columnas): Ideal UE, Ideal mA, Patron UE, UE Trans, mA Trans, % Rango, Err UE, Err mA, Err %, Acción
     // CON UE (11 columnas): Ideal UE, Ideal mA, Ideal Ohm, Patron UE, mA Sensor, Ohm Sensor, % Rango, Err mA, Err %, Err Ohm, Acción
     const gridCols = hasUeTransmitter ? 'lg:grid-cols-11' : 'lg:grid-cols-10';
@@ -116,6 +129,11 @@ export const TableRTD = ({ measurements, onMeasurementsChange, hasUeTransmitter 
                     ))}
                 </div>
             </div>
+
+            {/* Gráfico de Ohm */}
+            <OhmChart ref={chartRef} measurements={measurements} />
         </div>
     );
-};
+});
+
+TableRTD.displayName = 'TableRTD';

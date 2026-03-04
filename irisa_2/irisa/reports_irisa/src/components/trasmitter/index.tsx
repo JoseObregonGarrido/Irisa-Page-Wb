@@ -1,15 +1,62 @@
+import { forwardRef, useRef, useImperativeHandle } from 'react';
 import { TableMA } from './TableMA';
 import { TableRTD } from './TableRTD';
 import { TableMV } from './TableMV';
 import { TableTx } from './TableTX';
 
-const TransmitterTable = ({ 
+// --- INTERFACES ---
+export interface Measurement {
+    percentage: string;
+    idealUE: string;
+    patronUE: string;
+    ueTransmitter: string;
+    idealmA: string;
+    idealohm?: string; 
+    idealMv?: string; 
+    maTransmitter: string; 
+    ohmTransmitter?: string; 
+    mvTransmitter?: string; 
+    errorUE: string;
+    errormA: string;
+    errorPercentage: string;
+    errorOhm?: string;
+    errorMv?: string;
+    // Campos nuevos para la lógica de mV pura
+    sensorType?: 'J' | 'K';
+    idealmV?: string;
+    sensormV?: string;
+    errormV?: string;
+
+    // Campos nuevos para la logica de tx pura
+    idealTx?: string;
+    mATX?: string;
+    sensorTypeTx?: 'J' | 'K';
+}
+
+const TransmitterTable = forwardRef(({ 
     measurements, 
     onMeasurementsChange, 
     outputUnit, 
     setOutputUnit, 
     hasUeTransmitter 
-}: any) => {
+}: any, ref: any) => {
+    const tableRtdRef = useRef<any>(null);
+    const tableMvRef = useRef<any>(null);
+
+    useImperativeHandle(ref, () => ({
+        captureOhmChart: async () => {
+            if (tableRtdRef.current?.captureOhmChart) {
+                return await tableRtdRef.current.captureOhmChart();
+            }
+            return [];
+        },
+        captureMvChart: async () => {
+            if (tableMvRef.current?.captureMvChart) {
+                return await tableMvRef.current.captureMvChart();
+            }
+            return [];
+        }
+    }));
 
     const addNewRow = () => {
         // Objeto unificado con todos los campos para evitar errores de undefined
@@ -96,6 +143,7 @@ const TransmitterTable = ({
                 
                 {outputUnit === 'ohm' && (
                     <TableRTD 
+                        ref={tableRtdRef}
                         measurements={measurements} 
                         onMeasurementsChange={onMeasurementsChange} 
                         hasUeTransmitter={hasUeTransmitter} 
@@ -104,6 +152,7 @@ const TransmitterTable = ({
 
                 {outputUnit === 'mv' && (
                     <TableMV 
+                        ref={tableMvRef}
                         measurements={measurements} 
                         onMeasurementsChange={onMeasurementsChange} 
                         hasUeTransmitter={hasUeTransmitter} 
@@ -120,6 +169,7 @@ const TransmitterTable = ({
             </div>
         </div>
     );
-};
+});
 
+TransmitterTable.displayName = 'TransmitterTable';
 export default TransmitterTable;
