@@ -11,7 +11,7 @@ import PressureSwitchTable, { type PressureSwitchTest } from '../components/Pres
 import ThermostatTable, { type ThermostatTest } from '../components/ThermostatTable';
 import TransmitterChart from '../components/trasmitter/TransmitterChart';
 import RTDChart from '../components/trasmitter/RTDChart';
-import MVChart from '../components/trasmitter/MVChart';
+import MvChart from '../components/trasmitter/MvChart';
 import PressureSwitchChart from '../components/PressureSwitchChart';
 import ThermostatChart from '../components/ThermostatChart';
 
@@ -338,7 +338,7 @@ const HomePage: React.FC = () => {
                                         Análisis Gráfico: {getDeviceTypeLabel(deviceType)}
                                     </h3>
                                     {deviceType === 'transmitter' && outputUnit === 'ohm' && <RTDChart ref={rtdChartRef} measurements={transmitterMeasurements} hasUeTransmitter={hasUeTransmitter} />}
-                                    {deviceType === 'transmitter' && outputUnit === 'mv' && <MVChart ref={mvChartRef} measurements={transmitterMeasurements} />}
+                                    {deviceType === 'transmitter' && outputUnit === 'mv' && <MvChart ref={mvChartRef} measurements={transmitterMeasurements} />}
                                     {deviceType === 'transmitter' && outputUnit !== 'ohm' && outputUnit !== 'mv' && <TransmitterChart ref={transmitterChartRef} data={transmitterMeasurements} />}
                                     {deviceType === 'pressure_switch' && <PressureSwitchChart ref={pressureSwitchChartRef} tests={pressureSwitchTests} />}
                                     {deviceType === 'thermostat' && <ThermostatChart ref={thermostatChartRef} tests={thermostatTests} />}
