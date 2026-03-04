@@ -127,9 +127,15 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({
 
     // Títulos y etiquetas dinámicas
     const getChartTitle = () => {
-        if (isOhm) return 'Curva de Respuesta RTD (Ohm)';
+        if (isOhm) return 'Desviación de Ohm';
         if (isMv) return 'Curva de Respuesta Termopar (mV)';
         return 'Curva de Respuesta del Transmisor';
+    };
+
+    const getChartSubtitle = () => {
+        if (isOhm) return 'Ideal Ω vs Sensor Ω';
+        if (isMv) return 'Ideal mV vs Sensor mV';
+        return 'Eje X: Entrada (mA) | Eje Y: Rango UE / mA';
     };
 
     const getYLabel = () => {
@@ -145,7 +151,7 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({
                     <span className="text-3xl">📈</span>
                     <div>
                         <h3 className="text-xl font-bold">{getChartTitle()}</h3>
-                        <p className="text-blue-100 text-sm opacity-90">Eje X: Entrada (mA) | Eje Y: {getYLabel()}</p>
+                        <p className="text-blue-100 text-sm opacity-90">{getChartSubtitle()}</p>
                     </div>
                 </div>
             </div>

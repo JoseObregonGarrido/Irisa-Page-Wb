@@ -47,6 +47,16 @@ const HomePage: React.FC = () => {
     const [outputUnit, setOutputUnit] = useLocalStorage<'mA' | 'ohm' | 'mv' | 'tx'>('ir_output_unit', 'mA');
     const [hasUeTransmitter, setHasUeTransmitter] = useLocalStorage<boolean>('ir_has_ue', false);
 
+    // delegamos al padre la responsabilidad de ajustar la visibilidad de UE cuando cambia la unidad
+    React.useEffect(() => {
+        if (outputUnit === 'mv' || outputUnit === 'tx') {
+            setHasUeTransmitter(false);
+        } else {
+            // para mA y ohm activar por defecto
+            setHasUeTransmitter(true);
+        }
+    }, [outputUnit, setHasUeTransmitter]);
+
     const [showChart, setShowChart] = useState(false);
 
     // --- Refs para captura de gráficos ---
