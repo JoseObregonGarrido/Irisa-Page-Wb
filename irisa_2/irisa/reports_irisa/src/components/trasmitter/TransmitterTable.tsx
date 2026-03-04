@@ -111,9 +111,9 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
         switch (outputUnit) {
             case 'mv':
                 return {
-                    gridCols: 'lg:grid-cols-[1fr_1fr_140px_1fr_80px]', 
-                    minWidth: 'lg:min-w-[850px]',
-                    headers: ['mV ideal', 'mV sensor', 'Tipo sensor', 'Error mV', 'Acción']
+                    gridCols: 'lg:grid-cols-[1fr_1fr_1fr_140px_1fr_80px]', 
+                    minWidth: 'lg:min-w-[950px]',
+                    headers: ['Ideal UE', 'mV ideal', 'mV sensor', 'Tipo sensor', 'Error mV', 'Acción']
                 };
             case 'ohm':
                 return {
@@ -190,6 +190,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                                 {outputUnit === 'mv' ? (
                                     /* --- VISTA MV PURA (NUEVA) --- */
                                     <>
+                                        <div className="lg:px-4 lg:py-3"><InputField label="Ideal UE" unit="UE" value={m.idealUE} onChange={(e:any) => handleChange(index, 'idealUE', e.target.value)} /></div>
                                         <div className="lg:px-4 lg:py-3"><InputField label="mV ideal" unit="mV" value={m.idealmV} onChange={(e:any) => handleChange(index, 'idealmV', e.target.value)} /></div>
                                         <div className="lg:px-4 lg:py-3"><InputField label="mV sensor" unit="mV" value={m.sensormV} onChange={(e:any) => handleChange(index, 'sensormV', e.target.value)} /></div>
                                         <div className="lg:px-4 lg:py-3 flex flex-col items-center justify-center">
