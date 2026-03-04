@@ -16,15 +16,15 @@ interface PressureSwitchTableProps {
 
 // --- COMPONENTE DE INPUT ---
 const TableInput = ({ value, onChange, placeholder }: any) => (
-    <div className="relative w-full max-w-full">
+    <div className="relative w-full">
         <input 
             type="text" 
             value={value} 
             onChange={onChange} 
-            className="w-full max-w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none" 
+            className="w-full px-2 py-2 border border-gray-300 rounded-lg text-xs sm:text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none box-border" 
             placeholder={placeholder || "0.00"} 
         />
-        <span className="absolute right-1 top-2 text-[10px] text-gray-400 font-bold uppercase">psi</span>
+        <span className="absolute right-1 top-1 text-[8px] sm:text-[10px] text-gray-400 font-bold uppercase">psi</span>
     </div>
 );
 
@@ -67,33 +67,33 @@ const PressureSwitchTable: React.FC<PressureSwitchTableProps> = ({ tests, onTest
 
             <div className="bg-white rounded-b-xl shadow-lg border border-gray-200 overflow-hidden">
                 {/* --- MODO MOBILE --- */}
-                <div className="block md:hidden divide-y divide-gray-200 px-2 overflow-x-hidden">
+                <div className="block md:hidden divide-y divide-gray-200 px-1 sm:px-2 py-1 overflow-x-hidden">
                     {tests.map((test, index) => (
-                        <div key={index} className="p-3 space-y-3">
-                            <div className="flex flex-col sm:flex-row justify-between items-center gap-2">
-                                <span className="text-xs font-bold text-teal-600 tracking-wider">Prueba #{index + 1}</span>
-                                <button onClick={() => handleDeleteRow(index)} className="text-red-500 p-1 hover:bg-red-50 rounded">
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        <div key={index} className="p-2 sm:p-3 space-y-2">
+                            <div className="flex justify-between items-center gap-1">
+                                <span className="text-[10px] sm:text-xs font-bold text-teal-600 tracking-wider">Prueba #{index + 1}</span>
+                                <button onClick={() => handleDeleteRow(index)} className="text-red-500 p-1 hover:bg-red-50 rounded flex-shrink-0">
+                                    <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                 </button>
                             </div>
                             
                             <div className="space-y-2">
                                 <div>
-                                    <label className="block text-[9px] font-bold text-gray-500 mb-1">Presión de disparo</label>
+                                    <label className="block text-[8px] sm:text-[9px] font-bold text-gray-500 mb-1">Presión de disparo</label>
                                     <TableInput value={test.presiondeDisparo} onChange={(e:any) => handleChange(index, 'presiondeDisparo', e.target.value)} />
                                 </div>
                                 <div>
-                                    <label className="block text-[9px] font-bold text-gray-500 mb-1">Presión de repone</label>
+                                    <label className="block text-[8px] sm:text-[9px] font-bold text-gray-500 mb-1">Presión de repone</label>
                                     <TableInput value={test.presiondeRepone} onChange={(e:any) => handleChange(index, 'presiondeRepone', e.target.value)} />
                                 </div>
                                 <div className="p-2 bg-gray-50 rounded-lg border border-gray-100">
-                                    <label className="block text-[9px] font-bold text-gray-500 mb-2">Estado del contacto</label>
-                                    <div className="flex gap-4">
-                                        <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-                                            <input type="checkbox" checked={test.isNO} onChange={(e) => handleChange(index, 'isNO', e.target.checked)} className="w-5 h-5 text-teal-600 rounded" /> N.O
+                                    <label className="block text-[8px] sm:text-[9px] font-bold text-gray-500 mb-2">Estado del contacto</label>
+                                    <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
+                                        <label className="flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-gray-700">
+                                            <input type="checkbox" checked={test.isNO} onChange={(e) => handleChange(index, 'isNO', e.target.checked)} className="w-4 h-4 sm:w-5 sm:h-5 text-teal-600 rounded" /> N.O
                                         </label>
-                                        <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-                                            <input type="checkbox" checked={test.isNC} onChange={(e) => handleChange(index, 'isNC', e.target.checked)} className="w-5 h-5 text-teal-600 rounded" /> N.C
+                                        <label className="flex items-center gap-1.5 text-xs sm:text-sm font-semibold text-gray-700">
+                                            <input type="checkbox" checked={test.isNC} onChange={(e) => handleChange(index, 'isNC', e.target.checked)} className="w-4 h-4 sm:w-5 sm:h-5 text-teal-600 rounded" /> N.C
                                         </label>
                                     </div>
                                 </div>
