@@ -145,7 +145,11 @@ const PressureSwitchTable: React.FC<PressureSwitchTableProps> = ({ tests, onTest
 
                 {/* Empty State */}
                 {tests.length === 0 && (
-                    <div className="text-center py-6 sm:py-8 md:py-12 px-2 sm:px-4 bg-gray-50/50\">\n                        <p className=\"text-gray-500 font-medium mb-2 sm:mb-4 text-xs sm:text-sm\">No hay registros de presostato.</p>\n                        <button onClick={handleAddRow} className=\"text-teal-600 font-bold hover:text-teal-700 text-xs sm:text-sm tracking-wider\">Agregar prueba</button>\n                    </div>\n                )}
+                    <div className="text-center py-6 sm:py-8 md:py-12 px-2 sm:px-4 bg-gray-50/50">
+                        <p className="text-gray-500 font-medium mb-2 sm:mb-4 text-xs sm:text-sm">No hay registros de presostato.</p>
+                        <button onClick={handleAddRow} className="text-teal-600 font-bold hover:text-teal-700 text-xs sm:text-sm tracking-wider">Agregar prueba</button>
+                    </div>
+                )}
             </div>
         </div>
     );
