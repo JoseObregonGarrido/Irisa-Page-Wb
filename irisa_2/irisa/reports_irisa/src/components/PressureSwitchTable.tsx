@@ -16,7 +16,7 @@ interface PressureSwitchTableProps {
 
 // --- COMPONENTE DE INPUT ---
 const TableInput = ({ value, onChange, placeholder }: any) => (
-    <div className="relative w-full flex justify-center">
+    <div className="relative w-full">
         <input 
             type="text" 
             value={value} 
