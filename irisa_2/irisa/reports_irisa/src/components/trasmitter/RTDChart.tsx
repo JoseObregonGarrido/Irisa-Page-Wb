@@ -104,6 +104,9 @@ const RTDChart = forwardRef<any, RTDChartProps>(({
         return ticks.length > 0 ? ticks : [minTemp, maxTemp];
     };
 
+    const yTicks = getYTicks();
+    const xTicks = getXTicks();
+
     useImperativeHandle(ref, () => ({
         captureAllCharts: async () => {
             if (containerRef.current) {
@@ -125,7 +128,7 @@ const RTDChart = forwardRef<any, RTDChartProps>(({
                     <span className="text-3xl">📈</span>
                     <div>
                         <h3 className="text-xl font-bold">Desviación de Ohm (RTD)</h3>
-                        <p className="text-blue-100 text-sm opacity-90">Ideal Ω vs Sensor Ω | Eje X: Entrada (mA)</p>
+                        <p className="text-blue-100 text-sm opacity-90">Ideal Ω vs Sensor Ω | Eje X: Temperatura (UE)</p>
                     </div>
                 </div>
             </div>
@@ -144,7 +147,7 @@ const RTDChart = forwardRef<any, RTDChartProps>(({
                                 <XAxis 
                                     dataKey="temperatura" 
                                     type="number"
-                                    ticks={getXTicks()}
+                                    ticks={xTicks}
                                     tick={{ fontSize: 11 }}
                                     label={{ value: 'Temperatura (UE)', position: 'insideBottom', offset: -10, fontSize: 12, fontWeight: 'bold' }} 
                                 />
