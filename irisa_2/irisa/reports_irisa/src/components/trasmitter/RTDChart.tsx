@@ -30,21 +30,20 @@ const RTDChart = forwardRef<any, RTDChartProps>(({
 
     // Procesamiento de datos para RTD
     const processedData = measurements.map((m) => {
-        const idealMa = parseFloat(m.idealmA || "0");
+        const idealUeVal = m.idealUE ? parseFloat(m.idealUE) : null;
         const idealOhmVal = m.idealohm ? parseFloat(m.idealohm) : null;
         const sensorOhmVal = m.ohmTransmitter ? parseFloat(m.ohmTransmitter) : null;
-        const idealUeVal = m.idealUE ? parseFloat(m.idealUE) : null;
         const ueTransVal = m.ueTransmitter ? parseFloat(m.ueTransmitter) : null;
 
         return {
             percentage: parseFloat(m.percentage) || 0,
-            idealValue: idealMa,
+            temperatura: idealUeVal, // Eje X ahora es temperatura (Ideal UE)
             idealOhm: idealOhmVal,
             sensorOhm: sensorOhmVal,
             idealUE: idealUeVal,
             ueTransmitter: ueTransVal
         };
-    }).sort((a, b) => a.idealValue - b.idealValue);
+    }).sort((a, b) => (a.temperatura || 0) - (b.temperatura || 0));
 
     // LÓGICA DE SALTOS DINÁMICOS PARA EL EJE Y
     const getYTicks = () => {
@@ -77,8 +76,33 @@ const RTDChart = forwardRef<any, RTDChartProps>(({
         return ticks;
     };
 
-    const yTicks = getYTicks();
-    const xTicks = [4, 8, 12, 16, 20];
+    // LÓGICA DE SALTOS DINÁMICOS PARA EL EJE X (TEMPERATURA)
+    const getXTicks = () => {
+        if (processedData.length === 0) return [];
+        
+        const temperaturas = processedData
+            .map(d => d.temperatura)
+            .filter(t => t !== null) as number[];
+        
+        if (temperaturas.length === 0) return [];
+        
+        const minTemp = Math.min(...temperaturas);
+        const maxTemp = Math.max(...temperaturas);
+        
+        // Generar ticks distribuidos
+        let step = 10;
+        if (maxTemp - minTemp > 100) step = 20;
+        if (maxTemp - minTemp > 500) step = 50;
+        
+        const ticks = [];
+        const start = Math.floor(minTemp / step) * step;
+        const end = Math.ceil(maxTemp / step) * step;
+        
+        for (let i = start; i <= end; i += step) {
+            ticks.push(i);
+        }
+        return ticks.length > 0 ? ticks : [minTemp, maxTemp];
+    };
 
     useImperativeHandle(ref, () => ({
         captureAllCharts: async () => {
@@ -118,12 +142,11 @@ const RTDChart = forwardRef<any, RTDChartProps>(({
                                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                                 
                                 <XAxis 
-                                    dataKey="idealValue" 
+                                    dataKey="temperatura" 
                                     type="number"
-                                    domain={[4, 20]}
-                                    ticks={xTicks}
+                                    ticks={getXTicks()}
                                     tick={{ fontSize: 11 }}
-                                    label={{ value: 'Señal de Entrada (mA)', position: 'insideBottom', offset: -10, fontSize: 12, fontWeight: 'bold' }} 
+                                    label={{ value: 'Temperatura (UE)', position: 'insideBottom', offset: -10, fontSize: 12, fontWeight: 'bold' }} 
                                 />
 
                                 <YAxis 
@@ -136,7 +159,7 @@ const RTDChart = forwardRef<any, RTDChartProps>(({
                                 <Tooltip 
                                     contentStyle={{ borderRadius: '8px', fontSize: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                                     formatter={(value: any, name: string) => [value !== null ? value.toFixed(3) : '---', name]}
-                                    labelFormatter={(label) => `Punto: ${label} mA`}
+                                    labelFormatter={(label) => `Temperatura: ${label} UE`}
                                 />
                                 <Legend verticalAlign="top" height={36} />
                                 
