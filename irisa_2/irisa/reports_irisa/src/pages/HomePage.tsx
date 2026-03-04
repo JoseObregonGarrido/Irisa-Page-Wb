@@ -10,6 +10,7 @@ import TransmitterTable, { type Measurement } from '../components/trasmitter/Tra
 import PressureSwitchTable, { type PressureSwitchTest } from '../components/PressureSwitchTable';
 import ThermostatTable, { type ThermostatTest } from '../components/ThermostatTable';
 import TransmitterChart from '../components/trasmitter/TransmitterChart';
+import RTDChart from '../components/trasmitter/RTDChart';
 import PressureSwitchChart from '../components/PressureSwitchChart';
 import ThermostatChart from '../components/ThermostatChart';
 
@@ -61,6 +62,7 @@ const HomePage: React.FC = () => {
 
     // --- Refs para captura de gráficos ---
     const transmitterChartRef = useRef<any>(null);
+    const rtdChartRef = useRef<any>(null);
     const pressureSwitchChartRef = useRef<any>(null);
     const thermostatChartRef = useRef<any>(null);
 
@@ -96,7 +98,9 @@ const HomePage: React.FC = () => {
         try {
             let chartImages: string[] = [];
 
-            if (deviceType === 'transmitter' && transmitterChartRef.current) {
+            if (deviceType === 'transmitter' && outputUnit === 'ohm' && rtdChartRef.current) {
+                chartImages = await rtdChartRef.current.captureAllCharts();
+            } else if (deviceType === 'transmitter' && transmitterChartRef.current) {
                 chartImages = await transmitterChartRef.current.captureAllCharts();
             } else if (deviceType === 'pressure_switch' && pressureSwitchChartRef.current) {
                 chartImages = await pressureSwitchChartRef.current.captureAllCharts();
@@ -329,7 +333,8 @@ const HomePage: React.FC = () => {
                                         </span>
                                         Análisis Gráfico: {getDeviceTypeLabel(deviceType)}
                                     </h3>
-                                    {deviceType === 'transmitter' && <TransmitterChart ref={transmitterChartRef} data={transmitterMeasurements} />}
+                                    {deviceType === 'transmitter' && outputUnit === 'ohm' && <RTDChart ref={rtdChartRef} measurements={transmitterMeasurements} hasUeTransmitter={hasUeTransmitter} />}
+                                    {deviceType === 'transmitter' && outputUnit !== 'ohm' && <TransmitterChart ref={transmitterChartRef} data={transmitterMeasurements} />}
                                     {deviceType === 'pressure_switch' && <PressureSwitchChart ref={pressureSwitchChartRef} tests={pressureSwitchTests} />}
                                     {deviceType === 'thermostat' && <ThermostatChart ref={thermostatChartRef} tests={thermostatTests} />}
                                 </div>

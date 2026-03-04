@@ -137,8 +137,6 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
         }
     };
 
-    // NB: la lógica de mostrar/ocultar UE se maneja en el padre (HomePage).  
-    // Aquí solo usamos el valor recibido en props para el render.
     const config = getLayoutConfig();
 
     return (
