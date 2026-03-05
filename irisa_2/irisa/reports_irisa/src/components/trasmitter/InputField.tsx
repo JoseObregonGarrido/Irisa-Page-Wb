@@ -1,5 +1,6 @@
 export const InputField = ({ label, value, onChange, unit, isError = false, readOnly = false }: any) => {
-    const inputWidth = Math.max(value.toString().length, 6) + 5;
+    const safeValue = value ?? "";
+    const inputWidth = Math.max(safeValue.toString().length, 6) + 5
     return (
         <div className="flex flex-col min-w-fit group">
             <label className="block text-[9px] font-black text-gray-400 uppercase mb-1 tracking-wider whitespace-nowrap group-focus-within:text-teal-600 transition-colors">
