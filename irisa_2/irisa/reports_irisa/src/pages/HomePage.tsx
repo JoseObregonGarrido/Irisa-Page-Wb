@@ -277,10 +277,10 @@ const HomePage: React.FC = () => {
                         )}
 
                         <div className="mt-8">
-                            {/* Transmisor: scroll horizontal obligatorio por la cantidad de columnas */}
+                            {/* Transmisor: scroll horizontal solo en desktop */}
                             {deviceType === 'transmitter' && (
                                 <div className="w-full overflow-x-auto pb-4 custom-scrollbar">
-                                    <div className="min-w-[1000px]">
+                                    <div className="lg:min-w-[1000px]">
                                         <TransmitterTable 
                                             measurements={transmitterMeasurements} 
                                             onMeasurementsChange={setTransmitterMeasurements}
