@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 
 // --- INTERFACES ---
 export interface Measurement {
+    rowType?: 'mv' | 'tx'; // NUEVO: tipo de fila para tab mV
     percentage: string;
     idealUE: string;
     patronUE: string;
@@ -29,8 +30,8 @@ export interface Measurement {
 interface TransmitterTableProps {
     measurements: Measurement[];
     onMeasurementsChange: (measurements: Measurement[]) => void;
-    outputUnit: 'mA' | 'ohm' | 'mv' | 'tx';
-    setOutputUnit: (unit: 'mA' | 'ohm' | 'mv' | 'tx') => void;
+    outputUnit: 'mA' | 'ohm' | 'mv';
+    setOutputUnit: (unit: 'mA' | 'ohm' | 'mv') => void;
     hasUeTransmitter: boolean;
     setHasUeTransmitter: (show: boolean) => void;
 }
@@ -65,6 +66,20 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
     hasUeTransmitter,
     setHasUeTransmitter
 }) => {
+
+    // --- DROPDOWN ESTADO ---
+    const [showDropdown, setShowDropdown] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+                setShowDropdown(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
     
     // --- LÓGICA DE CÁLCULO UNIFICADA ---
     const calculateErrors = (m: Measurement) => {
@@ -73,12 +88,9 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
         const idealmA = parseFloat(m.idealmA) || 0;
         const maTrans = parseFloat(m.maTransmitter) || 0;
         
-        // Errores base (mA / Standard)
         const errorUE = ueTrans - idealUE;
         const errormA = maTrans - idealmA;
         const errorPercentage = (errormA / 16) * 100;
-
-        // Errores específicos
         const errorOhm = (parseFloat(m.ohmTransmitter || "0") || 0) - (parseFloat(m.idealohm || "0") || 0);
         const errorMvPuro = (parseFloat(m.sensormV || "0") || 0) - (parseFloat(m.idealmV || "0") || 0);
 
@@ -99,30 +111,44 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
         onMeasurementsChange(newMeasurements);
     };
 
+    // --- AGREGAR FILA ---
+    const addNewRow = (rowType?: 'mv' | 'tx') => {
+        onMeasurementsChange([...measurements, { 
+            rowType,
+            percentage: "", idealUE: "", patronUE: "", ueTransmitter: "", idealmA:"", 
+            idealohm: "", idealMv: "", maTransmitter: "", ohmTransmitter: "", mvTransmitter: "", 
+            errorUE: "", errormA: "", errorPercentage: "", errorOhm: "", errorMv: "", 
+            sensorType: 'J', idealmV: '', sensormV: '', errormV: '', mATX: ''
+        }]);
+        setShowDropdown(false);
+    };
+
+    const handleNuevaFila = () => {
+        if (outputUnit === 'mv') {
+            setShowDropdown(!showDropdown);
+        } else {
+            addNewRow();
+        }
+    };
+
     // --- CONFIGURACIÓN DE LAYOUTS ---
     const getLayoutConfig = () => {
         switch (outputUnit) {
             case 'mv':
                 return {
-                    gridCols: 'lg:grid-cols-[1fr_1fr_1fr_140px_1fr_80px]', 
+                    gridCols: 'lg:grid-cols-[56px_1fr_1fr_140px_1fr_80px]', 
                     minWidth: 'lg:min-w-[950px]',
-                    headers: ['Ideal UE', 'mV ideal', 'mV sensor', 'Tipo sensor', 'Error mV', 'Acción']
+                    headers: ['Tipo', 'mV / mA ideal', 'mV / mA medido', 'Sensor', 'Error', 'Acción']
                 };
             case 'ohm':
                 return {
-                    gridCols: hasUeTransmitter ? 'lg:grid-cols-11' : 'lg:grid-cols-9',
+                    gridCols: hasUeTransmitter ? 'lg:grid-cols-[repeat(11,minmax(0,1fr))]' : 'lg:grid-cols-[repeat(9,minmax(0,1fr))]',
                     minWidth: 'lg:min-w-[1300px]',
                     headers: ['Ideal UE', 'Ideal mA', 'Ideal Ohm', 'Patrón UE', ...(hasUeTransmitter ? ['UE Trans.'] : []), 'mA Sensor', 'Ohm Sensor', '% Rango', ...(hasUeTransmitter ? ['Err UE'] : []), 'Err Ohm', 'Acción']
                 };
-            case 'tx':
+            default: // mA
                 return {
-                    gridCols: 'lg:grid-cols-[1fr_1fr_1fr_140px_1fr_80px]', 
-                    minWidth: 'lg:min-w-[950px]',
-                    headers: ['Ideal UE','Ideal mA', 'mA TX', 'Tipo sensor', 'Error mA', 'Acción']
-                };
-            default: // Caso mA (Equivalente a TableMA)
-                return {
-                    gridCols: hasUeTransmitter ? 'lg:grid-cols-10' : 'lg:grid-cols-8',
+                    gridCols: hasUeTransmitter ? 'lg:grid-cols-[repeat(10,minmax(0,1fr))]' : 'lg:grid-cols-[repeat(8,minmax(0,1fr))]',
                     minWidth: 'lg:min-w-[1100px]',
                     headers: ['Ideal UE', 'Ideal mA', 'Patrón UE', ...(hasUeTransmitter ? ['UE Trans.'] : []), 'mA Trans.', '% Rango', ...(hasUeTransmitter ? ['Err UE'] : []), 'Err mA', 'Err %', 'Acción']
                 };
@@ -130,6 +156,15 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
     };
 
     const config = getLayoutConfig();
+
+    const RowTypeBadge = ({ type }: { type: 'mv' | 'tx' }) => (
+        <span className={`text-[9px] font-black uppercase px-2 py-1 rounded-full tracking-wider
+            ${type === 'mv'
+                ? 'bg-orange-100 text-orange-700 border border-orange-200'
+                : 'bg-blue-100 text-blue-700 border border-blue-200'}`}>
+            {type}
+        </span>
+    );
 
     return (
         <div className="mt-8 w-full bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
@@ -139,18 +174,18 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                     <div className="flex flex-wrap items-center gap-3">
                         <h3 className="text-lg font-bold text-white tracking-tight">Mediciones de transmisor</h3>
                         <div className="flex bg-black/20 p-1 rounded-lg border border-white/10">
-                            {(['mA', 'ohm', 'mv', 'tx'] as const).map((unit) => (
+                            {(['mA', 'ohm', 'mv'] as const).map((unit) => (
                                 <button 
                                     key={unit}
                                     type="button" 
                                     onClick={() => setOutputUnit(unit)} 
                                     className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${outputUnit === unit ? 'bg-white text-teal-700 shadow' : 'text-white hover:bg-white/10'}`}
                                 >
-                                    {unit === 'ohm' ? 'RTD' : unit === 'mv' ? 'mV' : unit === 'tx' ? 'TX' : 'mA'}
+                                    {unit === 'ohm' ? 'RTD' : unit === 'mv' ? 'mV' : 'mA'}
                                 </button>
                             ))}
                         </div>
-                        {outputUnit !== 'mv' && outputUnit !== 'tx' && (
+                        {outputUnit !== 'mv' && (
                             <button
                                 type="button"
                                 onClick={() => setHasUeTransmitter(!hasUeTransmitter)}
@@ -160,21 +195,47 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                             </button>
                         )}
                     </div>
-                    <button 
-                        onClick={() => onMeasurementsChange([...measurements, { percentage: "", idealUE: "", patronUE: "", ueTransmitter: "", idealmA:"", idealohm: "", idealMv: "", maTransmitter: "", ohmTransmitter: "", mvTransmitter: "", errorUE: "", errormA: "", errorPercentage: "", errorOhm: "", errorMv: "", sensorType: 'J', idealmV: '', sensormV: '', errormV: '' }])} 
-                        className="px-4 py-2 bg-white text-teal-700 font-bold rounded-lg shadow-md hover:bg-teal-50"
-                    >
-                        Nueva fila
-                    </button>
+
+                    {/* BOTÓN NUEVA FILA con dropdown en mV */}
+                    <div className="relative" ref={dropdownRef}>
+                        <button 
+                            onClick={handleNuevaFila}
+                            className="px-4 py-2 bg-white text-teal-700 font-bold rounded-lg shadow-md hover:bg-teal-50 flex items-center gap-2 transition-transform active:scale-95"
+                        >
+                            Nueva fila
+                            {outputUnit === 'mv' && (
+                                <svg className={`w-3.5 h-3.5 transition-transform ${showDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
+                                </svg>
+                            )}
+                        </button>
+
+                        {showDropdown && outputUnit === 'mv' && (
+                            <div className="absolute right-0 mt-2 w-24 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50">
+                                <button
+                                    onClick={() => addNewRow('mv')}
+                                    className="w-full flex items-center justify-center px-4 py-3 hover:bg-orange-50 transition-colors group"
+                                >
+                                    <span className="text-sm font-black text-orange-700 group-hover:text-orange-900">mV</span>
+                                </button>
+                                <button
+                                    onClick={() => addNewRow('tx')}
+                                    className="w-full flex items-center justify-center px-4 py-3 hover:bg-blue-50 transition-colors group border-t border-gray-100"
+                                >
+                                    <span className="text-sm font-black text-blue-700 group-hover:text-blue-900">TX</span>
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
             <div className="overflow-x-auto">
                 <div className={`w-full ${config.minWidth}`}>
                     {/* HEADERS DINÁMICOS */}
-                    <div className={`hidden lg:grid ${config.gridCols} bg-gray-50 border-b border-gray-200 text-[10px] font-bold text-gray-500  tracking-wider`}>
+                    <div className={`hidden lg:grid ${config.gridCols} bg-gray-50 border-b border-gray-200 text-[10px] font-bold text-gray-500 tracking-wider`}>
                         {config.headers.map((h, i) => (
-                            <div key={i} className={`px-2 py-4 text-center ${h.includes('Err') ? 'bg-red-50 text-red-700 border-x border-red-100/30' : ''}`}>
+                            <div key={i} className={`px-2 py-4 text-center ${h.includes('Err') || h.includes('Error') ? 'bg-red-50 text-red-700 border-x border-red-100/30' : ''}`}>
                                 {h}
                             </div>
                         ))}
@@ -187,9 +248,28 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                                 
                                 {outputUnit === 'mv' ? (
                                     <>
-                                        <div className="lg:px-4 lg:py-3"><InputField label="Ideal UE" unit="UE" value={m.idealUE} onChange={(e:any) => handleChange(index, 'idealUE', e.target.value)} /></div>
-                                        <div className="lg:px-4 lg:py-3"><InputField label="mV ideal" unit="mV" value={m.idealmV} onChange={(e:any) => handleChange(index, 'idealmV', e.target.value)} /></div>
-                                        <div className="lg:px-4 lg:py-3"><InputField label="mV sensor" unit="mV" value={m.sensormV} onChange={(e:any) => handleChange(index, 'sensormV', e.target.value)} /></div>
+                                        {/* Badge tipo */}
+                                        <div className="lg:px-2 lg:py-3 flex justify-center items-center">
+                                            <RowTypeBadge type={m.rowType ?? 'mv'} />
+                                        </div>
+
+                                        {/* Campo 1 */}
+                                        <div className="lg:px-4 lg:py-3">
+                                            {m.rowType === 'tx'
+                                                ? <InputField label="Ideal mA" unit="mA" value={m.idealmA} onChange={(e:any) => handleChange(index, 'idealmA', e.target.value)} />
+                                                : <InputField label="mV ideal" unit="mV" value={m.idealmV} onChange={(e:any) => handleChange(index, 'idealmV', e.target.value)} />
+                                            }
+                                        </div>
+
+                                        {/* Campo 2 */}
+                                        <div className="lg:px-4 lg:py-3">
+                                            {m.rowType === 'tx'
+                                                ? <InputField label="mA TX" unit="mA" value={m.mATX} onChange={(e:any) => handleChange(index, 'mATX', e.target.value)} />
+                                                : <InputField label="mV sensor" unit="mV" value={m.sensormV} onChange={(e:any) => handleChange(index, 'sensormV', e.target.value)} />
+                                            }
+                                        </div>
+
+                                        {/* Sensor J/K */}
                                         <div className="lg:px-4 lg:py-3 flex justify-center">
                                             <div className="flex gap-3 bg-gray-100 p-1.5 rounded-lg border border-gray-200 shadow-sm">
                                                 {['J', 'K'].map((type) => (
@@ -200,24 +280,14 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                                                 ))}
                                             </div>
                                         </div>
-                                        <div className="lg:px-4 lg:py-3 lg:bg-red-50/20"><InputField label="Error mV" unit="mV" value={m.errormV} isError readOnly /></div>
-                                    </>
-                                ) : outputUnit === 'tx' ? (
-                                    <>
-                                        <div className="lg:px-2 lg:py-3"><InputField label="Ideal UE" unit="UE" value={m.idealUE} onChange={(e:any) => handleChange(index, 'idealUE', e.target.value)} /></div>
-                                        <div className="lg:px-2 lg:py-3"><InputField label="Ideal mA" unit="mA" value={m.idealmA} onChange={(e:any) => handleChange(index, 'idealmA', e.target.value)} /></div>
-                                        <div className="lg:px-2 lg:py-3"><InputField label="mA TX" unit="mA" value={m.maTransmitter} onChange={(e:any) => handleChange(index, 'maTransmitter', e.target.value)} /></div>
-                                        <div className="lg:px-2 lg:py-3 flex justify-center">
-                                            <div className="flex gap-3 bg-gray-100 p-1.5 rounded-lg border border-gray-200 shadow-sm">
-                                                {['J', 'K'].map((type) => (
-                                                    <label key={type} className="flex items-center gap-1 cursor-pointer">
-                                                        <input type="radio" checked={m.sensorType === type} onChange={() => handleChange(index, 'sensorType', type as any)} className="w-3.5 h-3.5 accent-orange-600" />
-                                                        <span className={`text-xs font-bold ${m.sensorType === type ? 'text-orange-700' : 'text-gray-400'}`}>{type}</span>
-                                                    </label>
-                                                ))}
-                                            </div>
+
+                                        {/* Error */}
+                                        <div className="lg:px-4 lg:py-3 lg:bg-red-50/20">
+                                            {m.rowType === 'tx'
+                                                ? <InputField label="Err mA" unit="mA" value={m.errormA} isError readOnly />
+                                                : <InputField label="Error mV" unit="mV" value={m.errormV} isError readOnly />
+                                            }
                                         </div>
-                                        <div className="lg:px-4 lg:py-3 lg:bg-red-50/20"><InputField label="Error mA" unit="mA" value={m.errormA} isError readOnly /></div>
                                     </>
                                 ) : outputUnit === 'ohm' ? (
                                     <>
@@ -233,7 +303,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                                         <div className="lg:px-2 lg:py-3 lg:bg-red-50/20"><InputField label="Err Ohm" unit="Ω" value={m.errorOhm} isError readOnly /></div>
                                     </>
                                 ) : (
-                                    /* --- VISTA mA (REEMPLAZA TABLEMA) --- */
+                                    /* --- VISTA mA --- */
                                     <>
                                         <div className="lg:px-2 lg:py-3"><InputField label="Ideal UE" unit="UE" value={m.idealUE} onChange={(e:any) => handleChange(index, 'idealUE', e.target.value)} /></div>
                                         <div className="lg:px-2 lg:py-3"><InputField label="Ideal mA" unit="mA" value={m.idealmA} onChange={(e:any) => handleChange(index, 'idealmA', e.target.value)} /></div>

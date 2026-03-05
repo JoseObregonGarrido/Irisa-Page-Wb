@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { TableMA } from './TableMA';
 import { TableRTD } from './TableRTD';
 import { TableMV } from './TableMV';

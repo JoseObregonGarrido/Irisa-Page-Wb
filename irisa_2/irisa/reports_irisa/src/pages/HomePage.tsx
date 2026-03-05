@@ -11,7 +11,9 @@ import PressureSwitchTable, { type PressureSwitchTest } from '../components/Pres
 import ThermostatTable, { type ThermostatTest } from '../components/ThermostatTable';
 import TransmitterChart from '../components/trasmitter/TransmitterChart';
 import RTDChart from '../components/trasmitter/RTDChart';
-import MvChart from '../components/trasmitter/MvChart';import TXChart from '../components/trasmitter/TXChart';import PressureSwitchChart from '../components/PressureSwitchChart';
+import MvChart from '../components/trasmitter/MvChart';
+// TXChart eliminado — TX ahora vive dentro de la tabla mV
+import PressureSwitchChart from '../components/PressureSwitchChart';
 import ThermostatChart from '../components/ThermostatChart';
 
 // Hooks
@@ -44,16 +46,14 @@ const HomePage: React.FC = () => {
     const [thermostatTests, setThermostatTests] = useLocalStorage<ThermostatTest[]>('ir_table_therm', []);
 
     // --- ESTADOS PARA TRANSMISORES ---
-    // ACTUALIZADO: Se añade 'mv' al tipo para soportar la tabla de termopares
-    const [outputUnit, setOutputUnit] = useLocalStorage<'mA' | 'ohm' | 'mv' | 'tx'>('ir_output_unit', 'mA');
+    // TX eliminado del tipo — ahora vive dentro de mV como rowType
+    const [outputUnit, setOutputUnit] = useLocalStorage<'mA' | 'ohm' | 'mv'>('ir_output_unit', 'mA');
     const [hasUeTransmitter, setHasUeTransmitter] = useLocalStorage<boolean>('ir_has_ue', false);
 
-    // delegamos al padre la responsabilidad de ajustar la visibilidad de UE cuando cambia la unidad
     React.useEffect(() => {
-        if (outputUnit === 'mv' || outputUnit === 'tx') {
+        if (outputUnit === 'mv') {
             setHasUeTransmitter(false);
         } else {
-            // para mA y ohm activar por defecto
             setHasUeTransmitter(true);
         }
     }, [outputUnit, setHasUeTransmitter]);
@@ -64,7 +64,6 @@ const HomePage: React.FC = () => {
     const transmitterChartRef = useRef<any>(null);
     const rtdChartRef = useRef<any>(null);
     const mvChartRef = useRef<any>(null);
-    const txChartRef = useRef<any>(null);
     const pressureSwitchChartRef = useRef<any>(null);
     const thermostatChartRef = useRef<any>(null);
 
@@ -104,8 +103,6 @@ const HomePage: React.FC = () => {
                 chartImages = await rtdChartRef.current.captureAllCharts();
             } else if (deviceType === 'transmitter' && outputUnit === 'mv' && mvChartRef.current) {
                 chartImages = await mvChartRef.current.captureAllCharts();
-            } else if (deviceType === 'transmitter' && outputUnit === 'tx' && txChartRef.current) {
-                chartImages = await txChartRef.current.captureAllCharts();
             } else if (deviceType === 'transmitter' && transmitterChartRef.current) {
                 chartImages = await transmitterChartRef.current.captureAllCharts();
             } else if (deviceType === 'pressure_switch' && pressureSwitchChartRef.current) {
@@ -203,7 +200,6 @@ const HomePage: React.FC = () => {
 
                     <div className="p-4 lg:p-8">
                         <form className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                            {/* Información Personal y de Trabajo */}
                             <div className="space-y-2">
                                 <label className="block text-sm font-semibold text-gray-700">Nombre del Instrumentista</label>
                                 <input type="text" value={instrumentistName} onChange={(e) => setInstrumentistName(e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none" placeholder="Ingrese el nombre completo" required />
@@ -233,8 +229,6 @@ const HomePage: React.FC = () => {
                                 <label className="block text-sm font-semibold text-gray-700">Fecha de Revisión</label>
                                 <input type="datetime-local" value={reviewDate} onChange={(e) => setReviewDate(e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none" />
                             </div>
-
-                            {/* Detalles del Equipo */}
                             <div className="space-y-2">
                                 <label className="block text-sm font-semibold text-gray-700">Nombre del equipo</label>
                                 <input type="text" value={deviceName} onChange={(e) => setDeviceName(e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none" placeholder="Ej: Medidor nivel..." />
@@ -282,7 +276,6 @@ const HomePage: React.FC = () => {
                             </div>
                         )}
 
-                        {/* --- SECCIÓN CRÍTICA: TABLA CON SCROLL HORIZONTAL --- */}
                         <div className="mt-8">
                             <div className="w-full overflow-x-auto pb-4 custom-scrollbar">
                                 <div className="min-w-[1000px]">
@@ -341,8 +334,7 @@ const HomePage: React.FC = () => {
                                     </h3>
                                     {deviceType === 'transmitter' && outputUnit === 'ohm' && <RTDChart ref={rtdChartRef} measurements={transmitterMeasurements} hasUeTransmitter={hasUeTransmitter} />}
                                     {deviceType === 'transmitter' && outputUnit === 'mv' && <MvChart ref={mvChartRef} measurements={transmitterMeasurements} />}
-                                    {deviceType === 'transmitter' && outputUnit === 'tx' && <TXChart ref={txChartRef} measurements={transmitterMeasurements} />}
-                                    {deviceType === 'transmitter' && outputUnit !== 'ohm' && outputUnit !== 'mv' && outputUnit !== 'tx' && <TransmitterChart ref={transmitterChartRef} data={transmitterMeasurements} />}
+                                    {deviceType === 'transmitter' && outputUnit === 'mA' && <TransmitterChart ref={transmitterChartRef} data={transmitterMeasurements} />}
                                     {deviceType === 'pressure_switch' && <PressureSwitchChart ref={pressureSwitchChartRef} tests={pressureSwitchTests} />}
                                     {deviceType === 'thermostat' && <ThermostatChart ref={thermostatChartRef} tests={thermostatTests} />}
                                 </div>
