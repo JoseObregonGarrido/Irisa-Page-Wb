@@ -1,10 +1,12 @@
 import { InputField } from './InputField';
 
 export const TableMA = ({ measurements, onMeasurementsChange, hasUeTransmitter }: any) => {
-    // Ajuste dinámico de columnas según requerimiento:
+    // Clases completas y estáticas para que Tailwind no las purgue en build
     // SI ACTIVO UE: 10 columnas (Ideal UE, Ideal mA, Patron UE, UE Trans, mA Trans, % Rango, Err UE, Err mA, Err %, Acción)
     // SI NO ACTIVO UE: 8 columnas (Ideal UE, Ideal mA, Patron UE, mA Trans, % Rango, Err mA, Err %, Acción)
-    const gridCols = hasUeTransmitter ? 'lg:grid-cols-10' : 'lg:grid-cols-8';
+    const gridCols = hasUeTransmitter
+        ? 'lg:grid-cols-[repeat(10,minmax(0,1fr))]'
+        : 'lg:grid-cols-[repeat(8,minmax(0,1fr))]';
 
     const handleChange = (index: number, field: string, value: string) => {
         const newM = [...measurements];
