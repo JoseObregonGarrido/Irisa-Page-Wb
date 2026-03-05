@@ -172,7 +172,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
             <div className="overflow-x-auto">
                 <div className={`w-full ${config.minWidth}`}>
                     {/* HEADERS DINÁMICOS */}
-                    <div className={`hidden lg:grid ${config.gridCols} bg-gray-50 border-b border-gray-200 text-[10px] font-bold text-gray-500 uppercase tracking-wider`}>
+                    <div className={`hidden lg:grid ${config.gridCols} bg-gray-50 border-b border-gray-200 text-[10px] font-bold text-gray-500  tracking-wider`}>
                         {config.headers.map((h, i) => (
                             <div key={i} className={`px-2 py-4 text-center ${h.includes('Err') ? 'bg-red-50 text-red-700 border-x border-red-100/30' : ''}`}>
                                 {h}
