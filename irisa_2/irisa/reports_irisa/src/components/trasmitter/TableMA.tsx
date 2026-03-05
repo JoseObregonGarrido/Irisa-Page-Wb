@@ -20,7 +20,7 @@ export const TableMA = ({ measurements, onMeasurementsChange, hasUeTransmitter }
 
     return (
         <div className="overflow-x-auto w-full">
-            <div className="min-w-[1000px] lg:min-w-full">
+            <div className="min-w-[1200px] lg:min-w-full">
                 {/* HEADER DESKTOP - Forzamos las clases para que Tailwind las compile */}
                 <div className={`hidden lg:grid ${hasUeTransmitter ? 'lg:grid-cols-10' : 'lg:grid-cols-8'} bg-gray-50 border-b border-gray-200 text-[10px] font-bold text-gray-500 uppercase tracking-wider`}>
                     <div className="px-2 py-4 text-center">Ideal UE</div>
