@@ -142,9 +142,10 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                 };
             case 'ohm':
                 return {
-                    gridCols: hasUeTransmitter ? 'lg:grid-cols-[repeat(11,minmax(0,1fr))]' : 'lg:grid-cols-[repeat(9,minmax(0,1fr))]',
-                    minWidth: 'lg:min-w-[1300px]',
-                    headers: ['Ideal UE', 'Ideal mA', 'Ideal Ohm', 'Patrón UE', ...(hasUeTransmitter ? ['UE Trans.'] : []), 'mA Sensor', 'Ohm Sensor', '% Rango', ...(hasUeTransmitter ? ['Err UE'] : []), 'Err Ohm', 'Acción']
+                    // Ajustado para incluir Error mA
+                    gridCols: hasUeTransmitter ? 'lg:grid-cols-[repeat(12,minmax(0,1fr))]' : 'lg:grid-cols-[repeat(10,minmax(0,1fr))]',
+                    minWidth: 'lg:min-w-[1400px]',
+                    headers: ['Ideal UE', 'Ideal mA', 'Ideal Ohm', 'Patrón UE', ...(hasUeTransmitter ? ['UE Trans.'] : []), 'mA Sensor', 'Ohm Sensor', '% Rango', ...(hasUeTransmitter ? ['Err UE'] : []), 'Err mA', 'Err Ohm', 'Acción']
                 };
             default: // mA
                 return {
@@ -248,28 +249,21 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                                 
                                 {outputUnit === 'mv' ? (
                                     <>
-                                        {/* Badge tipo */}
                                         <div className="lg:px-2 lg:py-3 flex justify-center items-center">
                                             <RowTypeBadge type={m.rowType ?? 'mv'} />
                                         </div>
-
-                                        {/* Campo 1 */}
                                         <div className="lg:px-4 lg:py-3">
                                             {m.rowType === 'tx'
                                                 ? <InputField label="Ideal mA" unit="mA" value={m.idealmA} onChange={(e:any) => handleChange(index, 'idealmA', e.target.value)} />
                                                 : <InputField label="mV ideal" unit="mV" value={m.idealmV} onChange={(e:any) => handleChange(index, 'idealmV', e.target.value)} />
                                             }
                                         </div>
-
-                                        {/* Campo 2 */}
                                         <div className="lg:px-4 lg:py-3">
                                             {m.rowType === 'tx'
                                                 ? <InputField label="mA TX" unit="mA" value={m.mATX} onChange={(e:any) => handleChange(index, 'mATX', e.target.value)} />
                                                 : <InputField label="mV sensor" unit="mV" value={m.sensormV} onChange={(e:any) => handleChange(index, 'sensormV', e.target.value)} />
                                             }
                                         </div>
-
-                                        {/* Sensor J/K */}
                                         <div className="lg:px-4 lg:py-3 flex justify-center">
                                             <div className="flex gap-3 bg-gray-100 p-1.5 rounded-lg border border-gray-200 shadow-sm">
                                                 {['J', 'K'].map((type) => (
@@ -280,8 +274,6 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                                                 ))}
                                             </div>
                                         </div>
-
-                                        {/* Error */}
                                         <div className="lg:px-4 lg:py-3 lg:bg-red-50/20">
                                             {m.rowType === 'tx'
                                                 ? <InputField label="Err mA" unit="mA" value={m.errormA} isError readOnly />
@@ -300,6 +292,8 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                                         <div className="lg:px-2 lg:py-3"><InputField label="Ohm Sensor" unit="Ω" value={m.ohmTransmitter} onChange={(e:any) => handleChange(index, 'ohmTransmitter', e.target.value)} /></div>
                                         <div className="lg:px-2 lg:py-3"><InputField label="% Rango" unit="%" value={m.percentage} onChange={(e:any) => handleChange(index, 'percentage', e.target.value)} /></div>
                                         {hasUeTransmitter && <div className="lg:px-2 lg:py-3 lg:bg-red-50/20"><InputField label="Err UE" unit="UE" value={m.errorUE} isError readOnly /></div>}
+                                        {/* NUEVO: Columna Err mA en vista Ohm */}
+                                        <div className="lg:px-2 lg:py-3 lg:bg-red-50/20"><InputField label="Err mA" unit="mA" value={m.errormA} isError readOnly /></div>
                                         <div className="lg:px-2 lg:py-3 lg:bg-red-50/20"><InputField label="Err Ohm" unit="Ω" value={m.errorOhm} isError readOnly /></div>
                                     </>
                                 ) : (
