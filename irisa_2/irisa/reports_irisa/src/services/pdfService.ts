@@ -108,7 +108,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         });
         yPos = (pdf as any).lastAutoTable.finalY + 12;
 
-        // --- TABLA TRANSMISORES (Sincronizada con TableMV) ---
+        // --- TABLA TRANSMISORES (Sincronizada con TableMA / TableMV) ---
         if (data.deviceType === 'transmitter' && measurements.length) {
             
             const reportTypeLabel = isMv ? 'Termopar (mV)' : (isOhm ? 'RTD' : 'mA');
@@ -118,7 +118,6 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             let body = [];
 
             if (isMv) {
-                // Headers simplificados para mV
                 headers = ['mV Ideal', 'mV Sensor', 'Tipo Sensor', 'Error mV'];
                 body = measurements.map(m => [
                     m.idealmV || '0', 
@@ -127,13 +126,17 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                     m.errormV || '0'
                 ]);
             } else {
-                // Lógica para mA / Ohm (Mantiene compatibilidad)
+                // Lógica para mA / Ohm
                 headers = ['Ideal UE', 'Ideal mA'];
                 if (isOhm) headers.push('Ideal Ohm');
                 headers.push('Patrón UE');
                 if (hasUE) headers.push('UE Trans.');
                 headers.push(isOhm ? 'mA Sens.' : 'mA Trans.');
                 if (isOhm) headers.push('Ohm Sens.');
+                
+                // Nuevos headers de error
+                if (hasUE) headers.push('Err UE');
+                headers.push('Err mA'); // <--- AÑADIDO
                 headers.push('Err %');
 
                 body = measurements.map(m => {
@@ -143,7 +146,12 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                     if (hasUE) row.push(m.ueTransmitter);
                     row.push(m.maTransmitter);
                     if (isOhm) row.push(m.ohmTransmitter || '0');
-                    row.push(m.errorPercentage);
+                    
+                    // Datos de error correspondientes
+                    if (hasUE) row.push(m.errorUE || '0.000');
+                    row.push(m.errormA || '0.000'); // <--- AÑADIDO
+                    row.push(m.errorPercentage || '0.00');
+                    
                     return row;
                 });
             }
@@ -156,10 +164,10 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 headStyles: { 
                     fillColor: isMv ? colors.orangeThermocouple : colors.risaraldaGreen, 
                     halign: 'center', 
-                    fontSize: 8, 
+                    fontSize: 7.5, // Reducido un poco para que quepan más columnas
                     fontStyle: 'bold' 
                 },
-                styles: { fontSize: 8, halign: 'center', cellPadding: 2 },
+                styles: { fontSize: 7.5, halign: 'center', cellPadding: 2 },
             });
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }
