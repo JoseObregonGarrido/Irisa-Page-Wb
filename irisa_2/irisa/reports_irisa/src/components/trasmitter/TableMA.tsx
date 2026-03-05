@@ -38,7 +38,7 @@ export const TableMA = ({ measurements, onMeasurementsChange, hasUeTransmitter }
 
                 <div className="divide-y divide-gray-200 bg-white">
                     {measurements.map((m: any, i: number) => (
-                        <div key={i} className={`flex flex-nowrap lg:grid ${hasUeTransmitter ? 'lg:grid-cols-10' : 'lg:grid-cols-8'} items-center p-4 lg:p-0 gap-4 lg:gap-0`}>
+                        <div key={i} className={`flex flex-nowrap lg:grid ${hasUeTransmitter ? 'lg:grid-cols-12' : 'lg:grid-cols-8'} items-center p-4 lg:p-0 gap-4 lg:gap-0`}>
                             <div className="lg:px-2 lg:py-3"><InputField label="Ideal UE" unit="UE" value={m.idealUE} onChange={(e:any) => handleChange(i, 'idealUE', e.target.value)} /></div>
                             <div className="lg:px-2 lg:py-3"><InputField label="Ideal mA" unit="mA" value={m.idealmA} onChange={(e:any) => handleChange(i, 'idealmA', e.target.value)} /></div>
                             <div className="lg:px-2 lg:py-3"><InputField label="Patrón UE" unit="UE" value={m.patronUE} onChange={(e:any) => handleChange(i, 'patronUE', e.target.value)} /></div>
