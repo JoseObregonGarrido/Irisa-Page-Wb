@@ -60,6 +60,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
     
     const isOhm = unit === 'ohm';
     const isMv = unit === 'mv';
+    const isTx = unit === 'tx';
 
     let yPos = 20;
 
@@ -108,10 +109,8 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         });
         yPos = (pdf as any).lastAutoTable.finalY + 12;
 
-        // --- TABLA TRANSMISORES (Sincronizada con TableMA / TableMV) ---
         if (data.deviceType === 'transmitter' && measurements.length) {
-            
-            const reportTypeLabel = isMv ? 'Termopar (mV)' : (isOhm ? 'RTD' : 'mA');
+            const reportTypeLabel = isMv ? 'Termopar (mV)' : (isOhm ? 'RTD' : (isTx ? 'Transmisor (TX)' : 'mA'));
             addHeader(`Resultados de las mediciones - ${reportTypeLabel}`);
             
             let headers = [];
@@ -125,33 +124,36 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                     m.sensorType || 'N/A', 
                     m.errormV || '0'
                 ]);
+            } else if (isTx) {
+                headers = ['Ideal UE', 'Ideal mA', 'mA TX', 'Tipo Sensor', 'Error mA'];
+                body = measurements.map(m => [
+                    m.idealUE || '0',
+                    m.idealmA || '0',
+                    m.maTransmitter || '0',
+                    m.sensorType || 'N/A',
+                    m.errormA || '0'
+                ]);
             } else {
-                // Lógica para mA / Ohm
                 headers = ['Ideal UE', 'Ideal mA'];
                 if (isOhm) headers.push('Ideal Ohm');
                 headers.push('Patrón UE');
                 if (hasUE) headers.push('UE Trans.');
                 headers.push(isOhm ? 'mA Sens.' : 'mA Trans.');
                 if (isOhm) headers.push('Ohm Sens.');
-                
-                // Nuevos headers de error
                 if (hasUE) headers.push('Err UE');
-                headers.push('Err mA'); // <--- AÑADIDO
+                headers.push('Err mA');
                 headers.push('Err %');
 
                 body = measurements.map(m => {
-                    const row = [m.idealUE || m.idealUe, m.idealmA]; 
-                    if (isOhm) row.push(m.idealohm || m.idealOhm || '0');
-                    row.push(m.patronUE || m.patronUe);
-                    if (hasUE) row.push(m.ueTransmitter);
-                    row.push(m.maTransmitter);
+                    const row = [m.idealUE || '0', m.idealmA || '0']; 
+                    if (isOhm) row.push(m.idealohm || '0');
+                    row.push(m.patronUE || '0');
+                    if (hasUE) row.push(m.ueTransmitter || '0');
+                    row.push(m.maTransmitter || '0');
                     if (isOhm) row.push(m.ohmTransmitter || '0');
-                    
-                    // Datos de error correspondientes
                     if (hasUE) row.push(m.errorUE || '0.000');
-                    row.push(m.errormA || '0.000'); // <--- AÑADIDO
+                    row.push(m.errormA || '0.000');
                     row.push(m.errorPercentage || '0.00');
-                    
                     return row;
                 });
             }
@@ -162,9 +164,9 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 body: body,
                 theme: 'grid',
                 headStyles: { 
-                    fillColor: isMv ? colors.orangeThermocouple : colors.risaraldaGreen, 
+                    fillColor: isMv || isTx ? colors.orangeThermocouple : colors.risaraldaGreen, 
                     halign: 'center', 
-                    fontSize: 7.5, // Reducido un poco para que quepan más columnas
+                    fontSize: 7.5, 
                     fontStyle: 'bold' 
                 },
                 styles: { fontSize: 7.5, halign: 'center', cellPadding: 2 },
@@ -172,26 +174,23 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }
 
-        // --- INTERRUPTORES / GRÁFICOS / OBSERVACIONES (IGUAL QUE ANTES) ---
+        // --- SECCIONES DE INTERRUPTORES ---
         const isThermostat = data.deviceType === 'thermostat';
         const switchTests = isThermostat ? data.thermostatTests : data.pressureSwitchTests;
         
         if ((data.deviceType === 'pressure_switch' || isThermostat) && switchTests && switchTests.length) {
             addHeader(isThermostat ? 'RESULTADOS TERMOSTATO' : 'RESULTADOS PRESOSTATO');
             const unitLabel = data.unity || (isThermostat ? '°C' : 'psi');
-            
             const headers = [
                 isThermostat ? `Temp. disparo (${unitLabel})` : `Presión disparo (${unitLabel})`,
                 isThermostat ? `Temp. repone (${unitLabel})` : `Presión repone (${unitLabel})`,
                 'Estado contacto'
             ];
-
             const body = switchTests.map(t => [
                 isThermostat ? (t.temperaturadeDisparo || '0') : (t.presiondeDisparo || '0'),
                 isThermostat ? (t.temperaturadeRepone || '0') : (t.presiondeRepone || '0'),
                 getContactLabel(t)
             ]);
-
             autoTable(pdf, {
                 startY: yPos,
                 head: [headers],
@@ -203,15 +202,13 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }
 
+        // --- GRÁFICOS ---
         if (chartImages && chartImages.length > 0) {
             const chartTitle = data.deviceType === 'transmitter' 
-                ? (data.outputUnit === 'ohm' 
-                    ? 'DESVIACIÓN DE OHM (RTD)' 
-                    : data.outputUnit === 'mv' 
-                    ? 'DESVIACIÓN DE mV (TERMOPAR)' 
-                    : data.outputUnit === 'tx'
-                    ? 'IDEAL mA vs mA TX'
-                    : 'CURVA DE RESPUESTA DEL TRANSMISOR')
+                ? (data.outputUnit === 'ohm' ? 'DESVIACIÓN DE OHM (RTD)' 
+                : data.outputUnit === 'mv' ? 'DESVIACIÓN DE mV (TERMOPAR)' 
+                : data.outputUnit === 'tx' ? 'IDEAL mA vs mA TX'
+                : 'CURVA DE RESPUESTA DEL TRANSMISOR')
                 : 'CURVA DE CALIBRACIÓN Y LINEALIDAD';
 
             chartImages.forEach((img) => {
