@@ -101,9 +101,14 @@ const HomePage: React.FC = () => {
             hasUeTransmitter, 
         };
 
-        // Captura de gráficas separada — si falla, el PDF se genera igual sin gráficas
+        // Captura: revelar el contenedor oculto, capturar, volver a ocultar
         let chartImages: string[] = [];
+        const hiddenContainer = document.getElementById('hidden-charts-container');
         try {
+            if (hiddenContainer) hiddenContainer.style.opacity = '1';
+            // Esperar a que recharts renderice
+            await new Promise(r => setTimeout(r, 500));
+
             if (deviceType === 'transmitter' && outputUnit === 'ohm' && rtdChartRef.current) {
                 chartImages = await rtdChartRef.current.captureAllCharts();
             } else if (deviceType === 'transmitter' && outputUnit === 'mv' && mvChartRef.current) {
@@ -119,6 +124,8 @@ const HomePage: React.FC = () => {
             }
         } catch (chartError) {
             console.warn("Gráfica no capturada, PDF sin gráfica:", chartError);
+        } finally {
+            if (hiddenContainer) hiddenContainer.style.opacity = '0';
         }
 
         // PDF siempre se genera, con o sin gráficas
@@ -341,8 +348,8 @@ const HomePage: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Charts siempre montados (ocultos) para que refs estén disponibles al generar PDF */}
-                        <div style={{ position: 'absolute', left: '-9999px', top: '-9999px', width: '1200px', pointerEvents: 'none' }}>
+                        {/* Charts ocultos con opacity 0 — dentro del DOM y viewport para que html2canvas los capture */}
+                        <div id="hidden-charts-container" style={{ opacity: 0, pointerEvents: 'none', position: 'absolute', width: '1200px', zIndex: -1 }}>
                             {deviceType === 'transmitter' && outputUnit === 'ohm' && <RTDChart ref={rtdChartRef} measurements={transmitterMeasurements} hasUeTransmitter={hasUeTransmitter} />}
                             {deviceType === 'transmitter' && outputUnit === 'mv' && <MvChart ref={mvChartRef} measurements={transmitterMeasurements} />}
                             {deviceType === 'transmitter' && outputUnit === 'mA' && <TransmitterChart ref={transmitterChartRef} data={transmitterMeasurements} />}
