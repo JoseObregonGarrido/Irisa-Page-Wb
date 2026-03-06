@@ -13,6 +13,7 @@ import TransmitterChart from '../components/trasmitter/TransmitterChart';
 import RTDChart from '../components/trasmitter/RTDChart';
 import MvChart from '../components/trasmitter/MvChart';
 // TXChart eliminado — TX ahora vive dentro de la tabla mV
+import PHTable, { type PHTest } from '../components/PHTable';
 import PressureSwitchChart from '../components/PressureSwitchChart';
 import ThermostatChart from '../components/ThermostatChart';
 
@@ -44,6 +45,7 @@ const HomePage: React.FC = () => {
     const [transmitterMeasurements, setTransmitterMeasurements] = useLocalStorage<Measurement[]>('ir_table_trans', []);
     const [pressureSwitchTests, setPressureSwitchTests] = useLocalStorage<PressureSwitchTest[]>('ir_table_press', []);
     const [thermostatTests, setThermostatTests] = useLocalStorage<ThermostatTest[]>('ir_table_therm', []);
+    const [phTests, setPhTests] = useLocalStorage<PHTest[]>('ir_table_ph', []);
 
     // --- ESTADOS PARA TRANSMISORES ---
     // TX eliminado del tipo — ahora vive dentro de mV como rowType
@@ -92,6 +94,7 @@ const HomePage: React.FC = () => {
             transmitterMeasurements,
             pressureSwitchTests,
             thermostatTests,
+            phTests,
             outputUnit,
             hasUeTransmitter, 
         };
@@ -140,6 +143,7 @@ const HomePage: React.FC = () => {
             setTransmitterMeasurements([]);
             setPressureSwitchTests([]);
             setThermostatTests([]);
+            setPhTests([]);
             setOutputUnit('mA');
             setHasUeTransmitter(false);
             setShowChart(false);
@@ -150,7 +154,8 @@ const HomePage: React.FC = () => {
         const labels: { [key: string]: string } = {
             'transmitter': 'Transmisor',
             'pressure_switch': 'Presostato',
-            'thermostat': 'Termostato'
+            'thermostat': 'Termostato',
+            'ph': 'Medidor de pH'
         };
         return labels[type] || "Dispositivo no seleccionado";
     };
@@ -215,6 +220,7 @@ const HomePage: React.FC = () => {
                                     <option value="transmitter">Transmisor</option>
                                     <option value="pressure_switch">Presostato</option>
                                     <option value="thermostat">Termostato</option>
+                                    <option value="ph">Medidor de pH</option>
                                 </select>
                             </div>
                             <div className="space-y-2">
@@ -298,6 +304,9 @@ const HomePage: React.FC = () => {
                             )}
                             {deviceType === 'thermostat' && (
                                 <ThermostatTable tests={thermostatTests} onTestsChange={setThermostatTests} />
+                            )}
+                            {deviceType === 'ph' && (
+                                <PHTable tests={phTests} onTestsChange={setPhTests} />
                             )}
                             <p className="text-xs text-gray-400 mt-1 italic sm:hidden">
                                 * Deslice hacia la derecha para ver todos los campos del transmisor
