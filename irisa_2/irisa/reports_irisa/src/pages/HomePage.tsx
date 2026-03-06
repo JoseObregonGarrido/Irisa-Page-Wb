@@ -14,6 +14,7 @@ import RTDChart from '../components/trasmitter/RTDChart';
 import MvChart from '../components/trasmitter/MvChart';
 // TXChart eliminado — TX ahora vive dentro de la tabla mV
 import PHTable, { type PHTest } from '../components/PHTable';
+import PHChart from '../components/PHChart';
 import PressureSwitchChart from '../components/PressureSwitchChart';
 import ThermostatChart from '../components/ThermostatChart';
 
@@ -68,6 +69,7 @@ const HomePage: React.FC = () => {
     const mvChartRef = useRef<any>(null);
     const pressureSwitchChartRef = useRef<any>(null);
     const thermostatChartRef = useRef<any>(null);
+    const phChartRef = useRef<any>(null);
 
     // --- Handlers ---
     const handleLogout = () => {
@@ -112,6 +114,8 @@ const HomePage: React.FC = () => {
                 chartImages = await pressureSwitchChartRef.current.captureAllCharts();
             } else if (deviceType === 'thermostat' && thermostatChartRef.current) {
                 chartImages = await thermostatChartRef.current.captureAllCharts();
+            } else if (deviceType === 'ph' && phChartRef.current) {
+                chartImages = await phChartRef.current.captureAllCharts();
             }
 
             await generatePDFReport(reportData, chartImages);
@@ -316,7 +320,7 @@ const HomePage: React.FC = () => {
                         {/* Botonera de Acciones */}
                         <div className="mt-8 p-6 bg-gray-50 rounded-xl border border-gray-200">
                             <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
-                                {deviceType === 'transmitter' && (
+                                {(deviceType === 'transmitter' || deviceType === 'ph') && (
                                     <button onClick={() => setShowChart(!showChart)} className="w-full sm:w-auto flex items-center justify-center px-6 py-2.5 text-sm bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-semibold rounded-lg shadow-md transition-all duration-200 transform hover:scale-105">
                                         <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
                                         {showChart ? 'Ocultar Gráfico' : 'Ver Gráfico'}
@@ -348,6 +352,7 @@ const HomePage: React.FC = () => {
                                     {deviceType === 'transmitter' && outputUnit === 'mA' && <TransmitterChart ref={transmitterChartRef} data={transmitterMeasurements} />}
                                     {deviceType === 'pressure_switch' && <PressureSwitchChart ref={pressureSwitchChartRef} tests={pressureSwitchTests} />}
                                     {deviceType === 'thermostat' && <ThermostatChart ref={thermostatChartRef} tests={thermostatTests} />}
+                                    {deviceType === 'ph' && <PHChart ref={phChartRef} tests={phTests} />}
                                 </div>
                             )}
                         </div>

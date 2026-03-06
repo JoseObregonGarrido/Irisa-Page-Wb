@@ -27,7 +27,8 @@ export interface ReportData {
     outputUnit?: 'mA' | 'ohm' | 'mv';    
     transmitterMeasurements?: any[];
     pressureSwitchTests?: any[];
-    thermostatTests?: any[]; 
+    thermostatTests?: any[];
+    phTests?: any[];
 }
 
 const capitalize = (text: string) => {
@@ -237,6 +238,28 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }
 
+        // --- TABLA pH ---
+        if (data.deviceType === 'ph' && data.phTests && data.phTests.length) {
+            addHeader('RESULTADOS MEDICIONES DE pH');
+            autoTable(pdf, {
+                startY: yPos,
+                margin: { left: marginX, right: marginX },
+                head: [['Promedio pH', 'Desviación', 'Voltaje (mV)', 'Temperatura (°C)', 'Error pH']],
+                body: data.phTests.map(t => [
+                    t.promedio    || '0',
+                    t.desviacion  || '0',
+                    t.voltaje     || '0',
+                    t.temperatura || '0',
+                    t.error       || '0'
+                ]),
+                theme: 'grid',
+                headStyles: { fillColor: [13, 148, 136], halign: 'center', fontSize: 8, fontStyle: 'bold' },
+                styles: { fontSize: 8, halign: 'center', cellPadding: 2.5 },
+                columnStyles: { 4: { textColor: [200, 30, 30], fontStyle: 'bold' } }
+            });
+            yPos = (pdf as any).lastAutoTable.finalY + 12;
+        }
+
         // --- OBSERVACIONES (antes de gráficas para no solaparse) ---
         if (data.observations) {
             // Siempre en página nueva si no hay suficiente espacio
@@ -262,6 +285,8 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                     ? (unit === 'ohm' ? 'DESVIACIÓN DE OHM (RTD)'
                     : unit === 'mv'  ? 'ANÁLISIS mV / TX'
                     : 'CURVA DE RESPUESTA DEL TRANSMISOR')
+                    : data.deviceType === 'ph'
+                    ? 'ANÁLISIS DE MEDICIONES DE pH'
                     : 'CURVA DE CALIBRACIÓN Y LINEALIDAD';
 
                 pdf.setFontSize(11).setFont('helvetica', 'bold').setTextColor(60)
