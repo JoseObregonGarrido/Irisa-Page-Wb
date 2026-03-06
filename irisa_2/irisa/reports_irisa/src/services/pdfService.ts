@@ -54,7 +54,6 @@ const getBase64ImageFromUrl = async (url: string): Promise<string> => {
 };
 
 export const generatePDFReport = async (data: ReportData, chartImages?: string[]): Promise<void> => {
-    // Usamos orientación horizontal para que las gráficas quepan bien
     const pdf = new jsPDF({ orientation: 'landscape' });
     const pageW = pdf.internal.pageSize.getWidth();   // 297mm
     const pageH = pdf.internal.pageSize.getHeight();  // 210mm
@@ -75,11 +74,13 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         orangeThermocouple: [230, 126, 34],
         purpleTX:           [109, 40, 217],
         lightGray:          [245, 245, 245],
-        white:              [252, 252, 252]
+        white:              [252, 252, 252],
+        tealPH:             [13, 148, 136]
     };
 
     const addHeader = (title: string) => {
-        if (yPos + 40 > pageH - 15) { pdf.addPage(); yPos = 20; }
+        // Ajuste de margen inferior para landscape
+        if (yPos + 40 > pageH - 20) { pdf.addPage(); yPos = 20; }
         pdf.setDrawColor(119, 158, 79).setLineWidth(0.8).line(marginX, yPos, pageW - marginX, yPos);
         yPos += 10;
         pdf.setFontSize(11).setFont('helvetica', 'bold').setTextColor(60).text(title.toUpperCase(), marginX, yPos);
@@ -121,25 +122,17 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
 
         // --- TABLA TRANSMISORES ---
         if (data.deviceType === 'transmitter' && measurements.length) {
-
             if (isMv) {
-                // Separar filas por rowType
                 const mvRows = measurements.filter(m => !m.rowType || m.rowType === 'mv');
                 const txRows = measurements.filter(m => m.rowType === 'tx');
 
-                // Tabla mV
                 if (mvRows.length > 0) {
                     addHeader('Resultados de las mediciones - Termopar (mV)');
                     autoTable(pdf, {
                         startY: yPos,
                         margin: { left: marginX, right: marginX },
                         head: [['mV Ideal', 'mV Sensor', 'Tipo Sensor', 'Error mV']],
-                        body: mvRows.map(m => [
-                            m.idealmV     || '0',
-                            m.sensormV    || '0',
-                            m.sensorType  || 'N/A',
-                            m.errormV     || '0'
-                        ]),
+                        body: mvRows.map(m => [m.idealmV || '0', m.sensormV || '0', m.sensorType || 'N/A', m.errormV || '0']),
                         theme: 'grid',
                         headStyles: { fillColor: colors.orangeThermocouple, halign: 'center', fontSize: 8, fontStyle: 'bold' },
                         styles: { fontSize: 8, halign: 'center', cellPadding: 2.5 }
@@ -147,31 +140,22 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                     yPos = (pdf as any).lastAutoTable.finalY + 12;
                 }
 
-                // Tabla TX
                 if (txRows.length > 0) {
                     addHeader('Resultados de las mediciones - Transmisor (TX)');
                     autoTable(pdf, {
                         startY: yPos,
                         margin: { left: marginX, right: marginX },
                         head: [['Ideal mA', 'mA TX', 'Tipo Sensor', 'Err mA']],
-                        body: txRows.map(m => [
-                            m.idealmA    || '0',
-                            m.mATX       || '0',
-                            m.sensorType || 'N/A',
-                            m.errormA    || '0'
-                        ]),
+                        body: txRows.map(m => [m.idealmA || '0', m.mATX || '0', m.sensorType || 'N/A', m.errormA || '0']),
                         theme: 'grid',
                         headStyles: { fillColor: colors.purpleTX, halign: 'center', fontSize: 8, fontStyle: 'bold' },
                         styles: { fontSize: 8, halign: 'center', cellPadding: 2.5 }
                     });
                     yPos = (pdf as any).lastAutoTable.finalY + 12;
                 }
-
             } else {
-                // Tabla mA / ohm (sin cambios)
                 const reportTypeLabel = isOhm ? 'RTD' : 'mA';
                 addHeader(`Resultados de las mediciones - ${reportTypeLabel}`);
-
                 const headers: string[] = ['Ideal UE', 'Ideal mA'];
                 if (isOhm) headers.push('Ideal Ohm');
                 headers.push('Patrón UE');
@@ -211,17 +195,14 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         // --- PRESOSTATO / TERMOSTATO ---
         const isThermostat = data.deviceType === 'thermostat';
         const switchTests = isThermostat ? data.thermostatTests : data.pressureSwitchTests;
-        
         if ((data.deviceType === 'pressure_switch' || isThermostat) && switchTests && switchTests.length) {
             addHeader(isThermostat ? 'RESULTADOS TERMOSTATO' : 'RESULTADOS PRESOSTATO');
             const unitLabel = data.unity || (isThermostat ? '°C' : 'psi');
-            
             const headers = [
                 isThermostat ? `Temp. disparo (${unitLabel})` : `Presión disparo (${unitLabel})`,
                 isThermostat ? `Temp. repone (${unitLabel})`  : `Presión repone (${unitLabel})`,
                 'Estado contacto'
             ];
-
             autoTable(pdf, {
                 startY: yPos,
                 margin: { left: marginX, right: marginX },
@@ -246,24 +227,19 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 margin: { left: marginX, right: marginX },
                 head: [['Promedio pH', 'Desviación', 'Voltaje (mV)', 'Temperatura (°C)', 'Error pH']],
                 body: data.phTests.map(t => [
-                    t.promedio    || '0',
-                    t.desviacion  || '0',
-                    t.voltaje     || '0',
-                    t.temperatura || '0',
-                    t.error       || '0'
+                    t.promedio || '0', t.desviacion || '0', t.voltaje || '0', t.temperatura || '0', t.error || '0'
                 ]),
                 theme: 'grid',
-                headStyles: { fillColor: [13, 148, 136], halign: 'center', fontSize: 8, fontStyle: 'bold' },
+                headStyles: { fillColor: colors.tealPH, halign: 'center', fontSize: 8, fontStyle: 'bold' },
                 styles: { fontSize: 8, halign: 'center', cellPadding: 2.5 },
                 columnStyles: { 4: { textColor: [200, 30, 30], fontStyle: 'bold' } }
             });
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }
 
-        // --- OBSERVACIONES (antes de gráficas para no solaparse) ---
+        // --- OBSERVACIONES ---
         if (data.observations) {
-            // Siempre en página nueva si no hay suficiente espacio
-            if (yPos + 60 > pageH - 15) { pdf.addPage(); yPos = 20; }
+            if (yPos + 50 > pageH - 20) { pdf.addPage(); yPos = 20; }
             addHeader('OBSERVACIONES Y NOTAS TÉCNICAS');
             autoTable(pdf, {
                 startY: yPos,
@@ -275,27 +251,29 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }
 
-        // --- GRÁFICAS: siempre en página nueva, tamaño completo ---
+        // --- GRÁFICAS: MEJORADO ---
         if (chartImages && chartImages.length > 0) {
-            chartImages.forEach((img) => {
+            chartImages.forEach((img, index) => {
                 pdf.addPage();
                 yPos = 15;
 
-                const chartTitle = data.deviceType === 'transmitter'
-                    ? (unit === 'ohm' ? 'DESVIACIÓN DE OHM (RTD)'
-                    : unit === 'mv'  ? 'ANÁLISIS mV / TX'
-                    : 'CURVA DE RESPUESTA DEL TRANSMISOR')
-                    : data.deviceType === 'ph'
-                    ? 'ANÁLISIS DE MEDICIONES DE pH'
-                    : 'CURVA DE CALIBRACIÓN Y LINEALIDAD';
+                // Títulos específicos por tipo de gráfico
+                let chartTitle = '';
+                if (data.deviceType === 'ph') {
+                    chartTitle = index === 0 ? 'CURVA DE RESPUESTA DEL ELECTRODO (Voltaje vs pH)' : 'ANÁLISIS DE ERROR POR MEDICIÓN';
+                } else if (data.deviceType === 'transmitter') {
+                    chartTitle = unit === 'ohm' ? 'DESVIACIÓN DE OHM (RTD)' : unit === 'mv' ? 'ANÁLISIS mV / TX' : 'CURVA DE RESPUESTA DEL TRANSMISOR';
+                } else {
+                    chartTitle = 'CURVA DE CALIBRACIÓN Y LINEALIDAD';
+                }
 
-                pdf.setFontSize(11).setFont('helvetica', 'bold').setTextColor(60)
-                   .text(chartTitle, pageW / 2, yPos, { align: 'center' });
-                yPos += 8;
-
-                // Imagen ocupa casi toda la página horizontal
-                const imgH = pageH - yPos - 15;
-                pdf.addImage(img, 'PNG', marginX, yPos, contentW, imgH);
+                pdf.setFontSize(12).setFont('helvetica', 'bold').setTextColor(40)
+                   .text(chartTitle.toUpperCase(), pageW / 2, yPos, { align: 'center' });
+                
+                yPos += 10;
+                // Ajuste de altura para no solapar el pie de página en landscape
+                const availableHeight = pageH - yPos - 20;
+                pdf.addImage(img, 'PNG', marginX, yPos, contentW, availableHeight);
             });
         }
 
@@ -304,8 +282,8 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         for (let i = 1; i <= pageCount; i++) {
             pdf.setPage(i);
             pdf.setFontSize(8).setTextColor(150);
-            pdf.text(`Ingenio Risaralda - Generado el ${new Date().toLocaleDateString()}`, pageW / 2, pageH - 5, { align: 'center' });
-            pdf.text(`Página ${i} de ${pageCount}`, pageW - marginX, pageH - 5, { align: 'right' });
+            pdf.text(`Ingenio Risaralda - Generado el ${new Date().toLocaleDateString()}`, pageW / 2, pageH - 8, { align: 'center' });
+            pdf.text(`Página ${i} de ${pageCount}`, pageW - marginX, pageH - 8, { align: 'right' });
         }
 
         pdf.save(`Reporte_${data.deviceCode || 'Instrumento'}.pdf`);

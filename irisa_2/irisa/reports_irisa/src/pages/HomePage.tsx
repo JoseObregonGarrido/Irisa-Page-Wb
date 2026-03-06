@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { logout } from '../services/authService';
 import { generatePDFReport } from '../services/pdfService';
 
-// Components
+// Components       
 import TransmitterTable, { type Measurement } from '../components/trasmitter/TransmitterTable';
 import PressureSwitchTable, { type PressureSwitchTest } from '../components/PressureSwitchTable';
 import ThermostatTable, { type ThermostatTest } from '../components/ThermostatTable';
