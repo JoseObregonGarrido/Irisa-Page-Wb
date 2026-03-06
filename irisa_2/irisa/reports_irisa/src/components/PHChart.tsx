@@ -2,7 +2,7 @@ import { forwardRef, useImperativeHandle, useRef } from 'react';
 import {
     LineChart, Line, BarChart, Bar,
     XAxis, YAxis, CartesianGrid, Tooltip,
-    Legend, ResponsiveContainer, ReferenceLine, Cell
+    Legend, ReferenceLine, Cell, ResponsiveContainer
 } from 'recharts';
 import html2canvas from 'html2canvas';
 
@@ -32,8 +32,27 @@ const PHChart = forwardRef(({ tests }: PHChartProps, ref) => {
             const images: string[] = [];
             for (const r of [chart1Ref, chart2Ref]) {
                 if (r.current) {
-                    const canvas = await html2canvas(r.current, { scale: 2, backgroundColor: '#ffffff' });
+                    // Forzar dimensiones fijas antes de capturar
+                    const el = r.current;
+                    const prevWidth = el.style.width;
+                    const prevHeight = el.style.height;
+                    el.style.width = '1100px';
+                    el.style.height = 'auto';
+
+                    await new Promise(res => setTimeout(res, 300));
+
+                    const canvas = await html2canvas(el, {
+                        scale: 2,
+                        backgroundColor: '#ffffff',
+                        width: el.offsetWidth,
+                        height: el.offsetHeight,
+                        useCORS: true,
+                        logging: false,
+                    });
                     images.push(canvas.toDataURL('image/png'));
+
+                    el.style.width = prevWidth;
+                    el.style.height = prevHeight;
                 }
             }
             return images;
@@ -48,7 +67,6 @@ const PHChart = forwardRef(({ tests }: PHChartProps, ref) => {
         );
     }
 
-    // Datos para curva Voltaje vs pH
     const curvaData = tests
         .map((t, i) => ({
             name: `M${i + 1}`,
@@ -56,9 +74,8 @@ const PHChart = forwardRef(({ tests }: PHChartProps, ref) => {
             voltaje: parseFloat(t.voltaje) || 0,
             temperatura: parseFloat(t.temperatura) || 0,
         }))
-        .sort((a, b) => a.pH - b.pH); // ordenar por pH para que la curva sea correcta
+        .sort((a, b) => a.pH - b.pH);
 
-    // Datos para errores
     const errorData = tests.map((t, i) => ({
         name: `M${i + 1}`,
         error: parseFloat(t.error) || 0,
@@ -134,6 +151,7 @@ const PHChart = forwardRef(({ tests }: PHChartProps, ref) => {
                             strokeWidth={2.5}
                             dot={{ fill: PURPLE, r: 5, strokeWidth: 2, stroke: '#fff' }}
                             activeDot={{ r: 7 }}
+                            isAnimationActive={false}
                         />
                     </LineChart>
                 </ResponsiveContainer>
@@ -160,7 +178,7 @@ const PHChart = forwardRef(({ tests }: PHChartProps, ref) => {
                         />
                         <Tooltip content={<CustomTooltip2 />} />
                         <ReferenceLine y={0} stroke="#6b7280" strokeWidth={1.5} />
-                        <Bar dataKey="error" name="Error pH" radius={[4, 4, 0, 0]} maxBarSize={50}>
+                        <Bar dataKey="error" name="Error pH" radius={[4, 4, 0, 0]} maxBarSize={50} isAnimationActive={false}>
                             {errorData.map((entry, i) => (
                                 <Cell
                                     key={i}
@@ -170,7 +188,6 @@ const PHChart = forwardRef(({ tests }: PHChartProps, ref) => {
                         </Bar>
                     </BarChart>
                 </ResponsiveContainer>
-                {/* Leyenda de colores */}
                 <div className="flex flex-wrap gap-4 mt-3 justify-center">
                     <span className="flex items-center gap-1.5 text-xs text-gray-500">
                         <span className="w-3 h-3 rounded-sm bg-emerald-500 inline-block"></span> Error {'<'} 0.1 pH (Excelente)
