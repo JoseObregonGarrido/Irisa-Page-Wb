@@ -49,7 +49,6 @@ const HomePage: React.FC = () => {
     const [phTests, setPhTests] = useLocalStorage<PHTest[]>('ir_table_ph', []);
 
     // --- ESTADOS PARA TRANSMISORES ---
-    // TX eliminado del tipo — ahora vive dentro de mV como rowType
     const [outputUnit, setOutputUnit] = useLocalStorage<'mA' | 'ohm' | 'mv'>('ir_output_unit', 'mA');
     const [hasUeTransmitter, setHasUeTransmitter] = useLocalStorage<boolean>('ir_has_ue', false);
 
@@ -63,7 +62,7 @@ const HomePage: React.FC = () => {
 
     const [showChart, setShowChart] = useState(false);
 
-    // --- Refs para captura de gráficos ---
+    // --- Refs para captura de gráficos (en el DOM visible) ---
     const transmitterChartRef = useRef<any>(null);
     const rtdChartRef = useRef<any>(null);
     const mvChartRef = useRef<any>(null);
@@ -98,16 +97,18 @@ const HomePage: React.FC = () => {
             thermostatTests,
             phTests,
             outputUnit,
-            hasUeTransmitter, 
+            hasUeTransmitter,
         };
 
-        // Captura: revelar el contenedor oculto, capturar, volver a ocultar
+        // Forzar showChart=true para que los charts estén en el DOM visible
+        // Los refs solo funcionan cuando el componente está montado y visible
+        const wasShowingChart = showChart;
+        if (!wasShowingChart) setShowChart(true);
+
         let chartImages: string[] = [];
-        const hiddenContainer = document.getElementById('hidden-charts-container');
         try {
-            if (hiddenContainer) hiddenContainer.style.opacity = '1';
-            // Esperar a que recharts renderice
-            await new Promise(r => setTimeout(r, 500));
+            // Esperar a que React re-renderice y Recharts pinte las SVGs
+            await new Promise(r => setTimeout(r, 1200));
 
             if (deviceType === 'transmitter' && outputUnit === 'ohm' && rtdChartRef.current) {
                 chartImages = await rtdChartRef.current.captureAllCharts();
@@ -125,7 +126,8 @@ const HomePage: React.FC = () => {
         } catch (chartError) {
             console.warn("Gráfica no capturada, PDF sin gráfica:", chartError);
         } finally {
-            if (hiddenContainer) hiddenContainer.style.opacity = '0';
+            // Restaurar estado original
+            if (!wasShowingChart) setShowChart(false);
         }
 
         // PDF siempre se genera, con o sin gráficas
@@ -302,8 +304,8 @@ const HomePage: React.FC = () => {
                             {deviceType === 'transmitter' && (
                                 <div className="w-full overflow-x-auto pb-4 custom-scrollbar">
                                     <div className="lg:min-w-[1000px]">
-                                        <TransmitterTable 
-                                            measurements={transmitterMeasurements} 
+                                        <TransmitterTable
+                                            measurements={transmitterMeasurements}
                                             onMeasurementsChange={setTransmitterMeasurements}
                                             outputUnit={outputUnit}
                                             setOutputUnit={setOutputUnit}
@@ -313,7 +315,6 @@ const HomePage: React.FC = () => {
                                     </div>
                                 </div>
                             )}
-                            {/* Presostato y Termostato: responsive sin scroll forzado */}
                             {deviceType === 'pressure_switch' && (
                                 <PressureSwitchTable tests={pressureSwitchTests} onTestsChange={setPressureSwitchTests} />
                             )}
@@ -331,7 +332,7 @@ const HomePage: React.FC = () => {
                         {/* Botonera de Acciones */}
                         <div className="mt-8 p-6 bg-gray-50 rounded-xl border border-gray-200">
                             <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
-                                {(deviceType === 'transmitter' || deviceType === 'ph') && (
+                                {(deviceType === 'transmitter' || deviceType === 'ph' || deviceType === 'pressure_switch' || deviceType === 'thermostat') && (
                                     <button onClick={() => setShowChart(!showChart)} className="w-full sm:w-auto flex items-center justify-center px-6 py-2.5 text-sm bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-semibold rounded-lg shadow-md transition-all duration-200 transform hover:scale-105">
                                         <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
                                         {showChart ? 'Ocultar Gráfico' : 'Ver Gráfico'}
@@ -348,17 +349,7 @@ const HomePage: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Charts ocultos con opacity 0 — dentro del DOM y viewport para que html2canvas los capture */}
-                        <div id="hidden-charts-container" style={{ opacity: 0, pointerEvents: 'none', position: 'absolute', width: '1200px', zIndex: -1 }}>
-                            {deviceType === 'transmitter' && outputUnit === 'ohm' && <RTDChart ref={rtdChartRef} measurements={transmitterMeasurements} hasUeTransmitter={hasUeTransmitter} />}
-                            {deviceType === 'transmitter' && outputUnit === 'mv' && <MvChart ref={mvChartRef} measurements={transmitterMeasurements} />}
-                            {deviceType === 'transmitter' && outputUnit === 'mA' && <TransmitterChart ref={transmitterChartRef} data={transmitterMeasurements} />}
-                            {deviceType === 'pressure_switch' && <PressureSwitchChart ref={pressureSwitchChartRef} tests={pressureSwitchTests} />}
-                            {deviceType === 'thermostat' && <ThermostatChart ref={thermostatChartRef} tests={thermostatTests} />}
-                            {deviceType === 'ph' && <PHChart ref={phChartRef} tests={phTests} />}
-                        </div>
-
-                        {/* Sección de Gráficos visible */}
+                        {/* Sección de Gráficos — refs aquí en el DOM visible para que html2canvas capture */}
                         <div className="mt-6">
                             {showChart && (
                                 <div className="bg-white rounded-xl shadow-inner p-4 border border-gray-200">
@@ -368,12 +359,12 @@ const HomePage: React.FC = () => {
                                         </span>
                                         Análisis Gráfico: {getDeviceTypeLabel(deviceType)}
                                     </h3>
-                                    {deviceType === 'transmitter' && outputUnit === 'ohm' && <RTDChart measurements={transmitterMeasurements} hasUeTransmitter={hasUeTransmitter} />}
-                                    {deviceType === 'transmitter' && outputUnit === 'mv' && <MvChart measurements={transmitterMeasurements} />}
-                                    {deviceType === 'transmitter' && outputUnit === 'mA' && <TransmitterChart data={transmitterMeasurements} />}
-                                    {deviceType === 'pressure_switch' && <PressureSwitchChart tests={pressureSwitchTests} />}
-                                    {deviceType === 'thermostat' && <ThermostatChart tests={thermostatTests} />}
-                                    {deviceType === 'ph' && <PHChart tests={phTests} />}
+                                    {deviceType === 'transmitter' && outputUnit === 'ohm' && <RTDChart ref={rtdChartRef} measurements={transmitterMeasurements} hasUeTransmitter={hasUeTransmitter} />}
+                                    {deviceType === 'transmitter' && outputUnit === 'mv' && <MvChart ref={mvChartRef} measurements={transmitterMeasurements} />}
+                                    {deviceType === 'transmitter' && outputUnit === 'mA' && <TransmitterChart ref={transmitterChartRef} data={transmitterMeasurements} />}
+                                    {deviceType === 'pressure_switch' && <PressureSwitchChart ref={pressureSwitchChartRef} tests={pressureSwitchTests} />}
+                                    {deviceType === 'thermostat' && <ThermostatChart ref={thermostatChartRef} tests={thermostatTests} />}
+                                    {deviceType === 'ph' && <PHChart ref={phChartRef} tests={phTests} />}
                                 </div>
                             )}
                         </div>
