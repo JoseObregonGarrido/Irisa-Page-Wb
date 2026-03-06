@@ -237,7 +237,22 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }
 
-        // --- GRÁFICAS: página nueva, tamaño completo ---
+        // --- OBSERVACIONES (antes de gráficas para no solaparse) ---
+        if (data.observations) {
+            // Siempre en página nueva si no hay suficiente espacio
+            if (yPos + 60 > pageH - 15) { pdf.addPage(); yPos = 20; }
+            addHeader('OBSERVACIONES Y NOTAS TÉCNICAS');
+            autoTable(pdf, {
+                startY: yPos,
+                margin: { left: marginX, right: marginX },
+                body: [[data.observations]],
+                styles: { fontSize: 9, cellPadding: 5, fillColor: colors.white, textColor: 60 },
+                theme: 'plain'
+            });
+            yPos = (pdf as any).lastAutoTable.finalY + 12;
+        }
+
+        // --- GRÁFICAS: siempre en página nueva, tamaño completo ---
         if (chartImages && chartImages.length > 0) {
             chartImages.forEach((img) => {
                 pdf.addPage();
@@ -256,19 +271,6 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 // Imagen ocupa casi toda la página horizontal
                 const imgH = pageH - yPos - 15;
                 pdf.addImage(img, 'PNG', marginX, yPos, contentW, imgH);
-            });
-        }
-
-        // --- OBSERVACIONES ---
-        if (data.observations) {
-            if (yPos + 40 > pageH - 15) { pdf.addPage(); yPos = 20; }
-            addHeader('OBSERVACIONES Y NOTAS TÉCNICAS');
-            autoTable(pdf, {
-                startY: yPos,
-                margin: { left: marginX, right: marginX },
-                body: [[data.observations]],
-                styles: { fontSize: 9, cellPadding: 5, fillColor: colors.white, textColor: 60 },
-                theme: 'plain'
             });
         }
 
