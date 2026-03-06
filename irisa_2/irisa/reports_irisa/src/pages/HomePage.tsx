@@ -341,7 +341,17 @@ const HomePage: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Sección de Gráficos */}
+                        {/* Charts siempre montados (ocultos) para que refs estén disponibles al generar PDF */}
+                        <div style={{ position: 'absolute', left: '-9999px', top: '-9999px', width: '1200px', pointerEvents: 'none' }}>
+                            {deviceType === 'transmitter' && outputUnit === 'ohm' && <RTDChart ref={rtdChartRef} measurements={transmitterMeasurements} hasUeTransmitter={hasUeTransmitter} />}
+                            {deviceType === 'transmitter' && outputUnit === 'mv' && <MvChart ref={mvChartRef} measurements={transmitterMeasurements} />}
+                            {deviceType === 'transmitter' && outputUnit === 'mA' && <TransmitterChart ref={transmitterChartRef} data={transmitterMeasurements} />}
+                            {deviceType === 'pressure_switch' && <PressureSwitchChart ref={pressureSwitchChartRef} tests={pressureSwitchTests} />}
+                            {deviceType === 'thermostat' && <ThermostatChart ref={thermostatChartRef} tests={thermostatTests} />}
+                            {deviceType === 'ph' && <PHChart ref={phChartRef} tests={phTests} />}
+                        </div>
+
+                        {/* Sección de Gráficos visible */}
                         <div className="mt-6">
                             {showChart && (
                                 <div className="bg-white rounded-xl shadow-inner p-4 border border-gray-200">
@@ -351,12 +361,12 @@ const HomePage: React.FC = () => {
                                         </span>
                                         Análisis Gráfico: {getDeviceTypeLabel(deviceType)}
                                     </h3>
-                                    {deviceType === 'transmitter' && outputUnit === 'ohm' && <RTDChart ref={rtdChartRef} measurements={transmitterMeasurements} hasUeTransmitter={hasUeTransmitter} />}
-                                    {deviceType === 'transmitter' && outputUnit === 'mv' && <MvChart ref={mvChartRef} measurements={transmitterMeasurements} />}
-                                    {deviceType === 'transmitter' && outputUnit === 'mA' && <TransmitterChart ref={transmitterChartRef} data={transmitterMeasurements} />}
-                                    {deviceType === 'pressure_switch' && <PressureSwitchChart ref={pressureSwitchChartRef} tests={pressureSwitchTests} />}
-                                    {deviceType === 'thermostat' && <ThermostatChart ref={thermostatChartRef} tests={thermostatTests} />}
-                                    {deviceType === 'ph' && <PHChart ref={phChartRef} tests={phTests} />}
+                                    {deviceType === 'transmitter' && outputUnit === 'ohm' && <RTDChart measurements={transmitterMeasurements} hasUeTransmitter={hasUeTransmitter} />}
+                                    {deviceType === 'transmitter' && outputUnit === 'mv' && <MvChart measurements={transmitterMeasurements} />}
+                                    {deviceType === 'transmitter' && outputUnit === 'mA' && <TransmitterChart data={transmitterMeasurements} />}
+                                    {deviceType === 'pressure_switch' && <PressureSwitchChart tests={pressureSwitchTests} />}
+                                    {deviceType === 'thermostat' && <ThermostatChart tests={thermostatTests} />}
+                                    {deviceType === 'ph' && <PHChart tests={phTests} />}
                                 </div>
                             )}
                         </div>
