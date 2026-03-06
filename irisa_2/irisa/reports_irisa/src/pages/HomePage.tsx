@@ -101,9 +101,9 @@ const HomePage: React.FC = () => {
             hasUeTransmitter, 
         };
 
+        // Captura de gráficas separada — si falla, el PDF se genera igual sin gráficas
+        let chartImages: string[] = [];
         try {
-            let chartImages: string[] = [];
-
             if (deviceType === 'transmitter' && outputUnit === 'ohm' && rtdChartRef.current) {
                 chartImages = await rtdChartRef.current.captureAllCharts();
             } else if (deviceType === 'transmitter' && outputUnit === 'mv' && mvChartRef.current) {
@@ -117,12 +117,16 @@ const HomePage: React.FC = () => {
             } else if (deviceType === 'ph' && phChartRef.current) {
                 chartImages = await phChartRef.current.captureAllCharts();
             }
+        } catch (chartError) {
+            console.warn("Gráfica no capturada, PDF sin gráfica:", chartError);
+        }
 
+        // PDF siempre se genera, con o sin gráficas
+        try {
             await generatePDFReport(reportData, chartImages);
-            
         } catch (error) {
             console.error("Error al generar PDF:", error);
-            alert("Hubo un error al generar las gráficas para el PDF.");
+            alert("Hubo un error al generar el PDF.");
         }
     };
 
