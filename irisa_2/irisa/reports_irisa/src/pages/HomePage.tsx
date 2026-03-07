@@ -1,11 +1,12 @@
 import React, { useState, useRef } from 'react';
+import { flushSync } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 
 // Services
 import { logout } from '../services/authService';
 import { generatePDFReport } from '../services/pdfService';
 
-// Components       
+// Components
 import TransmitterTable, { type Measurement } from '../components/trasmitter/TransmitterTable';
 import PressureSwitchTable, { type PressureSwitchTest } from '../components/PressureSwitchTable';
 import ThermostatTable, { type ThermostatTest } from '../components/ThermostatTable';
@@ -100,15 +101,16 @@ const HomePage: React.FC = () => {
             hasUeTransmitter,
         };
 
-        // Forzar showChart=true para que los charts estén en el DOM visible
-        // Los refs solo funcionan cuando el componente está montado y visible
+        // flushSync fuerza a React a re-renderizar SINCRÓNICAMENTE antes de continuar
         const wasShowingChart = showChart;
-        if (!wasShowingChart) setShowChart(true);
+        flushSync(() => {
+            setShowChart(true);
+        });
 
         let chartImages: string[] = [];
         try {
-            // Esperar a que React re-renderice y Recharts pinte las SVGs
-            await new Promise(r => setTimeout(r, 1200));
+            // Esperar a que Recharts pinte las SVGs tras el render
+            await new Promise(r => setTimeout(r, 1000));
 
             if (deviceType === 'transmitter' && outputUnit === 'ohm' && rtdChartRef.current) {
                 chartImages = await rtdChartRef.current.captureAllCharts();
