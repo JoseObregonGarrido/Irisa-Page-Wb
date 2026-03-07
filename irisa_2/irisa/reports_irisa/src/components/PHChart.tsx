@@ -4,7 +4,6 @@ import {
     XAxis, YAxis, CartesianGrid, Tooltip,
     Legend, ReferenceLine, Cell, ResponsiveContainer
 } from 'recharts';
-import html2canvas from 'html2canvas';
 
 interface PHTest {
     promedio: string;
@@ -27,36 +26,12 @@ const PHChart = forwardRef(({ tests }: PHChartProps, ref) => {
     const chart1Ref = useRef<HTMLDivElement>(null);
     const chart2Ref = useRef<HTMLDivElement>(null);
 
+    // Exponemos los refs directamente — la captura la hace HomePage
     useImperativeHandle(ref, () => ({
-        captureAllCharts: async (): Promise<string[]> => {
-            const images: string[] = [];
-            for (const r of [chart1Ref, chart2Ref]) {
-                if (r.current) {
-                    // Forzar dimensiones fijas antes de capturar
-                    const el = r.current;
-                    const prevWidth = el.style.width;
-                    const prevHeight = el.style.height;
-                    el.style.width = '1100px';
-                    el.style.height = 'auto';
-
-                    await new Promise(res => setTimeout(res, 300));
-
-                    const canvas = await html2canvas(el, {
-                        scale: 2,
-                        backgroundColor: '#ffffff',
-                        width: el.offsetWidth,
-                        height: el.offsetHeight,
-                        useCORS: true,
-                        logging: false,
-                    });
-                    images.push(canvas.toDataURL('image/png'));
-
-                    el.style.width = prevWidth;
-                    el.style.height = prevHeight;
-                }
-            }
-            return images;
-        }
+        getChartElements: () => ({
+            chart1: chart1Ref.current,
+            chart2: chart2Ref.current,
+        })
     }));
 
     if (!tests || tests.length === 0) {
@@ -114,8 +89,7 @@ const PHChart = forwardRef(({ tests }: PHChartProps, ref) => {
 
     return (
         <div className="space-y-8">
-
-            {/* ── CHART 1: Curva Voltaje vs pH ── */}
+            {/* CHART 1 */}
             <div ref={chart1Ref} className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
                 <div className="mb-4">
                     <h4 className="text-sm font-bold text-gray-800 flex items-center gap-2">
@@ -129,35 +103,17 @@ const PHChart = forwardRef(({ tests }: PHChartProps, ref) => {
                 <ResponsiveContainer width="100%" height={300}>
                     <LineChart data={curvaData} margin={{ top: 10, right: 30, left: 10, bottom: 10 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                        <XAxis
-                            dataKey="pH"
-                            label={{ value: 'pH', position: 'insideBottom', offset: -5, fontSize: 11 }}
-                            tick={{ fontSize: 10 }}
-                            type="number"
-                            domain={['auto', 'auto']}
-                        />
-                        <YAxis
-                            label={{ value: 'Voltaje (mV)', angle: -90, position: 'insideLeft', offset: 10, fontSize: 11 }}
-                            tick={{ fontSize: 10 }}
-                        />
+                        <XAxis dataKey="pH" label={{ value: 'pH', position: 'insideBottom', offset: -5, fontSize: 11 }} tick={{ fontSize: 10 }} type="number" domain={['auto', 'auto']} />
+                        <YAxis label={{ value: 'Voltaje (mV)', angle: -90, position: 'insideLeft', offset: 10, fontSize: 11 }} tick={{ fontSize: 10 }} />
                         <Tooltip content={<CustomTooltip1 />} />
                         <Legend wrapperStyle={{ fontSize: 11 }} />
                         <ReferenceLine y={0} stroke="#d1d5db" strokeDasharray="4 4" />
-                        <Line
-                            type="monotone"
-                            dataKey="voltaje"
-                            name="Voltaje (mV)"
-                            stroke={PURPLE}
-                            strokeWidth={2.5}
-                            dot={{ fill: PURPLE, r: 5, strokeWidth: 2, stroke: '#fff' }}
-                            activeDot={{ r: 7 }}
-                            isAnimationActive={false}
-                        />
+                        <Line type="monotone" dataKey="voltaje" name="Voltaje (mV)" stroke={PURPLE} strokeWidth={2.5} dot={{ fill: PURPLE, r: 5, strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 7 }} isAnimationActive={false} />
                     </LineChart>
                 </ResponsiveContainer>
             </div>
 
-            {/* ── CHART 2: Error por medición ── */}
+            {/* CHART 2 */}
             <div ref={chart2Ref} className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
                 <div className="mb-4">
                     <h4 className="text-sm font-bold text-gray-800 flex items-center gap-2">
@@ -172,35 +128,22 @@ const PHChart = forwardRef(({ tests }: PHChartProps, ref) => {
                     <BarChart data={errorData} margin={{ top: 10, right: 30, left: 10, bottom: 10 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                         <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-                        <YAxis
-                            label={{ value: 'Error (pH)', angle: -90, position: 'insideLeft', offset: 10, fontSize: 11 }}
-                            tick={{ fontSize: 10 }}
-                        />
+                        <YAxis label={{ value: 'Error (pH)', angle: -90, position: 'insideLeft', offset: 10, fontSize: 11 }} tick={{ fontSize: 10 }} />
                         <Tooltip content={<CustomTooltip2 />} />
                         <ReferenceLine y={0} stroke="#6b7280" strokeWidth={1.5} />
                         <Bar dataKey="error" name="Error pH" radius={[4, 4, 0, 0]} maxBarSize={50} isAnimationActive={false}>
                             {errorData.map((entry, i) => (
-                                <Cell
-                                    key={i}
-                                    fill={Math.abs(entry.error) < 0.1 ? GREEN : Math.abs(entry.error) < 0.3 ? TEAL : RED}
-                                />
+                                <Cell key={i} fill={Math.abs(entry.error) < 0.1 ? GREEN : Math.abs(entry.error) < 0.3 ? TEAL : RED} />
                             ))}
                         </Bar>
                     </BarChart>
                 </ResponsiveContainer>
                 <div className="flex flex-wrap gap-4 mt-3 justify-center">
-                    <span className="flex items-center gap-1.5 text-xs text-gray-500">
-                        <span className="w-3 h-3 rounded-sm bg-emerald-500 inline-block"></span> Error {'<'} 0.1 pH (Excelente)
-                    </span>
-                    <span className="flex items-center gap-1.5 text-xs text-gray-500">
-                        <span className="w-3 h-3 rounded-sm bg-teal-500 inline-block"></span> Error {'<'} 0.3 pH (Aceptable)
-                    </span>
-                    <span className="flex items-center gap-1.5 text-xs text-gray-500">
-                        <span className="w-3 h-3 rounded-sm bg-red-500 inline-block"></span> Error ≥ 0.3 pH (Revisar)
-                    </span>
+                    <span className="flex items-center gap-1.5 text-xs text-gray-500"><span className="w-3 h-3 rounded-sm bg-emerald-500 inline-block"></span> Error {'<'} 0.1 pH (Excelente)</span>
+                    <span className="flex items-center gap-1.5 text-xs text-gray-500"><span className="w-3 h-3 rounded-sm bg-teal-500 inline-block"></span> Error {'<'} 0.3 pH (Aceptable)</span>
+                    <span className="flex items-center gap-1.5 text-xs text-gray-500"><span className="w-3 h-3 rounded-sm bg-red-500 inline-block"></span> Error ≥ 0.3 pH (Revisar)</span>
                 </div>
             </div>
-
         </div>
     );
 });

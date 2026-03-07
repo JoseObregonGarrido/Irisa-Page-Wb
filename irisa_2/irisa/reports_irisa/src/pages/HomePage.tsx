@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { flushSync } from 'react-dom';
+import html2canvas from 'html2canvas';
 import { useNavigate } from 'react-router-dom';
 
 // Services
@@ -123,7 +124,28 @@ const HomePage: React.FC = () => {
             } else if (deviceType === 'thermostat' && thermostatChartRef.current) {
                 chartImages = await thermostatChartRef.current.captureAllCharts();
             } else if (deviceType === 'ph' && phChartRef.current) {
-                chartImages = await phChartRef.current.captureAllCharts();
+                const els = phChartRef.current.getChartElements();
+                const captured: string[] = [];
+                for (const el of [els.chart1, els.chart2]) {
+                    if (!el) { console.warn('PHChart element null'); continue; }
+                    console.log('Capturando chart pH, offsetWidth:', el.offsetWidth, 'offsetHeight:', el.offsetHeight);
+                    // Fijar ancho para que ResponsiveContainer tenga referencia
+                    const orig = el.style.width;
+                    el.style.width = '1100px';
+                    await new Promise(r => setTimeout(r, 400));
+                    console.log('Después de espera, offsetWidth:', el.offsetWidth);
+                    const canvas = await html2canvas(el, {
+                        scale: 2,
+                        backgroundColor: '#ffffff',
+                        useCORS: true,
+                        logging: true,
+                    });
+                    console.log('Canvas capturado:', canvas.width, 'x', canvas.height);
+                    captured.push(canvas.toDataURL('image/png'));
+                    el.style.width = orig;
+                }
+                console.log('Total imágenes capturadas:', captured.length);
+                chartImages = captured;
             }
         } catch (chartError) {
             console.warn("Gráfica no capturada, PDF sin gráfica:", chartError);
