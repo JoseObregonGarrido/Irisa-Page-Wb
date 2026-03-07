@@ -126,25 +126,62 @@ const HomePage: React.FC = () => {
             } else if (deviceType === 'ph' && phChartRef.current) {
                 const els = phChartRef.current.getChartElements();
                 const captured: string[] = [];
+
+                // html2canvas no soporta oklch (Tailwind v3+)
+                // Sobreescribimos todos los colores problemáticos con fallbacks seguros
+                const fixOklchColors = (el: HTMLElement) => {
+                    const all = el.querySelectorAll<HTMLElement>('*');
+                    const overrides: Array<{ el: HTMLElement; prop: string; prev: string }> = [];
+                    const oklchProps = ['color', 'backgroundColor', 'borderColor', 'fill', 'stroke', 'outlineColor', 'boxShadow'];
+                    [el, ...Array.from(all)].forEach(node => {
+                        const computed = window.getComputedStyle(node as HTMLElement);
+                        oklchProps.forEach(prop => {
+                            const val = computed.getPropertyValue(prop.replace(/([A-Z])/g, '-$1').toLowerCase());
+                            if (val && val.includes('oklch')) {
+                                overrides.push({ el: node as HTMLElement, prop, prev: (node as HTMLElement).style.getPropertyValue(prop) });
+                                (node as HTMLElement).style.setProperty(prop, '#ffffff');
+                            }
+                        });
+                    });
+                    return overrides;
+                };
+
+                const restoreColors = (overrides: Array<{ el: HTMLElement; prop: string; prev: string }>) => {
+                    overrides.forEach(({ el, prop, prev }) => {
+                        if (prev) el.style.setProperty(prop, prev);
+                        else el.style.removeProperty(prop);
+                    });
+                };
+
                 for (const el of [els.chart1, els.chart2]) {
-                    if (!el) { console.warn('PHChart element null'); continue; }
-                    console.log('Capturando chart pH, offsetWidth:', el.offsetWidth, 'offsetHeight:', el.offsetHeight);
-                    // Fijar ancho para que ResponsiveContainer tenga referencia
+                    if (!el) continue;
                     const orig = el.style.width;
                     el.style.width = '1100px';
                     await new Promise(r => setTimeout(r, 400));
-                    console.log('Después de espera, offsetWidth:', el.offsetWidth);
-                    const canvas = await html2canvas(el, {
-                        scale: 2,
-                        backgroundColor: '#ffffff',
-                        useCORS: true,
-                        logging: true,
-                    });
-                    console.log('Canvas capturado:', canvas.width, 'x', canvas.height);
-                    captured.push(canvas.toDataURL('image/png'));
-                    el.style.width = orig;
+
+                    const overrides = fixOklchColors(el);
+                    try {
+                        const canvas = await html2canvas(el, {
+                            scale: 2,
+                            backgroundColor: '#ffffff',
+                            useCORS: true,
+                            logging: false,
+                            onclone: (clonedDoc) => {
+                                // Eliminar cualquier color oklch del clon también
+                                clonedDoc.querySelectorAll<HTMLElement>('*').forEach(node => {
+                                    const style = node.getAttribute('style') || '';
+                                    if (style.includes('oklch')) {
+                                        node.setAttribute('style', style.replace(/oklch\([^)]+\)/g, '#ffffff'));
+                                    }
+                                });
+                            }
+                        });
+                        captured.push(canvas.toDataURL('image/png'));
+                    } finally {
+                        restoreColors(overrides);
+                        el.style.width = orig;
+                    }
                 }
-                console.log('Total imágenes capturadas:', captured.length);
                 chartImages = captured;
             }
         } catch (chartError) {
