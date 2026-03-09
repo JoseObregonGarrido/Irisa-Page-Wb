@@ -244,22 +244,40 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             autoTable(pdf, {
                 startY: yPos,
                 margin: { left: marginX, right: marginX },
-                head: [['Patrón Buffer', 'Promedio pH', 'Desviación', 'Voltaje (mV)', 'Temp (°C)', 'Error mV', 'Error %']],
-                body: data.phTests.map(t => [
-                    t.patron ? `pH ${t.patron}` : '—',
-                    t.promedio    || '0',
-                    t.desviacion  || '0',
-                    t.voltaje     || '0',
-                    t.temperatura || '0',
-                    t.errorMv     || '0',
-                    t.error ? `${t.error}%` : '0%'
-                ]),
+                head: [['Patrón Buffer', 'Promedio pH', 'Desviación', 'Voltaje (mV)', 'Temp (°C)', 'Rango Vida (mV)', 'Estado Electrodo', 'Error %']],
+                body: data.phTests.map(t => {
+                    const mv = parseFloat(t.errorMv);
+                    const estado = isNaN(mv) || t.errorMv === ''
+                        ? '—'
+                        : mv <= 59 ? 'OK'
+                        : mv <= 80 ? 'Verificar'
+                        : 'Agotado';
+                    return [
+                        t.patron ? `pH ${t.patron}` : '—',
+                        t.promedio    || '0',
+                        t.desviacion  || '0',
+                        t.voltaje     || '0',
+                        t.temperatura || '0',
+                        t.errorMv     || '0',
+                        estado,
+                        t.error ? `${t.error}%` : '0%'
+                    ];
+                }),
                 theme: 'grid',
                 headStyles: { fillColor: [13, 148, 136], halign: 'center', fontSize: 8, fontStyle: 'bold' },
                 styles: { fontSize: 8, halign: 'center', cellPadding: 2.5 },
                 columnStyles: {
                     5: { textColor: [180, 90, 0], fontStyle: 'bold' },
-                    6: { textColor: [200, 30, 30], fontStyle: 'bold' }
+                    6: { fontStyle: 'bold' },
+                    7: { textColor: [200, 30, 30], fontStyle: 'bold' }
+                },
+                didParseCell: (data: any) => {
+                    if (data.column.index === 6 && data.section === 'body') {
+                        const v = data.cell.text[0];
+                        if (v === 'OK')        data.cell.styles.textColor = [21, 128, 61];
+                        else if (v === 'Verificar') data.cell.styles.textColor = [180, 90, 0];
+                        else if (v === 'Agotado')   data.cell.styles.textColor = [200, 30, 30];
+                    }
                 }
             });
             yPos = (pdf as any).lastAutoTable.finalY + 12;
