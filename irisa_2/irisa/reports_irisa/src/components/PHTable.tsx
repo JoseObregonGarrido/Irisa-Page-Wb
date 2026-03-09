@@ -6,7 +6,7 @@ export interface PHTest {
     voltaje: string;
     temperatura: string;
     patron: string;
-    errorMv: string;   // input manual de error en mV
+    errorMv: string;   // AHORA SERÁ CALCULADO
     error: string;     // calculado: |(patron - promedio) / patron| × 100 %
 }
 
@@ -73,15 +73,30 @@ const PHTable: React.FC<PHTableProps> = ({ tests, onTestsChange }) => {
         onTestsChange(tests.filter((_, idx) => idx !== i));
     };
 
+    // --- NUEVA LÓGICA DE CÁLCULO AUTOMÁTICO ---
     const recalcError = (updated: PHTest): PHTest => {
-        const promedio = parseFloat(updated.promedio) || 0;
-        const patron   = parseFloat(updated.patron)   || 0;
-        if (patron) {
+        const promedio = parseFloat(updated.promedio);
+        const patron   = parseFloat(updated.patron);
+        const voltajeMedido = parseFloat(updated.voltaje);
+
+        // 1. Cálculo de Error % (Ya lo tenías)
+        if (!isNaN(patron) && !isNaN(promedio) && patron !== 0) {
             const pct = (Math.abs(patron - promedio) / patron) * 100;
             updated.error = pct.toFixed(3);
         } else {
             updated.error = '';
         }
+
+        // 2. Cálculo de Error mV (NUEVO)
+        // mV Teórico = (7 - pH_medido) * 59.16
+        if (!isNaN(promedio) && !isNaN(voltajeMedido)) {
+            const voltajeTeorico = (7 - promedio) * 59.16;
+            const diffMv = Math.abs(voltajeMedido - voltajeTeorico);
+            updated.errorMv = diffMv.toFixed(2);
+        } else {
+            updated.errorMv = '';
+        }
+
         return updated;
     };
 
@@ -92,12 +107,10 @@ const PHTable: React.FC<PHTableProps> = ({ tests, onTestsChange }) => {
         onTestsChange(newTests);
     };
 
-    // 8 columnas: patrón | promedio | desviación | voltaje | temp | error mV | error % | acción
     const gridCols = 'lg:grid-cols-[1fr_1fr_1fr_1fr_1fr_1fr_1fr_80px]';
 
     return (
         <div className="mt-8 w-full bg-white rounded-xl shadow-lg border border-gray-200">
-            {/* CABECERA */}
             <div className="bg-gradient-to-r from-teal-600 to-emerald-600 px-4 py-4 sm:px-6">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
@@ -125,8 +138,6 @@ const PHTable: React.FC<PHTableProps> = ({ tests, onTestsChange }) => {
 
             <div className="overflow-x-auto">
                 <div className="w-full lg:min-w-[1050px]">
-
-                    {/* HEADERS DESKTOP */}
                     <div className={`hidden lg:grid ${gridCols} bg-gray-50 border-b border-gray-200 text-[10px] font-bold text-gray-500 uppercase tracking-wider`}>
                         <div className="px-3 py-4 text-center">Patrón Buffer</div>
                         <div className="px-3 py-4 text-center">Promedio pH</div>
@@ -138,20 +149,13 @@ const PHTable: React.FC<PHTableProps> = ({ tests, onTestsChange }) => {
                         <div className="px-3 py-4 text-center">Acción</div>
                     </div>
 
-                    {/* FILAS */}
                     <div className="divide-y divide-gray-100">
                         {tests.map((test, index) => (
                             <div key={index} className="hover:bg-teal-50/20 transition-colors">
-
-                                {/* MÓVIL / TABLET (< lg): card */}
                                 <div className="lg:hidden p-4 space-y-3">
                                     <div className="flex items-center justify-between">
                                         <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">#{index + 1}</span>
-                                        <button
-                                            onClick={() => handleDeleteRow(index)}
-                                            className="flex items-center gap-1 text-red-400 hover:text-red-600 text-xs font-bold px-2 py-1 rounded-lg hover:bg-red-50 transition-all"
-                                        >
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                        <button onClick={() => handleDeleteRow(index)} className="flex items-center gap-1 text-red-400 hover:text-red-600 text-xs font-bold px-2 py-1 rounded-lg hover:bg-red-50 transition-all">
                                             Eliminar
                                         </button>
                                     </div>
@@ -163,14 +167,17 @@ const PHTable: React.FC<PHTableProps> = ({ tests, onTestsChange }) => {
                                         <InputField label="Desviación" unit="pH" value={test.desviacion} onChange={(e: any) => handleChange(index, 'desviacion', e.target.value)} />
                                         <InputField label="Voltaje" unit="mV" value={test.voltaje} onChange={(e: any) => handleChange(index, 'voltaje', e.target.value)} />
                                         <InputField label="Temperatura" unit="°C" value={test.temperatura} onChange={(e: any) => handleChange(index, 'temperatura', e.target.value)} />
-                                        <InputField label="Error mV" unit="mV" value={test.errorMv} onChange={(e: any) => handleChange(index, 'errorMv', e.target.value)} />
                                     </div>
-                                    <div className="bg-red-50/40 rounded-lg p-2 border border-red-100">
-                                        <InputField label="Error %" unit="%" value={test.error} isError readOnly />
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div className="bg-orange-50/40 rounded-lg p-2 border border-orange-100">
+                                            <InputField label="Error mV" unit="mV" value={test.errorMv} readOnly />
+                                        </div>
+                                        <div className="bg-red-50/40 rounded-lg p-2 border border-red-100">
+                                            <InputField label="Error %" unit="%" value={test.error} isError readOnly />
+                                        </div>
                                     </div>
                                 </div>
 
-                                {/* DESKTOP (≥ lg): fila en grid */}
                                 <div className={`hidden lg:grid ${gridCols} lg:items-center`}>
                                     <div className="px-3 py-3">
                                         <PatronSelect value={test.patron} onChange={(v) => handleChange(index, 'patron', v)} />
@@ -188,7 +195,7 @@ const PHTable: React.FC<PHTableProps> = ({ tests, onTestsChange }) => {
                                         <InputField unit="°C" value={test.temperatura} onChange={(e: any) => handleChange(index, 'temperatura', e.target.value)} />
                                     </div>
                                     <div className="px-3 py-3 bg-orange-50/20">
-                                        <InputField unit="mV" value={test.errorMv} onChange={(e: any) => handleChange(index, 'errorMv', e.target.value)} />
+                                        <InputField unit="mV" value={test.errorMv} readOnly />
                                     </div>
                                     <div className="px-3 py-3 bg-red-50/20">
                                         <InputField unit="%" value={test.error} isError readOnly />
@@ -199,31 +206,10 @@ const PHTable: React.FC<PHTableProps> = ({ tests, onTestsChange }) => {
                                         </button>
                                     </div>
                                 </div>
-
                             </div>
                         ))}
                     </div>
-
-                    {/* EMPTY STATE */}
-                    {tests.length === 0 && (
-                        <div className="text-center py-16 px-4 bg-gray-50/50">
-                            <div className="mb-4 flex justify-center text-gray-300">
-                                <svg className="w-14 h-14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-                                </svg>
-                            </div>
-                            <p className="text-gray-500 font-semibold text-base">No hay registros de pH.</p>
-                            <p className="text-gray-400 text-sm mt-1 mb-5">Inicia agregando una nueva medición.</p>
-                            <button onClick={handleAddRow} className="text-teal-600 font-bold hover:text-teal-700 text-sm px-6 py-2 border-2 border-teal-600 rounded-lg hover:bg-teal-50 transition-all">
-                                + Agregar primera medición
-                            </button>
-                        </div>
-                    )}
                 </div>
-            </div>
-
-            <div className="mt-2 px-4 pb-3 text-right">
-                <p className="text-[10px] text-gray-400 font-medium">Registros totales: {tests.length}</p>
             </div>
         </div>
     );

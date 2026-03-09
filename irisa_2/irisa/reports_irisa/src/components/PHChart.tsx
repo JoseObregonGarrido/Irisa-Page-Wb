@@ -2,7 +2,7 @@ import { forwardRef, useImperativeHandle, useRef } from 'react';
 import {
     LineChart, Line, BarChart, Bar,
     XAxis, YAxis, CartesianGrid, Tooltip,
-    Legend, ReferenceLine, Cell, ResponsiveContainer
+    Legend, ResponsiveContainer, ReferenceLine, Cell
 } from 'recharts';
 
 interface PHTest {
@@ -12,7 +12,7 @@ interface PHTest {
     temperatura: string;
     patron: string;
     errorMv: string;
-    error: string;  // porcentaje calculado
+    error: string; // porcentaje calculado
 }
 
 interface PHChartProps {
@@ -28,6 +28,7 @@ const PHChart = forwardRef(({ tests }: PHChartProps, ref) => {
     const chart1Ref = useRef<HTMLDivElement>(null);
     const chart2Ref = useRef<HTMLDivElement>(null);
 
+    // Expone los elementos DOM — la captura la hace HomePage con html-to-image
     useImperativeHandle(ref, () => ({
         getChartElements: () => ({
             chart1: chart1Ref.current,
@@ -54,10 +55,10 @@ const PHChart = forwardRef(({ tests }: PHChartProps, ref) => {
         }))
         .sort((a, b) => a.patron - b.patron);
 
-    // Chart 2: Error % por medición
+    // Chart 2: Error % por buffer
     const errorData = tests.map((t, i) => ({
         name: `pH ${t.patron || '?'} (M${i + 1})`,
-        error: parseFloat(t.error) || 0,       // ya es porcentaje
+        error: parseFloat(t.error) || 0,
         errorMv: parseFloat(t.errorMv) || 0,
         promedio: parseFloat(t.promedio) || 0,
         patron: t.patron || '?',
@@ -105,10 +106,10 @@ const PHChart = forwardRef(({ tests }: PHChartProps, ref) => {
                 <div className="mb-4">
                     <h4 className="text-sm font-bold text-gray-800 flex items-center gap-2">
                         <span className="w-3 h-3 rounded-full bg-teal-500 inline-block"></span>
-                        Curva de respuesta del electrodo — Voltaje vs Patrón Buffer
+                        Curva de Respuesta del Electrodo — Voltaje vs pH Patrón
                     </h4>
                     <p className="text-xs text-gray-400 mt-0.5">
-                        Relación lineal esperada (ecuación de Nernst: ~59.16 mV/pH a 25°C)
+                        Curva de Nernst: pendiente teórica ~59.16 mV/unidad pH a 25 °C
                     </p>
                 </div>
                 <ResponsiveContainer width="100%" height={300}>
@@ -116,7 +117,7 @@ const PHChart = forwardRef(({ tests }: PHChartProps, ref) => {
                         <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                         <XAxis
                             dataKey="patron"
-                            label={{ value: 'Patrón Buffer (pH)', position: 'insideBottom', offset: -5, fontSize: 11 }}
+                            label={{ value: 'pH Patrón', position: 'insideBottom', offset: -5, fontSize: 11 }}
                             tick={{ fontSize: 10 }}
                             type="number"
                             domain={[3, 10]}
@@ -143,15 +144,15 @@ const PHChart = forwardRef(({ tests }: PHChartProps, ref) => {
                 </ResponsiveContainer>
             </div>
 
-            {/* CHART 2: Error por medición */}
+            {/* CHART 2: Error de Medición por Buffer */}
             <div ref={chart2Ref} className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
                 <div className="mb-4">
                     <h4 className="text-sm font-bold text-gray-800 flex items-center gap-2">
                         <span className="w-3 h-3 rounded-full bg-red-400 inline-block"></span>
-                        Error por medición (Promedio − Patrón Buffer)
+                        Error de Medición por Buffer
                     </h4>
                     <p className="text-xs text-gray-400 mt-0.5">
-                        Diferencia entre el promedio medido y el valor del patrón buffer
+                        Desviación porcentual entre el pH medido y el valor nominal del buffer
                     </p>
                 </div>
                 <ResponsiveContainer width="100%" height={260}>
@@ -164,7 +165,7 @@ const PHChart = forwardRef(({ tests }: PHChartProps, ref) => {
                         />
                         <Tooltip content={<CustomTooltip2 />} />
                         <ReferenceLine y={0} stroke="#6b7280" strokeWidth={1.5} />
-                        <Bar dataKey="error" name="Error pH" radius={[4, 4, 0, 0]} maxBarSize={60} isAnimationActive={false}>
+                        <Bar dataKey="error" name="Error (%)" radius={[4, 4, 0, 0]} maxBarSize={60} isAnimationActive={false}>
                             {errorData.map((entry, i) => (
                                 <Cell
                                     key={i}
