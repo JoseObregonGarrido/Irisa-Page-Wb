@@ -5,6 +5,7 @@ export interface PHTest {
     desviacion: string;
     voltaje: string;
     temperatura: string;
+    patron: string;
     error: string;
 }
 
@@ -12,6 +13,8 @@ interface PHTableProps {
     tests: PHTest[];
     onTestsChange: (tests: PHTest[]) => void;
 }
+
+const BUFFER_OPTIONS = ['4', '7', '9'];
 
 const InputField = ({ label, value, onChange, unit, isError = false, readOnly = false }: any) => (
     <div className="flex flex-col w-full">
@@ -37,30 +40,50 @@ const InputField = ({ label, value, onChange, unit, isError = false, readOnly = 
     </div>
 );
 
+const PatronSelect = ({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
+    <div className="flex flex-col w-full">
+        <label className="block text-[10px] font-bold text-gray-500 mb-1 lg:hidden uppercase tracking-wider">Patrón Buffer</label>
+        <div className="relative w-full">
+            <select
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                className="w-full px-3 py-2.5 text-xs border border-gray-300 bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 text-gray-700 shadow-sm appearance-none cursor-pointer font-bold"
+            >
+                <option value="">— pH —</option>
+                {BUFFER_OPTIONS.map(opt => (
+                    <option key={opt} value={opt}>pH {opt}</option>
+                ))}
+            </select>
+            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-[9px]">▼</span>
+        </div>
+    </div>
+);
+
 const PHTable: React.FC<PHTableProps> = ({ tests, onTestsChange }) => {
 
     const handleAddRow = () => {
-        onTestsChange([...tests, { promedio: '', desviacion: '', voltaje: '', temperatura: '', error: '' }]);
+        onTestsChange([...tests, { promedio: '', desviacion: '', voltaje: '', temperatura: '', patron: '', error: '' }]);
     };
 
     const handleDeleteRow = (i: number) => {
         onTestsChange(tests.filter((_, idx) => idx !== i));
     };
 
+    const recalcError = (updated: PHTest): PHTest => {
+        const promedio = parseFloat(updated.promedio) || 0;
+        const patron   = parseFloat(updated.patron)   || 0;
+        updated.error  = patron ? (promedio - patron).toFixed(3) : '';
+        return updated;
+    };
+
     const handleChange = (index: number, field: keyof PHTest, value: string) => {
         const newTests = [...tests];
-        const updated = { ...newTests[index], [field]: value };
-
-        // Error = Promedio - Desviación
-        const promedio  = parseFloat(field === 'promedio'  ? value : updated.promedio)  || 0;
-        const desviacion = parseFloat(field === 'desviacion' ? value : updated.desviacion) || 0;
-        updated.error = (promedio - desviacion).toFixed(3);
-
+        const updated = recalcError({ ...newTests[index], [field]: value });
         newTests[index] = updated;
         onTestsChange(newTests);
     };
 
-    const gridCols = 'lg:grid-cols-[1fr_1fr_1fr_1fr_1fr_80px]';
+    const gridCols = 'lg:grid-cols-[1fr_1fr_1fr_1fr_1fr_1fr_80px]';
 
     return (
         <div className="mt-8 w-full bg-white rounded-xl shadow-lg border border-gray-200">
@@ -91,10 +114,11 @@ const PHTable: React.FC<PHTableProps> = ({ tests, onTestsChange }) => {
             </div>
 
             <div className="overflow-x-auto">
-                <div className="w-full lg:min-w-[800px]">
+                <div className="w-full lg:min-w-[900px]">
 
                     {/* HEADERS DESKTOP */}
                     <div className={`hidden lg:grid ${gridCols} bg-gray-50 border-b border-gray-200 text-[10px] font-bold text-gray-500 uppercase tracking-wider`}>
+                        <div className="px-4 py-4 text-center">Patrón Buffer</div>
                         <div className="px-4 py-4 text-center">Promedio pH</div>
                         <div className="px-4 py-4 text-center">Desviación</div>
                         <div className="px-4 py-4 text-center">Voltaje</div>
@@ -121,10 +145,13 @@ const PHTable: React.FC<PHTableProps> = ({ tests, onTestsChange }) => {
                                         </button>
                                     </div>
                                     <div className="grid grid-cols-2 gap-3">
-                                        <InputField label="Promedio pH" unit="pH" value={test.promedio} onChange={(e:any) => handleChange(index, 'promedio', e.target.value)} />
-                                        <InputField label="Desviación" unit="pH" value={test.desviacion} onChange={(e:any) => handleChange(index, 'desviacion', e.target.value)} />
-                                        <InputField label="Voltaje" unit="mV" value={test.voltaje} onChange={(e:any) => handleChange(index, 'voltaje', e.target.value)} />
-                                        <InputField label="Temperatura" unit="°C" value={test.temperatura} onChange={(e:any) => handleChange(index, 'temperatura', e.target.value)} />
+                                        <div className="col-span-2">
+                                            <PatronSelect value={test.patron} onChange={(v) => handleChange(index, 'patron', v)} />
+                                        </div>
+                                        <InputField label="Promedio pH" unit="pH" value={test.promedio} onChange={(e: any) => handleChange(index, 'promedio', e.target.value)} />
+                                        <InputField label="Desviación" unit="pH" value={test.desviacion} onChange={(e: any) => handleChange(index, 'desviacion', e.target.value)} />
+                                        <InputField label="Voltaje" unit="mV" value={test.voltaje} onChange={(e: any) => handleChange(index, 'voltaje', e.target.value)} />
+                                        <InputField label="Temperatura" unit="°C" value={test.temperatura} onChange={(e: any) => handleChange(index, 'temperatura', e.target.value)} />
                                     </div>
                                     <div className="bg-red-50/40 rounded-lg p-2 border border-red-100">
                                         <InputField label="Error" unit="pH" value={test.error} isError readOnly />
@@ -134,16 +161,19 @@ const PHTable: React.FC<PHTableProps> = ({ tests, onTestsChange }) => {
                                 {/* DESKTOP (≥ lg): fila en grid */}
                                 <div className={`hidden lg:grid ${gridCols} lg:items-center`}>
                                     <div className="px-4 py-3">
-                                        <InputField label="Promedio pH" unit="pH" value={test.promedio} onChange={(e:any) => handleChange(index, 'promedio', e.target.value)} />
+                                        <PatronSelect value={test.patron} onChange={(v) => handleChange(index, 'patron', v)} />
                                     </div>
                                     <div className="px-4 py-3">
-                                        <InputField label="Desviación" unit="pH" value={test.desviacion} onChange={(e:any) => handleChange(index, 'desviacion', e.target.value)} />
+                                        <InputField label="Promedio pH" unit="pH" value={test.promedio} onChange={(e: any) => handleChange(index, 'promedio', e.target.value)} />
                                     </div>
                                     <div className="px-4 py-3">
-                                        <InputField label="Voltaje" unit="mV" value={test.voltaje} onChange={(e:any) => handleChange(index, 'voltaje', e.target.value)} />
+                                        <InputField label="Desviación" unit="pH" value={test.desviacion} onChange={(e: any) => handleChange(index, 'desviacion', e.target.value)} />
                                     </div>
                                     <div className="px-4 py-3">
-                                        <InputField label="Temperatura" unit="°C" value={test.temperatura} onChange={(e:any) => handleChange(index, 'temperatura', e.target.value)} />
+                                        <InputField label="Voltaje" unit="mV" value={test.voltaje} onChange={(e: any) => handleChange(index, 'voltaje', e.target.value)} />
+                                    </div>
+                                    <div className="px-4 py-3">
+                                        <InputField label="Temperatura" unit="°C" value={test.temperatura} onChange={(e: any) => handleChange(index, 'temperatura', e.target.value)} />
                                     </div>
                                     <div className="px-4 py-3 bg-red-50/20">
                                         <InputField label="Error" unit="pH" value={test.error} isError readOnly />
