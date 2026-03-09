@@ -23,13 +23,28 @@ export interface ReportData {
     unity: string;
     deviceCode: string;
     observations: string;
-    hasUeTransmitter?: boolean; 
-    outputUnit?: 'mA' | 'ohm' | 'mv';    
+    hasUeTransmitter?: boolean;
+    outputUnit?: 'mA' | 'ohm' | 'mv';
     transmitterMeasurements?: any[];
     pressureSwitchTests?: any[];
     thermostatTests?: any[];
     phTests?: any[];
 }
+
+// ─── Tolerancia dinámica (misma lógica que PHTable.tsx) ───────────────────────
+const V0_PH = 174;
+const T0_PH = 30;
+const K_PH  = 0.1;
+
+const getToleranciaDinamica = (voltajeMedido: number): number =>
+    Math.max(10, T0_PH - K_PH * (voltajeMedido - V0_PH));
+
+const getEstadoPH = (errorMv: number, tolerancia: number): 'OK' | 'Verificar' | 'Agotado' => {
+    if (errorMv <= tolerancia * 0.60) return 'OK';
+    if (errorMv <= tolerancia)        return 'Verificar';
+    return 'Agotado';
+};
+// ─────────────────────────────────────────────────────────────────────────────
 
 const capitalize = (text: string) => {
     if (!text) return '';
@@ -54,28 +69,31 @@ const getBase64ImageFromUrl = async (url: string): Promise<string> => {
 };
 
 export const generatePDFReport = async (data: ReportData, chartImages?: string[]): Promise<void> => {
-    // Usamos orientación horizontal para que las gráficas quepan bien
     const pdf = new jsPDF({ orientation: 'landscape' });
-    const pageW = pdf.internal.pageSize.getWidth();   // 297mm
-    const pageH = pdf.internal.pageSize.getHeight();  // 210mm
+    const pageW = pdf.internal.pageSize.getWidth();
+    const pageH = pdf.internal.pageSize.getHeight();
     const marginX = 15;
     const contentW = pageW - marginX * 2;
 
     const measurements = data.transmitterMeasurements || [];
-    const unit = data.outputUnit || 'mA';
+    const unit  = data.outputUnit || 'mA';
     const hasUE = data.hasUeTransmitter ?? false;
-    
     const isOhm = unit === 'ohm';
     const isMv  = unit === 'mv';
 
     let yPos = 20;
 
-    const colors: { [key: string]: [number, number, number] } = { 
-        risaraldaGreen:     [20, 110, 90], 
+    const colors: { [key: string]: [number, number, number] } = {
+        risaraldaGreen:     [20, 110, 90],
         orangeThermocouple: [230, 126, 34],
         purpleTX:           [109, 40, 217],
+        tealPH:             [13, 148, 136],
         lightGray:          [245, 245, 245],
-        white:              [252, 252, 252]
+        white:              [252, 252, 252],
+        green:              [21, 128, 61],
+        orange:             [180, 90, 0],
+        red:                [200, 30, 30],
+        blue:               [13, 100, 180],
     };
 
     const addHeader = (title: string) => {
@@ -87,91 +105,73 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
     };
 
     try {
-        // --- LOGO ---
+        // ── LOGO ──
         try {
             const b64Logo = await getBase64ImageFromUrl(logo);
             pdf.addImage(b64Logo, 'PNG', marginX, 12, 50, 20);
-        } catch { console.warn("Logo no cargado"); }
-        
+        } catch { console.warn('Logo no cargado'); }
+
         pdf.setFontSize(16).setFont('helvetica', 'bold').setTextColor(0)
            .text('REPORTE DE CALIBRACIÓN', pageW / 2, 25, { align: 'center' });
         yPos = 45;
 
-        // --- ESPECIFICACIONES ---
+        // ── ESPECIFICACIONES ──
         addHeader('Especificaciones del instrumento');
         autoTable(pdf, {
             startY: yPos,
             margin: { left: marginX, right: marginX },
             body: [
-                ['Nombre del equipo',      data.deviceName,       'Código del equipo',      data.deviceCode],
-                ['Marca del equipo',       data.deviceBrand,      'Modelo del equipo',       data.deviceModel],
-                ['Serial del instrumento', data.deviceSerial,     'Rango del instrumento',   `${data.deviceRange} ${data.unity}`],
-                ['Área del instrumento',   data.instrumentArea,   'Tipo de dispositivo',     capitalize(data.deviceType)],
-                ['Nombre instrumentista',  data.instrumentistName,'Código instrumentista',   data.instrumentistCode],
-                ['Orden de trabajo',       data.workOrder,        'Fecha de revisión',       data.reviewDate || 'N/a']
+                ['Nombre del equipo',      data.deviceName,        'Código del equipo',    data.deviceCode],
+                ['Marca del equipo',       data.deviceBrand,       'Modelo del equipo',    data.deviceModel],
+                ['Serial del instrumento', data.deviceSerial,      'Rango del instrumento',`${data.deviceRange} ${data.unity}`],
+                ['Área del instrumento',   data.instrumentArea,    'Tipo de dispositivo',  capitalize(data.deviceType)],
+                ['Nombre instrumentista',  data.instrumentistName, 'Código instrumentista',data.instrumentistCode],
+                ['Orden de trabajo',       data.workOrder,         'Fecha de revisión',    data.reviewDate || 'N/a'],
             ],
             theme: 'plain',
             styles: { fontSize: 8.5, cellPadding: 3, textColor: 50 },
-            columnStyles: { 
+            columnStyles: {
                 0: { fontStyle: 'bold', fillColor: colors.lightGray, cellWidth: 45 },
-                2: { fontStyle: 'bold', fillColor: colors.lightGray, cellWidth: 45 }
-            }
+                2: { fontStyle: 'bold', fillColor: colors.lightGray, cellWidth: 45 },
+            },
         });
         yPos = (pdf as any).lastAutoTable.finalY + 12;
 
-        // --- TABLA TRANSMISORES ---
+        // ── TRANSMISORES ──
         if (data.deviceType === 'transmitter' && measurements.length) {
-
             if (isMv) {
-                // Separar filas por rowType
                 const mvRows = measurements.filter(m => !m.rowType || m.rowType === 'mv');
                 const txRows = measurements.filter(m => m.rowType === 'tx');
 
-                // Tabla mV
                 if (mvRows.length > 0) {
                     addHeader('Resultados de las mediciones - Termopar (mV)');
                     autoTable(pdf, {
                         startY: yPos,
                         margin: { left: marginX, right: marginX },
                         head: [['mV Ideal', 'mV Sensor', 'Tipo Sensor', 'Error mV']],
-                        body: mvRows.map(m => [
-                            m.idealmV     || '0',
-                            m.sensormV    || '0',
-                            m.sensorType  || 'N/A',
-                            m.errormV     || '0'
-                        ]),
+                        body: mvRows.map(m => [m.idealmV || '0', m.sensormV || '0', m.sensorType || 'N/A', m.errormV || '0']),
                         theme: 'grid',
                         headStyles: { fillColor: colors.orangeThermocouple, halign: 'center', fontSize: 8, fontStyle: 'bold' },
-                        styles: { fontSize: 8, halign: 'center', cellPadding: 2.5 }
+                        styles: { fontSize: 8, halign: 'center', cellPadding: 2.5 },
                     });
                     yPos = (pdf as any).lastAutoTable.finalY + 12;
                 }
-
-                // Tabla TX
                 if (txRows.length > 0) {
                     addHeader('Resultados de las mediciones - Transmisor (TX)');
                     autoTable(pdf, {
                         startY: yPos,
                         margin: { left: marginX, right: marginX },
                         head: [['Ideal mA', 'mA TX', 'Tipo Sensor', 'Err mA']],
-                        body: txRows.map(m => [
-                            m.idealmA    || '0',
-                            m.mATX       || '0',
-                            m.sensorType || 'N/A',
-                            m.errormA    || '0'
-                        ]),
+                        body: txRows.map(m => [m.idealmA || '0', m.mATX || '0', m.sensorType || 'N/A', m.errormA || '0']),
                         theme: 'grid',
                         headStyles: { fillColor: colors.purpleTX, halign: 'center', fontSize: 8, fontStyle: 'bold' },
-                        styles: { fontSize: 8, halign: 'center', cellPadding: 2.5 }
+                        styles: { fontSize: 8, halign: 'center', cellPadding: 2.5 },
                     });
                     yPos = (pdf as any).lastAutoTable.finalY + 12;
                 }
-
             } else {
-                // Tabla mA / ohm (sin cambios)
                 const reportTypeLabel = isOhm ? 'RTD' : 'mA';
                 addHeader(`Resultados de las mediciones - ${reportTypeLabel}`);
-
                 const headers: string[] = ['Ideal UE', 'Ideal mA'];
                 if (isOhm) headers.push('Ideal Ohm');
                 headers.push('Patrón UE');
@@ -179,8 +179,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 headers.push(isOhm ? 'mA Sens.' : 'mA Trans.');
                 if (isOhm) headers.push('Ohm Sens.');
                 if (hasUE) headers.push('Err UE');
-                headers.push('Err mA');
-                headers.push('Err %');
+                headers.push('Err mA', 'Err %');
 
                 const body = measurements.map(m => {
                     const row: any[] = [m.idealUE || m.idealUe, m.idealmA];
@@ -190,8 +189,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                     row.push(m.maTransmitter);
                     if (isOhm) row.push(m.ohmTransmitter || '0');
                     if (hasUE) row.push(m.errorUE || '0.000');
-                    row.push(m.errormA || '0.000');
-                    row.push(m.errorPercentage || '0.00');
+                    row.push(m.errormA || '0.000', m.errorPercentage || '0.00');
                     return row;
                 });
 
@@ -202,90 +200,103 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                     body,
                     theme: 'grid',
                     headStyles: { fillColor: colors.risaraldaGreen, halign: 'center', fontSize: 8, fontStyle: 'bold' },
-                    styles: { fontSize: 8, halign: 'center', cellPadding: 2.5 }
+                    styles: { fontSize: 8, halign: 'center', cellPadding: 2.5 },
                 });
                 yPos = (pdf as any).lastAutoTable.finalY + 12;
             }
         }
 
-        // --- PRESOSTATO / TERMOSTATO ---
+        // ── PRESOSTATO / TERMOSTATO ──
         const isThermostat = data.deviceType === 'thermostat';
-        const switchTests = isThermostat ? data.thermostatTests : data.pressureSwitchTests;
-        
-        if ((data.deviceType === 'pressure_switch' || isThermostat) && switchTests && switchTests.length) {
+        const switchTests  = isThermostat ? data.thermostatTests : data.pressureSwitchTests;
+
+        if ((data.deviceType === 'pressure_switch' || isThermostat) && switchTests?.length) {
             addHeader(isThermostat ? 'RESULTADOS TERMOSTATO' : 'RESULTADOS PRESOSTATO');
             const unitLabel = data.unity || (isThermostat ? '°C' : 'psi');
-            
-            const headers = [
-                isThermostat ? `Temp. disparo (${unitLabel})` : `Presión disparo (${unitLabel})`,
-                isThermostat ? `Temp. repone (${unitLabel})`  : `Presión repone (${unitLabel})`,
-                'Estado contacto'
-            ];
-
             autoTable(pdf, {
                 startY: yPos,
                 margin: { left: marginX, right: marginX },
-                head: [headers],
+                head: [[
+                    isThermostat ? `Temp. disparo (${unitLabel})` : `Presión disparo (${unitLabel})`,
+                    isThermostat ? `Temp. repone (${unitLabel})`  : `Presión repone (${unitLabel})`,
+                    'Estado contacto',
+                ]],
                 body: switchTests.map(t => [
                     isThermostat ? (t.temperaturadeDisparo || '0') : (t.presiondeDisparo || '0'),
                     isThermostat ? (t.temperaturadeRepone  || '0') : (t.presiondeRepone  || '0'),
-                    getContactLabel(t)
+                    getContactLabel(t),
                 ]),
                 theme: 'grid',
                 headStyles: { fillColor: colors.risaraldaGreen, halign: 'center', fontSize: 8.5, fontStyle: 'bold' },
-                styles: { fontSize: 8.5, halign: 'center', cellPadding: 3, textColor: 40 }
+                styles: { fontSize: 8.5, halign: 'center', cellPadding: 3, textColor: 40 },
             });
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }
 
-        // --- TABLA pH ---
-        if (data.deviceType === 'ph' && data.phTests && data.phTests.length) {
+        // ── TABLA pH ── con tolerancia dinámica T = T₀ − k(V − V₀) ──────────
+        if (data.deviceType === 'ph' && data.phTests?.length) {
             addHeader('RESULTADOS MEDICIONES DE pH');
+
             autoTable(pdf, {
                 startY: yPos,
                 margin: { left: marginX, right: marginX },
-                head: [['Patrón Buffer', 'Promedio pH', 'Desviación', 'Voltaje (mV)', 'Temp (°C)', 'Rango Vida (mV)', 'Estado Electrodo', 'Error %']],
+                head: [[
+                    'Patrón Buffer',
+                    'Promedio pH',
+                    'Desviación',
+                    'Voltaje (mV)',
+                    'Temp (°C)',
+                    'Rango Vida (mV)',
+                    'Tol. Dinámica',
+                    'Estado Electrodo',
+                    'Error %',
+                ]],
                 body: data.phTests.map(t => {
-                    const mv = parseFloat(t.errorMv);
-                    const estado = isNaN(mv) || t.errorMv === ''
+                    const mv          = parseFloat(t.errorMv);
+                    const voltaje     = parseFloat(t.voltaje);
+                    const tolerancia  = !isNaN(voltaje)
+                        ? getToleranciaDinamica(voltaje)
+                        : T0_PH;
+
+                    const estado = (isNaN(mv) || t.errorMv === '')
                         ? '—'
-                        : mv <= 20 ? 'OK'
-                        : mv <= 30 ? 'Verificar'
-                        : 'Agotado';
+                        : getEstadoPH(mv, tolerancia);
+
                     return [
-                        t.patron ? `pH ${t.patron}` : '—',
-                        t.promedio    || '0',
-                        t.desviacion  || '0',
-                        t.voltaje     || '0',
+                        t.patron    ? `pH ${t.patron}` : '—',
+                        t.promedio  || '0',
+                        t.desviacion|| '0',
+                        t.voltaje   || '0',
                         t.temperatura || '0',
-                        t.errorMv     || '0',
+                        t.errorMv   || '0',
+                        `${tolerancia.toFixed(1)} mV`,
                         estado,
-                        t.error ? `${t.error}%` : '0%'
+                        t.error     ? `${t.error}%` : '0%',
                     ];
                 }),
                 theme: 'grid',
-                headStyles: { fillColor: [13, 148, 136], halign: 'center', fontSize: 8, fontStyle: 'bold' },
-                styles: { fontSize: 8, halign: 'center', cellPadding: 2.5 },
+                headStyles: { fillColor: colors.tealPH, halign: 'center', fontSize: 7.5, fontStyle: 'bold' },
+                styles: { fontSize: 7.5, halign: 'center', cellPadding: 2.5 },
                 columnStyles: {
-                    5: { textColor: [180, 90, 0], fontStyle: 'bold' },
-                    6: { fontStyle: 'bold' },
-                    7: { textColor: [200, 30, 30], fontStyle: 'bold' }
+                    5: { textColor: colors.orange, fontStyle: 'bold' },  // Rango Vida
+                    6: { textColor: colors.blue,   fontStyle: 'bold' },  // Tol. Dinámica
+                    7: { fontStyle: 'bold' },                             // Estado
+                    8: { textColor: colors.red,    fontStyle: 'bold' },  // Error %
                 },
-                didParseCell: (data: any) => {
-                    if (data.column.index === 6 && data.section === 'body') {
-                        const v = data.cell.text[0];
-                        if (v === 'OK')        data.cell.styles.textColor = [21, 128, 61];
-                        else if (v === 'Verificar') data.cell.styles.textColor = [180, 90, 0];
-                        else if (v === 'Agotado')   data.cell.styles.textColor = [200, 30, 30];
+                didParseCell: (hookData: any) => {
+                    if (hookData.column.index === 7 && hookData.section === 'body') {
+                        const v = hookData.cell.text[0];
+                        if      (v === 'OK')        hookData.cell.styles.textColor = colors.green;
+                        else if (v === 'Verificar') hookData.cell.styles.textColor = colors.orange;
+                        else if (v === 'Agotado')   hookData.cell.styles.textColor = colors.red;
                     }
-                }
+                },
             });
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }
 
-        // --- OBSERVACIONES (antes de gráficas para no solaparse) ---
+        // ── OBSERVACIONES ──
         if (data.observations) {
-            // Siempre en página nueva si no hay suficiente espacio
             if (yPos + 60 > pageH - 15) { pdf.addPage(); yPos = 20; }
             addHeader('OBSERVACIONES Y NOTAS TÉCNICAS');
             autoTable(pdf, {
@@ -293,54 +304,52 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 margin: { left: marginX, right: marginX },
                 body: [[data.observations]],
                 styles: { fontSize: 9, cellPadding: 5, fillColor: colors.white, textColor: 60 },
-                theme: 'plain'
+                theme: 'plain',
             });
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }
 
-        // --- GRÁFICAS: siempre en página nueva, tamaño completo ---
-        if (chartImages && chartImages.length > 0) {
-
-            // Títulos por dispositivo y por índice de gráfica
+        // ── GRÁFICAS ──
+        if (chartImages?.length) {
             const chartTitles: { [key: string]: string[] } = {
-                'transmitter_mA':  ['CURVA DE RESPUESTA DEL TRANSMISOR'],
-                'transmitter_ohm': ['DESVIACIÓN DE OHM (RTD)'],
-                'transmitter_mv':  ['ANÁLISIS mV / TX'],
-                'pressure_switch': ['CURVA DE CALIBRACIÓN Y LINEALIDAD'],
-                'thermostat':      ['CURVA DE CALIBRACIÓN Y LINEALIDAD'],
-                'ph':              ['CURVA DE RESPUESTA DEL ELECTRODO — VOLTAJE vs pH', 'ERROR DE MEDICIÓN POR BUFFER (%)', 'RANGO DE VIDA DEL ELECTRODO (mV)'],
+                transmitter_mA:  ['CURVA DE RESPUESTA DEL TRANSMISOR'],
+                transmitter_ohm: ['DESVIACIÓN DE OHM (RTD)'],
+                transmitter_mv:  ['ANÁLISIS mV / TX'],
+                pressure_switch: ['CURVA DE CALIBRACIÓN Y LINEALIDAD'],
+                thermostat:      ['CURVA DE CALIBRACIÓN Y LINEALIDAD'],
+                ph: [
+                    'CURVA DE RESPUESTA DEL ELECTRODO — VOLTAJE vs pH',
+                    'ERROR DE MEDICIÓN POR BUFFER (%)',
+                    'RANGO DE VIDA DEL ELECTRODO (mV)',
+                ],
             };
-
-            const deviceKey = data.deviceType === 'transmitter'
-                ? `transmitter_${unit}`
-                : data.deviceType;
-
-            const titles = chartTitles[deviceKey] || ['ANÁLISIS GRÁFICO'];
+            const deviceKey = data.deviceType === 'transmitter' ? `transmitter_${unit}` : data.deviceType;
+            const titles    = chartTitles[deviceKey] || ['ANÁLISIS GRÁFICO'];
 
             chartImages.forEach((img, index) => {
                 pdf.addPage();
                 yPos = 15;
-
-                const chartTitle = titles[index] ?? titles[titles.length - 1];
-
                 pdf.setFontSize(11).setFont('helvetica', 'bold').setTextColor(60)
-                   .text(chartTitle, pageW / 2, yPos, { align: 'center' });
+                   .text(titles[index] ?? titles[titles.length - 1], pageW / 2, yPos, { align: 'center' });
                 yPos += 8;
-
-                const imgH = pageH - yPos - 15;
-                pdf.addImage(img, 'PNG', marginX, yPos, contentW, imgH);
+                pdf.addImage(img, 'PNG', marginX, yPos, contentW, pageH - yPos - 15);
             });
         }
 
-        // --- PIE DE PÁGINA ---
+        // ── PIE DE PÁGINA ──
         const pageCount = (pdf as any).internal.getNumberOfPages();
         for (let i = 1; i <= pageCount; i++) {
             pdf.setPage(i);
             pdf.setFontSize(8).setTextColor(150);
-            pdf.text(`Ingenio Risaralda - Generado el ${new Date().toLocaleDateString()}`, pageW / 2, pageH - 5, { align: 'center' });
+            pdf.text(
+                `Ingenio Risaralda - Generado el ${new Date().toLocaleDateString()}`,
+                pageW / 2, pageH - 5, { align: 'center' }
+            );
             pdf.text(`Página ${i} de ${pageCount}`, pageW - marginX, pageH - 5, { align: 'right' });
         }
 
         pdf.save(`Reporte_${data.deviceCode || 'Instrumento'}.pdf`);
-    } catch (e) { console.error("Error generando PDF:", e); }
+    } catch (e) {
+        console.error('Error generando PDF:', e);
+    }
 };
