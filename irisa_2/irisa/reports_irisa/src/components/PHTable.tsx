@@ -24,7 +24,7 @@ const voltajeTeorico = (pH: number) => (7 - pH) * 59.16;
 // Tolerancia: < 59mV aceptable, 59-80mV advertencia, >80mV crítico (electrodo agotado)
 const getEstado = (errorMv: number): { estado: string; label: string; color: string; bg: string; border: string } => {
     if (errorMv <= 20)  return { estado: 'ok',          label: '✓ Electrodo OK',         color: 'text-green-700',  bg: 'bg-green-50',  border: 'border-green-200' };
-    if (errorMv <= 80)  return { estado: 'advertencia', label: '⚠ Verificar electrodo',  color: 'text-orange-700', bg: 'bg-orange-50', border: 'border-orange-200' };
+    if (errorMv <= 30)  return { estado: 'advertencia', label: '⚠ Verificar electrodo',  color: 'text-orange-700', bg: 'bg-orange-50', border: 'border-orange-200' };
     return              { estado: 'critico',             label: '✗ Electrodo agotado',    color: 'text-red-700',    bg: 'bg-red-50',    border: 'border-red-200' };
 };
 
@@ -106,6 +106,13 @@ const PHTable: React.FC<PHTableProps> = ({ tests, onTestsChange }) => {
         const promedio      = parseFloat(updated.promedio);
         const patron        = parseFloat(updated.patron);
         const voltajeMedido = parseFloat(updated.voltaje);
+
+        // Desviación = |patron - promedio| (auto-calculada)
+        if (!isNaN(patron) && !isNaN(promedio)) {
+            updated.desviacion = Math.abs(patron - promedio).toFixed(4);
+        } else {
+            updated.desviacion = '';
+        }
 
         // Error % = |(patron - promedio) / patron| × 100
         if (!isNaN(patron) && !isNaN(promedio) && patron !== 0) {
@@ -219,7 +226,7 @@ const PHTable: React.FC<PHTableProps> = ({ tests, onTestsChange }) => {
                                             <PatronSelect value={test.patron} onChange={(v) => handleChange(index, 'patron', v)} />
                                         </div>
                                         <InputField label="Promedio pH" unit="pH" value={test.promedio} onChange={(e: any) => handleChange(index, 'promedio', e.target.value)} />
-                                        <InputField label="Desviación"  unit="pH" value={test.desviacion} onChange={(e: any) => handleChange(index, 'desviacion', e.target.value)} />
+                                        <InputField label="Desviación"  unit="pH" value={test.desviacion} readOnly />
                                         <InputField label="Voltaje"     unit="mV" value={test.voltaje} onChange={(e: any) => handleChange(index, 'voltaje', e.target.value)} />
                                         <InputField label="Temperatura" unit="°C" value={test.temperatura} onChange={(e: any) => handleChange(index, 'temperatura', e.target.value)} />
                                     </div>
@@ -241,7 +248,7 @@ const PHTable: React.FC<PHTableProps> = ({ tests, onTestsChange }) => {
                                 <div className={`hidden lg:grid ${gridCols} lg:items-center`}>
                                     <div className="px-3 py-3"><PatronSelect value={test.patron} onChange={(v) => handleChange(index, 'patron', v)} /></div>
                                     <div className="px-3 py-3"><InputField unit="pH" value={test.promedio}   onChange={(e: any) => handleChange(index, 'promedio',   e.target.value)} /></div>
-                                    <div className="px-3 py-3"><InputField unit="pH" value={test.desviacion} onChange={(e: any) => handleChange(index, 'desviacion', e.target.value)} /></div>
+                                    <div className="px-3 py-3"><InputField unit="pH" value={test.desviacion} readOnly /></div>
                                     <div className="px-3 py-3"><InputField unit="mV" value={test.voltaje}    onChange={(e: any) => handleChange(index, 'voltaje',    e.target.value)} /></div>
                                     <div className="px-3 py-3"><InputField unit="°C" value={test.temperatura} onChange={(e: any) => handleChange(index, 'temperatura', e.target.value)} /></div>
                                     <div className="px-3 py-3 bg-orange-50/20"><InputField unit="mV" value={test.errorMv} readOnly /></div>
@@ -280,8 +287,8 @@ const PHTable: React.FC<PHTableProps> = ({ tests, onTestsChange }) => {
                 <p className="text-[10px] text-gray-400 font-medium">Registros totales: {tests.length}</p>
                 <div className="flex flex-wrap gap-3 ml-auto">
                     <span className="flex items-center gap-1.5 text-[10px] text-gray-500"><span className="w-2.5 h-2.5 rounded-full bg-green-500 inline-block"></span> ≤ 20 mV — OK</span>
-                    <span className="flex items-center gap-1.5 text-[10px] text-gray-500"><span className="w-2.5 h-2.5 rounded-full bg-orange-400 inline-block"></span> 20–80 mV — Verificar</span>
-                    <span className="flex items-center gap-1.5 text-[10px] text-gray-500"><span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block"></span> &gt; 80 mV — Agotado</span>
+                    <span className="flex items-center gap-1.5 text-[10px] text-gray-500"><span className="w-2.5 h-2.5 rounded-full bg-orange-400 inline-block"></span> 20–30 mV — Verificar</span>
+                    <span className="flex items-center gap-1.5 text-[10px] text-gray-500"><span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block"></span> &gt; 30 mV — Agotado</span>
                 </div>
             </div>
         </div>

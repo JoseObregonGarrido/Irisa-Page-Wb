@@ -250,7 +250,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                     const estado = isNaN(mv) || t.errorMv === ''
                         ? '—'
                         : mv <= 20 ? 'OK'
-                        : mv <= 80 ? 'Verificar'
+                        : mv <= 30 ? 'Verificar'
                         : 'Agotado';
                     return [
                         t.patron ? `pH ${t.patron}` : '—',

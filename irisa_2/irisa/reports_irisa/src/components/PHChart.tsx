@@ -35,7 +35,7 @@ const PATRON_COLORS: Record<string, string> = {
 
 const getBarColor = (errorMv: number) => {
     if (errorMv <= 20) return GREEN;
-    if (errorMv <= 80) return ORANGE;
+    if (errorMv <= 30) return ORANGE;
     return RED;
 };
 
@@ -130,7 +130,7 @@ const PHChart = forwardRef(({ tests }: PHChartProps, ref) => {
             const mv = payload[0]?.value;
             const d = payload[0]?.payload;
             const estado = mv <= 20 ? { label: 'Electrodo OK', color: 'text-green-600' }
-                         : mv <= 80 ? { label: 'Verificar electrodo', color: 'text-orange-500' }
+                         : mv <= 30 ? { label: 'Verificar electrodo', color: 'text-orange-500' }
                          : { label: 'Electrodo agotado', color: 'text-red-600' };
             return (
                 <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3 text-xs">
@@ -313,8 +313,8 @@ const PHChart = forwardRef(({ tests }: PHChartProps, ref) => {
                         <Tooltip content={<CustomTooltip3 />} />
                         <ReferenceLine y={20} stroke={ORANGE} strokeDasharray="5 3" strokeWidth={1.5}
                             label={{ value: '20 mV — Advertencia', position: 'insideTopRight', fontSize: 9, fill: ORANGE }} />
-                        <ReferenceLine y={80} stroke={RED} strokeDasharray="5 3" strokeWidth={2}
-                            label={{ value: '80 mV — Límite crítico', position: 'insideTopRight', fontSize: 9, fill: RED }} />
+                        <ReferenceLine y={30} stroke={RED} strokeDasharray="5 3" strokeWidth={2}
+                            label={{ value: '30 mV — Límite crítico', position: 'insideTopRight', fontSize: 9, fill: RED }} />
                         <Bar dataKey="errorMv" name="Desviación (mV)" radius={[4, 4, 0, 0]} maxBarSize={60} isAnimationActive={false}>
                             {vidaData.map((entry, i) => (
                                 <Cell key={i} fill={getBarColor(entry.errorMv)} />
@@ -324,8 +324,8 @@ const PHChart = forwardRef(({ tests }: PHChartProps, ref) => {
                 </ResponsiveContainer>
                 <div className="flex flex-wrap gap-4 mt-3 justify-center">
                     <span className="flex items-center gap-1.5 text-xs text-gray-500"><span className="w-3 h-3 rounded-sm bg-emerald-500 inline-block"></span> ≤ 20 mV — Electrodo OK</span>
-                    <span className="flex items-center gap-1.5 text-xs text-gray-500"><span className="w-3 h-3 rounded-sm bg-orange-400 inline-block"></span> 20–80 mV — Verificar</span>
-                    <span className="flex items-center gap-1.5 text-xs text-gray-500"><span className="w-3 h-3 rounded-sm bg-red-500 inline-block"></span> &gt; 80 mV — Agotado</span>
+                    <span className="flex items-center gap-1.5 text-xs text-gray-500"><span className="w-3 h-3 rounded-sm bg-orange-400 inline-block"></span> 20–30 mV — Verificar</span>
+                    <span className="flex items-center gap-1.5 text-xs text-gray-500"><span className="w-3 h-3 rounded-sm bg-red-500 inline-block"></span> &gt; 30 mV — Agotado</span>
                 </div>
             </div>
 
