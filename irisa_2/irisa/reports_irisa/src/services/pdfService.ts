@@ -308,7 +308,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 'transmitter_mv':  ['ANÁLISIS mV / TX'],
                 'pressure_switch': ['CURVA DE CALIBRACIÓN Y LINEALIDAD'],
                 'thermostat':      ['CURVA DE CALIBRACIÓN Y LINEALIDAD'],
-                'ph':              ['CURVA DE RESPUESTA DEL ELECTRODO — VOLTAJE vs pH', 'ERROR POR MEDICIÓN DE pH'],
+                'ph':              ['CURVA DE RESPUESTA DEL ELECTRODO — VOLTAJE vs pH', 'ERROR DE MEDICIÓN POR BUFFER (%)', 'RANGO DE VIDA DEL ELECTRODO (mV)'],
             };
 
             const deviceKey = data.deviceType === 'transmitter'

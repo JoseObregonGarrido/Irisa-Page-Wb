@@ -2,7 +2,7 @@ import { forwardRef, useImperativeHandle, useRef } from 'react';
 import {
     LineChart, Line, BarChart, Bar,
     XAxis, YAxis, CartesianGrid, Tooltip,
-    Legend, ResponsiveContainer, ReferenceLine, Cell
+    ResponsiveContainer, ReferenceLine, Cell
 } from 'recharts';
 
 interface PHTest {
@@ -25,12 +25,22 @@ const PURPLE = '#7c3aed';
 const RED    = '#ef4444';
 const GREEN  = '#10b981';
 const ORANGE = '#f97316';
+const BLUE   = '#3b82f6';
+
+const PATRON_COLORS: Record<string, string> = {
+    '4': PURPLE,
+    '7': TEAL,
+    '9': BLUE,
+};
 
 const getBarColor = (errorMv: number) => {
     if (errorMv <= 59) return GREEN;
     if (errorMv <= 80) return ORANGE;
     return RED;
 };
+
+// Voltaje teórico Nernst para un pH dado
+const voltajeTeorico = (pH: number) => (7 - pH) * 59.16;
 
 const PHChart = forwardRef(({ tests }: PHChartProps, ref) => {
     const chart1Ref = useRef<HTMLDivElement>(null);
@@ -53,43 +63,43 @@ const PHChart = forwardRef(({ tests }: PHChartProps, ref) => {
         );
     }
 
-    // Chart 1: Voltaje medido vs Patrón Buffer
-    const curvaData = tests
-        .map((t, i) => ({
-            name: `M${i + 1}`,
-            patron: parseFloat(t.patron) || 0,
-            voltaje: parseFloat(t.voltaje) || 0,
-            promedio: parseFloat(t.promedio) || 0,
-            temperatura: parseFloat(t.temperatura) || 0,
-        }))
-        .sort((a, b) => a.patron - b.patron);
+    // --- Agrupar mediciones por patrón buffer ---
+    const patronesSet = new Set(tests.map(t => t.patron).filter(Boolean));
+    const patrones = Array.from(patronesSet).sort((a, b) => parseFloat(a) - parseFloat(b));
 
-    // Chart 2: Error % por buffer
+    const groupedByPatron: Record<string, typeof tests> = {};
+    patrones.forEach(p => {
+        groupedByPatron[p] = tests.filter(t => t.patron === p);
+    });
+
+    // --- Chart 2: Error % ---
     const errorData = tests.map((t, i) => ({
-        name: `pH ${t.patron || '?'} (M${i + 1})`,
+        name: `pH ${t.patron || '?'} M${i + 1}`,
         error: parseFloat(t.error) || 0,
         errorMv: parseFloat(t.errorMv) || 0,
         promedio: parseFloat(t.promedio) || 0,
         patron: t.patron || '?',
     }));
 
-    // Chart 3: Rango de Vida del Electrodo (errorMv por buffer)
+    // --- Chart 3: Rango Vida ---
     const vidaData = tests.map((t, i) => ({
-        name: `pH ${t.patron || '?'} (M${i + 1})`,
+        name: `pH ${t.patron || '?'} M${i + 1}`,
         errorMv: parseFloat(t.errorMv) || 0,
         patron: t.patron || '?',
         promedio: parseFloat(t.promedio) || 0,
     }));
 
-    const CustomTooltip1 = ({ active, payload }: any) => {
+    const CustomTooltipPatron = ({ active, payload, patronVal }: any) => {
         if (active && payload?.length) {
             const d = payload[0]?.payload;
             return (
                 <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3 text-xs">
-                    <p className="font-bold text-gray-700 mb-1">{d?.name}</p>
-                    <p className="text-teal-600">Patrón buffer: <span className="font-bold">pH {d?.patron}</span></p>
-                    <p className="text-gray-500">Promedio medido: <span className="font-bold">{d?.promedio} pH</span></p>
-                    <p className="text-purple-600">Voltaje: <span className="font-bold">{payload[0]?.value} mV</span></p>
+                    <p className="font-bold text-gray-700 mb-1">Medición {d?.label}</p>
+                    <p className="text-gray-500">pH promedio: <span className="font-bold">{d?.promedio}</span></p>
+                    <p style={{ color: PATRON_COLORS[patronVal] || PURPLE }}>
+                        Voltaje: <span className="font-bold">{d?.voltaje} mV</span>
+                    </p>
+                    <p className="text-gray-400">V. teórico: <span className="font-bold">{voltajeTeorico(parseFloat(d?.promedio || '0')).toFixed(2)} mV</span></p>
                     <p className="text-orange-500">Temp: <span className="font-bold">{d?.temperatura} °C</span></p>
                 </div>
             );
@@ -104,7 +114,7 @@ const PHChart = forwardRef(({ tests }: PHChartProps, ref) => {
             return (
                 <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3 text-xs">
                     <p className="font-bold text-gray-700 mb-1">Buffer pH {d?.patron}</p>
-                    <p className="text-gray-600">Promedio medido: <span className="font-bold">{d?.promedio} pH</span></p>
+                    <p className="text-gray-600">pH medido: <span className="font-bold">{d?.promedio}</span></p>
                     <p className="text-orange-500">Rango vida: <span className="font-bold">{d?.errorMv} mV</span></p>
                     <p className={err < 0.5 ? 'text-green-600' : err < 2 ? 'text-teal-600' : 'text-red-500'}>
                         Error: <span className="font-bold">{err.toFixed(3)}%</span>
@@ -137,50 +147,115 @@ const PHChart = forwardRef(({ tests }: PHChartProps, ref) => {
     return (
         <div className="space-y-8">
 
-            {/* CHART 1: Voltaje vs Patrón Buffer */}
+            {/* ── CHART 1: Una mini-gráfica por cada patrón buffer ── */}
             <div ref={chart1Ref} className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-                <div className="mb-4">
+                <div className="mb-5">
                     <h4 className="text-sm font-bold text-gray-800 flex items-center gap-2">
                         <span className="w-3 h-3 rounded-full bg-teal-500 inline-block"></span>
-                        Curva de Respuesta del Electrodo — Voltaje vs pH Patrón
+                        Curva de Respuesta del Electrodo — Voltaje por Patrón Buffer
                     </h4>
                     <p className="text-xs text-gray-400 mt-0.5">
-                        Curva de Nernst: pendiente teórica ~59.16 mV/unidad pH a 25 °C
+                        Cada gráfica muestra todas las mediciones del mismo buffer. Voltaje teórico Nernst = (7 − pH) × 59.16 mV a 25 °C
                     </p>
                 </div>
-                <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={curvaData} margin={{ top: 10, right: 30, left: 10, bottom: 10 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                        <XAxis
-                            dataKey="patron"
-                            label={{ value: 'pH Patrón', position: 'insideBottom', offset: -5, fontSize: 11 }}
-                            tick={{ fontSize: 10 }}
-                            type="number"
-                            domain={[3, 10]}
-                            ticks={[4, 7, 9]}
-                        />
-                        <YAxis
-                            label={{ value: 'Voltaje (mV)', angle: -90, position: 'insideLeft', offset: 10, fontSize: 11 }}
-                            tick={{ fontSize: 10 }}
-                        />
-                        <Tooltip content={<CustomTooltip1 />} />
-                        <Legend wrapperStyle={{ fontSize: 11 }} />
-                        <ReferenceLine y={0} stroke="#d1d5db" strokeDasharray="4 4" />
-                        <Line
-                            type="monotone"
-                            dataKey="voltaje"
-                            name="Voltaje (mV)"
-                            stroke={PURPLE}
-                            strokeWidth={2.5}
-                            dot={{ fill: PURPLE, r: 5, strokeWidth: 2, stroke: '#fff' }}
-                            activeDot={{ r: 7 }}
-                            isAnimationActive={false}
-                        />
-                    </LineChart>
-                </ResponsiveContainer>
+
+                {patrones.length === 0 ? (
+                    <p className="text-gray-400 text-sm text-center py-8">Seleccione un patrón buffer en la tabla para ver la gráfica.</p>
+                ) : (
+                    <div className={`grid gap-6 ${patrones.length === 1 ? 'grid-cols-1' : patrones.length === 2 ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3'}`}>
+                        {patrones.map(patron => {
+                            const rows = groupedByPatron[patron];
+                            const color = PATRON_COLORS[patron] || PURPLE;
+                            const vTeorico = voltajeTeorico(parseFloat(patron));
+
+                            // Datos: una barra/punto por medición de este buffer
+                            const data = rows.map((t, i) => ({
+                                label: `M${i + 1}`,
+                                voltaje: parseFloat(t.voltaje) || 0,
+                                promedio: t.promedio,
+                                temperatura: t.temperatura,
+                                index: i + 1,
+                            }));
+
+                            const voltajes = data.map(d => d.voltaje);
+                            const minV = Math.min(...voltajes, vTeorico);
+                            const maxV = Math.max(...voltajes, vTeorico);
+                            const padding = Math.max(10, (maxV - minV) * 0.2);
+                            const domainMin = Math.floor(minV - padding);
+                            const domainMax = Math.ceil(maxV + padding);
+
+                            return (
+                                <div key={patron} className="border border-gray-100 rounded-xl p-3 bg-gray-50/50">
+                                    {/* Header del mini-chart */}
+                                    <div className="flex items-center justify-between mb-3">
+                                        <div className="flex items-center gap-2">
+                                            <span className="w-3 h-3 rounded-full inline-block" style={{ backgroundColor: color }}></span>
+                                            <span className="text-sm font-black text-gray-700">Buffer pH {patron}</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[10px] text-gray-400 font-medium">{rows.length} medición{rows.length !== 1 ? 'es' : ''}</span>
+                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
+                                                V.teórico: {vTeorico.toFixed(1)} mV
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <ResponsiveContainer width="100%" height={220}>
+                                        <LineChart data={data} margin={{ top: 10, right: 20, left: 5, bottom: 10 }}>
+                                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                                            <XAxis
+                                                dataKey="label"
+                                                tick={{ fontSize: 10 }}
+                                                label={{ value: 'Medición', position: 'insideBottom', offset: -3, fontSize: 10 }}
+                                            />
+                                            <YAxis
+                                                tick={{ fontSize: 9 }}
+                                                domain={[domainMin, domainMax]}
+                                                label={{ value: 'mV', angle: -90, position: 'insideLeft', offset: 12, fontSize: 10 }}
+                                            />
+                                            <Tooltip content={<CustomTooltipPatron patronVal={patron} />} />
+                                            {/* Línea del voltaje teórico Nernst */}
+                                            <ReferenceLine
+                                                y={vTeorico}
+                                                stroke={color}
+                                                strokeDasharray="6 3"
+                                                strokeWidth={1.5}
+                                                label={{ value: `Teórico ${vTeorico.toFixed(1)}mV`, position: 'insideTopRight', fontSize: 8, fill: color }}
+                                            />
+                                            <Line
+                                                type="monotone"
+                                                dataKey="voltaje"
+                                                name="Voltaje (mV)"
+                                                stroke={color}
+                                                strokeWidth={2}
+                                                dot={{ fill: color, r: 5, strokeWidth: 2, stroke: '#fff' }}
+                                                activeDot={{ r: 7 }}
+                                                isAnimationActive={false}
+                                            />
+                                        </LineChart>
+                                    </ResponsiveContainer>
+
+                                    {/* Stats del buffer */}
+                                    {data.length > 0 && (() => {
+                                        const vs = data.map(d => d.voltaje);
+                                        const avg = vs.reduce((a, b) => a + b, 0) / vs.length;
+                                        const desv = Math.sqrt(vs.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / vs.length);
+                                        return (
+                                            <div className="mt-2 flex gap-3 flex-wrap justify-center">
+                                                <span className="text-[10px] text-gray-500">Promedio: <strong>{avg.toFixed(2)} mV</strong></span>
+                                                <span className="text-[10px] text-gray-500">Desv: <strong>{desv.toFixed(2)} mV</strong></span>
+                                                <span className="text-[10px] text-gray-500">Δ Teórico: <strong>{Math.abs(avg - vTeorico).toFixed(2)} mV</strong></span>
+                                            </div>
+                                        );
+                                    })()}
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
             </div>
 
-            {/* CHART 2: Error % por buffer */}
+            {/* ── CHART 2: Error % por buffer ── */}
             <div ref={chart2Ref} className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
                 <div className="mb-4">
                     <h4 className="text-sm font-bold text-gray-800 flex items-center gap-2">
@@ -215,7 +290,7 @@ const PHChart = forwardRef(({ tests }: PHChartProps, ref) => {
                 </div>
             </div>
 
-            {/* CHART 3: Rango de Vida del Electrodo */}
+            {/* ── CHART 3: Rango de Vida del Electrodo ── */}
             <div ref={chart3Ref} className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
                 <div className="mb-4">
                     <h4 className="text-sm font-bold text-gray-800 flex items-center gap-2">
@@ -236,10 +311,8 @@ const PHChart = forwardRef(({ tests }: PHChartProps, ref) => {
                             domain={[0, 'auto']}
                         />
                         <Tooltip content={<CustomTooltip3 />} />
-                        {/* Línea de advertencia 59mV */}
                         <ReferenceLine y={59} stroke={ORANGE} strokeDasharray="5 3" strokeWidth={1.5}
                             label={{ value: '59 mV — Advertencia', position: 'insideTopRight', fontSize: 9, fill: ORANGE }} />
-                        {/* Línea crítica 80mV */}
                         <ReferenceLine y={80} stroke={RED} strokeDasharray="5 3" strokeWidth={2}
                             label={{ value: '80 mV — Límite crítico', position: 'insideTopRight', fontSize: 9, fill: RED }} />
                         <Bar dataKey="errorMv" name="Desviación (mV)" radius={[4, 4, 0, 0]} maxBarSize={60} isAnimationActive={false}>
