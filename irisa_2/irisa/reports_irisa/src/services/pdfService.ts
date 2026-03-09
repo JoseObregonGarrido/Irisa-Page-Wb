@@ -244,19 +244,23 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             autoTable(pdf, {
                 startY: yPos,
                 margin: { left: marginX, right: marginX },
-                head: [['Patrón Buffer (pH)', 'Promedio pH', 'Desviación', 'Voltaje (mV)', 'Temperatura (°C)', 'Error pH']],
+                head: [['Patrón Buffer', 'Promedio pH', 'Desviación', 'Voltaje (mV)', 'Temp (°C)', 'Error mV', 'Error %']],
                 body: data.phTests.map(t => [
                     t.patron ? `pH ${t.patron}` : '—',
                     t.promedio    || '0',
                     t.desviacion  || '0',
                     t.voltaje     || '0',
                     t.temperatura || '0',
-                    t.error       || '0'
+                    t.errorMv     || '0',
+                    t.error ? `${t.error}%` : '0%'
                 ]),
                 theme: 'grid',
                 headStyles: { fillColor: [13, 148, 136], halign: 'center', fontSize: 8, fontStyle: 'bold' },
                 styles: { fontSize: 8, halign: 'center', cellPadding: 2.5 },
-                columnStyles: { 4: { textColor: [200, 30, 30], fontStyle: 'bold' } }
+                columnStyles: {
+                    5: { textColor: [180, 90, 0], fontStyle: 'bold' },
+                    6: { textColor: [200, 30, 30], fontStyle: 'bold' }
+                }
             });
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }

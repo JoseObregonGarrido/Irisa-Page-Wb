@@ -11,7 +11,8 @@ interface PHTest {
     voltaje: string;
     temperatura: string;
     patron: string;
-    error: string;
+    errorMv: string;
+    error: string;  // porcentaje calculado
 }
 
 interface PHChartProps {
@@ -53,10 +54,11 @@ const PHChart = forwardRef(({ tests }: PHChartProps, ref) => {
         }))
         .sort((a, b) => a.patron - b.patron);
 
-    // Chart 2: Error por medición
+    // Chart 2: Error % por medición
     const errorData = tests.map((t, i) => ({
         name: `pH ${t.patron || '?'} (M${i + 1})`,
-        error: parseFloat(t.error) || 0,
+        error: parseFloat(t.error) || 0,       // ya es porcentaje
+        errorMv: parseFloat(t.errorMv) || 0,
         promedio: parseFloat(t.promedio) || 0,
         patron: t.patron || '?',
     }));
@@ -85,8 +87,9 @@ const PHChart = forwardRef(({ tests }: PHChartProps, ref) => {
                 <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3 text-xs">
                     <p className="font-bold text-gray-700 mb-1">Buffer pH {d?.patron}</p>
                     <p className="text-gray-600">Promedio medido: <span className="font-bold">{d?.promedio} pH</span></p>
-                    <p className={Math.abs(err) < 0.1 ? 'text-green-600' : Math.abs(err) < 0.3 ? 'text-teal-600' : 'text-red-500'}>
-                        Error: <span className="font-bold">{err} pH</span>
+                    <p className="text-orange-500">Error mV: <span className="font-bold">{d?.errorMv} mV</span></p>
+                    <p className={err < 0.5 ? 'text-green-600' : err < 2 ? 'text-teal-600' : 'text-red-500'}>
+                        Error: <span className="font-bold">{err.toFixed(3)}%</span>
                     </p>
                 </div>
             );
@@ -156,7 +159,7 @@ const PHChart = forwardRef(({ tests }: PHChartProps, ref) => {
                         <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                         <XAxis dataKey="name" tick={{ fontSize: 9 }} interval={0} angle={-10} />
                         <YAxis
-                            label={{ value: 'Error (pH)', angle: -90, position: 'insideLeft', offset: 10, fontSize: 11 }}
+                            label={{ value: 'Error (%)', angle: -90, position: 'insideLeft', offset: 10, fontSize: 11 }}
                             tick={{ fontSize: 10 }}
                         />
                         <Tooltip content={<CustomTooltip2 />} />
@@ -165,7 +168,7 @@ const PHChart = forwardRef(({ tests }: PHChartProps, ref) => {
                             {errorData.map((entry, i) => (
                                 <Cell
                                     key={i}
-                                    fill={Math.abs(entry.error) < 0.1 ? GREEN : Math.abs(entry.error) < 0.3 ? TEAL : RED}
+                                    fill={entry.error < 0.5 ? GREEN : entry.error < 2 ? TEAL : RED}
                                 />
                             ))}
                         </Bar>
@@ -173,13 +176,13 @@ const PHChart = forwardRef(({ tests }: PHChartProps, ref) => {
                 </ResponsiveContainer>
                 <div className="flex flex-wrap gap-4 mt-3 justify-center">
                     <span className="flex items-center gap-1.5 text-xs text-gray-500">
-                        <span className="w-3 h-3 rounded-sm bg-emerald-500 inline-block"></span> Error {'<'} 0.1 pH (Excelente)
+                        <span className="w-3 h-3 rounded-sm bg-emerald-500 inline-block"></span> Error {'<'} 0.5% (Excelente)
                     </span>
                     <span className="flex items-center gap-1.5 text-xs text-gray-500">
-                        <span className="w-3 h-3 rounded-sm bg-teal-500 inline-block"></span> Error {'<'} 0.3 pH (Aceptable)
+                        <span className="w-3 h-3 rounded-sm bg-teal-500 inline-block"></span> Error {'<'} 2% (Aceptable)
                     </span>
                     <span className="flex items-center gap-1.5 text-xs text-gray-500">
-                        <span className="w-3 h-3 rounded-sm bg-red-500 inline-block"></span> Error ≥ 0.3 pH (Revisar)
+                        <span className="w-3 h-3 rounded-sm bg-red-500 inline-block"></span> Error ≥ 2% (Revisar)
                     </span>
                 </div>
             </div>
