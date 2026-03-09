@@ -249,7 +249,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                     const mv = parseFloat(t.errorMv);
                     const estado = isNaN(mv) || t.errorMv === ''
                         ? '—'
-                        : mv <= 59 ? 'OK'
+                        : mv <= 20 ? 'OK'
                         : mv <= 80 ? 'Verificar'
                         : 'Agotado';
                     return [

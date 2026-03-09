@@ -34,7 +34,7 @@ const PATRON_COLORS: Record<string, string> = {
 };
 
 const getBarColor = (errorMv: number) => {
-    if (errorMv <= 59) return GREEN;
+    if (errorMv <= 20) return GREEN;
     if (errorMv <= 80) return ORANGE;
     return RED;
 };
@@ -129,7 +129,7 @@ const PHChart = forwardRef(({ tests }: PHChartProps, ref) => {
         if (active && payload?.length) {
             const mv = payload[0]?.value;
             const d = payload[0]?.payload;
-            const estado = mv <= 59 ? { label: 'Electrodo OK', color: 'text-green-600' }
+            const estado = mv <= 20 ? { label: 'Electrodo OK', color: 'text-green-600' }
                          : mv <= 80 ? { label: 'Verificar electrodo', color: 'text-orange-500' }
                          : { label: 'Electrodo agotado', color: 'text-red-600' };
             return (
@@ -311,8 +311,8 @@ const PHChart = forwardRef(({ tests }: PHChartProps, ref) => {
                             domain={[0, 'auto']}
                         />
                         <Tooltip content={<CustomTooltip3 />} />
-                        <ReferenceLine y={59} stroke={ORANGE} strokeDasharray="5 3" strokeWidth={1.5}
-                            label={{ value: '59 mV — Advertencia', position: 'insideTopRight', fontSize: 9, fill: ORANGE }} />
+                        <ReferenceLine y={20} stroke={ORANGE} strokeDasharray="5 3" strokeWidth={1.5}
+                            label={{ value: '20 mV — Advertencia', position: 'insideTopRight', fontSize: 9, fill: ORANGE }} />
                         <ReferenceLine y={80} stroke={RED} strokeDasharray="5 3" strokeWidth={2}
                             label={{ value: '80 mV — Límite crítico', position: 'insideTopRight', fontSize: 9, fill: RED }} />
                         <Bar dataKey="errorMv" name="Desviación (mV)" radius={[4, 4, 0, 0]} maxBarSize={60} isAnimationActive={false}>
@@ -323,8 +323,8 @@ const PHChart = forwardRef(({ tests }: PHChartProps, ref) => {
                     </BarChart>
                 </ResponsiveContainer>
                 <div className="flex flex-wrap gap-4 mt-3 justify-center">
-                    <span className="flex items-center gap-1.5 text-xs text-gray-500"><span className="w-3 h-3 rounded-sm bg-emerald-500 inline-block"></span> ≤ 59 mV — Electrodo OK</span>
-                    <span className="flex items-center gap-1.5 text-xs text-gray-500"><span className="w-3 h-3 rounded-sm bg-orange-400 inline-block"></span> 59–80 mV — Verificar</span>
+                    <span className="flex items-center gap-1.5 text-xs text-gray-500"><span className="w-3 h-3 rounded-sm bg-emerald-500 inline-block"></span> ≤ 20 mV — Electrodo OK</span>
+                    <span className="flex items-center gap-1.5 text-xs text-gray-500"><span className="w-3 h-3 rounded-sm bg-orange-400 inline-block"></span> 20–80 mV — Verificar</span>
                     <span className="flex items-center gap-1.5 text-xs text-gray-500"><span className="w-3 h-3 rounded-sm bg-red-500 inline-block"></span> &gt; 80 mV — Agotado</span>
                 </div>
             </div>

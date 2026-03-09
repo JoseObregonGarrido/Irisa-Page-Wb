@@ -23,7 +23,7 @@ const voltajeTeorico = (pH: number) => (7 - pH) * 59.16;
 
 // Tolerancia: < 59mV aceptable, 59-80mV advertencia, >80mV crítico (electrodo agotado)
 const getEstado = (errorMv: number): { estado: string; label: string; color: string; bg: string; border: string } => {
-    if (errorMv <= 59)  return { estado: 'ok',          label: '✓ Electrodo OK',         color: 'text-green-700',  bg: 'bg-green-50',  border: 'border-green-200' };
+    if (errorMv <= 20)  return { estado: 'ok',          label: '✓ Electrodo OK',         color: 'text-green-700',  bg: 'bg-green-50',  border: 'border-green-200' };
     if (errorMv <= 80)  return { estado: 'advertencia', label: '⚠ Verificar electrodo',  color: 'text-orange-700', bg: 'bg-orange-50', border: 'border-orange-200' };
     return              { estado: 'critico',             label: '✗ Electrodo agotado',    color: 'text-red-700',    bg: 'bg-red-50',    border: 'border-red-200' };
 };
@@ -279,8 +279,8 @@ const PHTable: React.FC<PHTableProps> = ({ tests, onTestsChange }) => {
             <div className="px-4 py-3 border-t border-gray-100 flex flex-wrap items-center gap-4">
                 <p className="text-[10px] text-gray-400 font-medium">Registros totales: {tests.length}</p>
                 <div className="flex flex-wrap gap-3 ml-auto">
-                    <span className="flex items-center gap-1.5 text-[10px] text-gray-500"><span className="w-2.5 h-2.5 rounded-full bg-green-500 inline-block"></span> ≤ 59 mV — OK</span>
-                    <span className="flex items-center gap-1.5 text-[10px] text-gray-500"><span className="w-2.5 h-2.5 rounded-full bg-orange-400 inline-block"></span> 59–80 mV — Verificar</span>
+                    <span className="flex items-center gap-1.5 text-[10px] text-gray-500"><span className="w-2.5 h-2.5 rounded-full bg-green-500 inline-block"></span> ≤ 20 mV — OK</span>
+                    <span className="flex items-center gap-1.5 text-[10px] text-gray-500"><span className="w-2.5 h-2.5 rounded-full bg-orange-400 inline-block"></span> 20–80 mV — Verificar</span>
                     <span className="flex items-center gap-1.5 text-[10px] text-gray-500"><span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block"></span> &gt; 80 mV — Agotado</span>
                 </div>
             </div>
