@@ -14,7 +14,6 @@ import ThermostatTable, { type ThermostatTest } from '../components/ThermostatTa
 import TransmitterChart from '../components/trasmitter/TransmitterChart';
 import RTDChart from '../components/trasmitter/RTDChart';
 import MvChart from '../components/trasmitter/MvChart';
-// TXChart eliminado — TX ahora vive dentro de la tabla mV
 import PHTable, { type PHTest } from '../components/PHTable';
 import PHChart from '../components/PHChart';
 import PressureSwitchChart from '../components/PressureSwitchChart';
@@ -26,7 +25,6 @@ import useLocalStorage from './hooks/useLocalStorage';
 const HomePage: React.FC = () => {
     const navigate = useNavigate();
 
-    // --- State: Instrumentist & Work Info ---
     const [instrumentistName, setInstrumentistName] = useLocalStorage('ir_name', '');
     const [instrumentistCode, setInstrumentistCode] = useLocalStorage('ir_code', '');
     const [deviceType, setDeviceType] = useLocalStorage('ir_device_type', '');
@@ -34,7 +32,6 @@ const HomePage: React.FC = () => {
     const [instrumentArea, setInstrumentArea] = useLocalStorage('ir_area', '');
     const [reviewDate, setReviewDate] = useLocalStorage('ir_date', '');
 
-    // --- State: Device Details ---
     const [deviceName, setDeviceName] = useLocalStorage('ir_dev_name', '');
     const [deviceBrand, setDeviceBrand] = useLocalStorage('ir_dev_brand', '');
     const [deviceModel, setDeviceModel] = useLocalStorage('ir_dev_model', '');
@@ -44,13 +41,11 @@ const HomePage: React.FC = () => {
     const [deviceCode, setDeviceCode] = useLocalStorage('ir_dev_code', '');
     const [observations, setObservations] = useLocalStorage('ir_obs', '');
 
-    // --- State: Measurements ---
     const [transmitterMeasurements, setTransmitterMeasurements] = useLocalStorage<Measurement[]>('ir_table_trans', []);
     const [pressureSwitchTests, setPressureSwitchTests] = useLocalStorage<PressureSwitchTest[]>('ir_table_press', []);
     const [thermostatTests, setThermostatTests] = useLocalStorage<ThermostatTest[]>('ir_table_therm', []);
     const [phTests, setPhTests] = useLocalStorage<PHTest[]>('ir_table_ph', []);
 
-    // --- ESTADOS PARA TRANSMISORES ---
     const [outputUnit, setOutputUnit] = useLocalStorage<'mA' | 'ohm' | 'mv'>('ir_output_unit', 'mA');
     const [hasUeTransmitter, setHasUeTransmitter] = useLocalStorage<boolean>('ir_has_ue', false);
 
@@ -64,7 +59,6 @@ const HomePage: React.FC = () => {
 
     const [showChart, setShowChart] = useState(false);
 
-    // --- Refs para captura de gráficos (en el DOM visible) ---
     const transmitterChartRef = useRef<any>(null);
     const rtdChartRef = useRef<any>(null);
     const mvChartRef = useRef<any>(null);
@@ -72,7 +66,6 @@ const HomePage: React.FC = () => {
     const thermostatChartRef = useRef<any>(null);
     const phChartRef = useRef<any>(null);
 
-    // --- Handlers ---
     const handleLogout = () => {
         logout();
         navigate('/login');
@@ -102,7 +95,6 @@ const HomePage: React.FC = () => {
             hasUeTransmitter,
         };
 
-        // flushSync fuerza a React a re-renderizar SINCRÓNICAMENTE antes de continuar
         const wasShowingChart = showChart;
         flushSync(() => {
             setShowChart(true);
@@ -110,7 +102,6 @@ const HomePage: React.FC = () => {
 
         let chartImages: string[] = [];
         try {
-            // Esperar a que Recharts pinte las SVGs tras el render
             await new Promise(r => setTimeout(r, 1000));
 
             if (deviceType === 'transmitter' && outputUnit === 'ohm' && rtdChartRef.current) {
@@ -126,13 +117,13 @@ const HomePage: React.FC = () => {
             } else if (deviceType === 'ph' && phChartRef.current) {
                 const els = phChartRef.current.getChartElements();
                 const captured: string[] = [];
-                for (const el of [els.chart1, els.chart2]) {
+                // chart3 agregado — captura los 3 charts del pH
+                for (const el of [els.chart1, els.chart2, els.chart3]) {
                     if (!el) continue;
                     const orig = el.style.width;
                     el.style.width = '1100px';
                     await new Promise(r => setTimeout(r, 400));
                     try {
-                        // html-to-image soporta oklch nativamente a diferencia de html2canvas
                         const dataUrl = await toPng(el, {
                             backgroundColor: '#ffffff',
                             pixelRatio: 2,
@@ -147,11 +138,9 @@ const HomePage: React.FC = () => {
         } catch (chartError) {
             console.warn("Gráfica no capturada, PDF sin gráfica:", chartError);
         } finally {
-            // Restaurar estado original
             if (!wasShowingChart) setShowChart(false);
         }
 
-        // PDF siempre se genera, con o sin gráficas
         try {
             await generatePDFReport(reportData, chartImages);
         } catch (error) {
@@ -200,7 +189,6 @@ const HomePage: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-            {/* Header */}
             <header className="bg-white shadow-lg border-b-4 border-teal-500">
                 <div className="max-w-[98%] mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center py-6">
@@ -321,7 +309,6 @@ const HomePage: React.FC = () => {
                         )}
 
                         <div className="mt-8">
-                            {/* Transmisor: scroll horizontal solo en desktop */}
                             {deviceType === 'transmitter' && (
                                 <div className="w-full overflow-x-auto pb-4 custom-scrollbar">
                                     <div className="lg:min-w-[1000px]">
@@ -350,7 +337,6 @@ const HomePage: React.FC = () => {
                             </p>
                         </div>
 
-                        {/* Botonera de Acciones */}
                         <div className="mt-8 p-6 bg-gray-50 rounded-xl border border-gray-200">
                             <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
                                 {(deviceType === 'transmitter' || deviceType === 'ph' || deviceType === 'pressure_switch' || deviceType === 'thermostat') && (
@@ -370,7 +356,6 @@ const HomePage: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Sección de Gráficos — refs aquí en el DOM visible para que html2canvas capture */}
                         <div className="mt-6">
                             {showChart && (
                                 <div className="bg-white rounded-xl shadow-inner p-4 border border-gray-200">

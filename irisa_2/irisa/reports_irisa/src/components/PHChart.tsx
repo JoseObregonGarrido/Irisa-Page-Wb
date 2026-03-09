@@ -12,7 +12,8 @@ interface PHTest {
     temperatura: string;
     patron: string;
     errorMv: string;
-    error: string; // porcentaje calculado
+    estadoElectrodo: string;
+    error: string;
 }
 
 interface PHChartProps {
@@ -23,16 +24,24 @@ const TEAL   = '#0d9488';
 const PURPLE = '#7c3aed';
 const RED    = '#ef4444';
 const GREEN  = '#10b981';
+const ORANGE = '#f97316';
+
+const getBarColor = (errorMv: number) => {
+    if (errorMv <= 59) return GREEN;
+    if (errorMv <= 80) return ORANGE;
+    return RED;
+};
 
 const PHChart = forwardRef(({ tests }: PHChartProps, ref) => {
     const chart1Ref = useRef<HTMLDivElement>(null);
     const chart2Ref = useRef<HTMLDivElement>(null);
+    const chart3Ref = useRef<HTMLDivElement>(null);
 
-    // Expone los elementos DOM — la captura la hace HomePage con html-to-image
     useImperativeHandle(ref, () => ({
         getChartElements: () => ({
             chart1: chart1Ref.current,
             chart2: chart2Ref.current,
+            chart3: chart3Ref.current,
         })
     }));
 
@@ -44,7 +53,7 @@ const PHChart = forwardRef(({ tests }: PHChartProps, ref) => {
         );
     }
 
-    // Chart 1: Voltaje vs Patrón Buffer — ordenado por patrón
+    // Chart 1: Voltaje medido vs Patrón Buffer
     const curvaData = tests
         .map((t, i) => ({
             name: `M${i + 1}`,
@@ -62,6 +71,14 @@ const PHChart = forwardRef(({ tests }: PHChartProps, ref) => {
         errorMv: parseFloat(t.errorMv) || 0,
         promedio: parseFloat(t.promedio) || 0,
         patron: t.patron || '?',
+    }));
+
+    // Chart 3: Rango de Vida del Electrodo (errorMv por buffer)
+    const vidaData = tests.map((t, i) => ({
+        name: `pH ${t.patron || '?'} (M${i + 1})`,
+        errorMv: parseFloat(t.errorMv) || 0,
+        patron: t.patron || '?',
+        promedio: parseFloat(t.promedio) || 0,
     }));
 
     const CustomTooltip1 = ({ active, payload }: any) => {
@@ -88,10 +105,29 @@ const PHChart = forwardRef(({ tests }: PHChartProps, ref) => {
                 <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3 text-xs">
                     <p className="font-bold text-gray-700 mb-1">Buffer pH {d?.patron}</p>
                     <p className="text-gray-600">Promedio medido: <span className="font-bold">{d?.promedio} pH</span></p>
-                    <p className="text-orange-500">Error mV: <span className="font-bold">{d?.errorMv} mV</span></p>
+                    <p className="text-orange-500">Rango vida: <span className="font-bold">{d?.errorMv} mV</span></p>
                     <p className={err < 0.5 ? 'text-green-600' : err < 2 ? 'text-teal-600' : 'text-red-500'}>
                         Error: <span className="font-bold">{err.toFixed(3)}%</span>
                     </p>
+                </div>
+            );
+        }
+        return null;
+    };
+
+    const CustomTooltip3 = ({ active, payload }: any) => {
+        if (active && payload?.length) {
+            const mv = payload[0]?.value;
+            const d = payload[0]?.payload;
+            const estado = mv <= 59 ? { label: 'Electrodo OK', color: 'text-green-600' }
+                         : mv <= 80 ? { label: 'Verificar electrodo', color: 'text-orange-500' }
+                         : { label: 'Electrodo agotado', color: 'text-red-600' };
+            return (
+                <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3 text-xs">
+                    <p className="font-bold text-gray-700 mb-1">Buffer pH {d?.patron}</p>
+                    <p className="text-gray-500">pH medido: <span className="font-bold">{d?.promedio}</span></p>
+                    <p className="text-orange-500">Desviación: <span className="font-bold">{mv.toFixed(2)} mV</span></p>
+                    <p className={estado.color}>Estado: <span className="font-bold">{estado.label}</span></p>
                 </div>
             );
         }
@@ -144,7 +180,7 @@ const PHChart = forwardRef(({ tests }: PHChartProps, ref) => {
                 </ResponsiveContainer>
             </div>
 
-            {/* CHART 2: Error de Medición por Buffer */}
+            {/* CHART 2: Error % por buffer */}
             <div ref={chart2Ref} className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
                 <div className="mb-4">
                     <h4 className="text-sm font-bold text-gray-800 flex items-center gap-2">
@@ -167,24 +203,56 @@ const PHChart = forwardRef(({ tests }: PHChartProps, ref) => {
                         <ReferenceLine y={0} stroke="#6b7280" strokeWidth={1.5} />
                         <Bar dataKey="error" name="Error (%)" radius={[4, 4, 0, 0]} maxBarSize={60} isAnimationActive={false}>
                             {errorData.map((entry, i) => (
-                                <Cell
-                                    key={i}
-                                    fill={entry.error < 0.5 ? GREEN : entry.error < 2 ? TEAL : RED}
-                                />
+                                <Cell key={i} fill={entry.error < 0.5 ? GREEN : entry.error < 2 ? TEAL : RED} />
                             ))}
                         </Bar>
                     </BarChart>
                 </ResponsiveContainer>
                 <div className="flex flex-wrap gap-4 mt-3 justify-center">
-                    <span className="flex items-center gap-1.5 text-xs text-gray-500">
-                        <span className="w-3 h-3 rounded-sm bg-emerald-500 inline-block"></span> Error {'<'} 0.5% (Excelente)
-                    </span>
-                    <span className="flex items-center gap-1.5 text-xs text-gray-500">
-                        <span className="w-3 h-3 rounded-sm bg-teal-500 inline-block"></span> Error {'<'} 2% (Aceptable)
-                    </span>
-                    <span className="flex items-center gap-1.5 text-xs text-gray-500">
-                        <span className="w-3 h-3 rounded-sm bg-red-500 inline-block"></span> Error ≥ 2% (Revisar)
-                    </span>
+                    <span className="flex items-center gap-1.5 text-xs text-gray-500"><span className="w-3 h-3 rounded-sm bg-emerald-500 inline-block"></span> Error {'<'} 0.5% (Excelente)</span>
+                    <span className="flex items-center gap-1.5 text-xs text-gray-500"><span className="w-3 h-3 rounded-sm bg-teal-500 inline-block"></span> Error {'<'} 2% (Aceptable)</span>
+                    <span className="flex items-center gap-1.5 text-xs text-gray-500"><span className="w-3 h-3 rounded-sm bg-red-500 inline-block"></span> Error ≥ 2% (Revisar)</span>
+                </div>
+            </div>
+
+            {/* CHART 3: Rango de Vida del Electrodo */}
+            <div ref={chart3Ref} className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                <div className="mb-4">
+                    <h4 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+                        <span className="w-3 h-3 rounded-full bg-orange-400 inline-block"></span>
+                        Rango de Vida del Electrodo — Desviación vs Teórico Nernst
+                    </h4>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                        Diferencia entre voltaje medido y voltaje teórico. Límite de uso: 80 mV — Reemplazo recomendado: &gt; 80 mV
+                    </p>
+                </div>
+                <ResponsiveContainer width="100%" height={280}>
+                    <BarChart data={vidaData} margin={{ top: 10, right: 30, left: 10, bottom: 20 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                        <XAxis dataKey="name" tick={{ fontSize: 9 }} interval={0} angle={-10} />
+                        <YAxis
+                            label={{ value: 'Desviación (mV)', angle: -90, position: 'insideLeft', offset: 10, fontSize: 11 }}
+                            tick={{ fontSize: 10 }}
+                            domain={[0, 'auto']}
+                        />
+                        <Tooltip content={<CustomTooltip3 />} />
+                        {/* Línea de advertencia 59mV */}
+                        <ReferenceLine y={59} stroke={ORANGE} strokeDasharray="5 3" strokeWidth={1.5}
+                            label={{ value: '59 mV — Advertencia', position: 'insideTopRight', fontSize: 9, fill: ORANGE }} />
+                        {/* Línea crítica 80mV */}
+                        <ReferenceLine y={80} stroke={RED} strokeDasharray="5 3" strokeWidth={2}
+                            label={{ value: '80 mV — Límite crítico', position: 'insideTopRight', fontSize: 9, fill: RED }} />
+                        <Bar dataKey="errorMv" name="Desviación (mV)" radius={[4, 4, 0, 0]} maxBarSize={60} isAnimationActive={false}>
+                            {vidaData.map((entry, i) => (
+                                <Cell key={i} fill={getBarColor(entry.errorMv)} />
+                            ))}
+                        </Bar>
+                    </BarChart>
+                </ResponsiveContainer>
+                <div className="flex flex-wrap gap-4 mt-3 justify-center">
+                    <span className="flex items-center gap-1.5 text-xs text-gray-500"><span className="w-3 h-3 rounded-sm bg-emerald-500 inline-block"></span> ≤ 59 mV — Electrodo OK</span>
+                    <span className="flex items-center gap-1.5 text-xs text-gray-500"><span className="w-3 h-3 rounded-sm bg-orange-400 inline-block"></span> 59–80 mV — Verificar</span>
+                    <span className="flex items-center gap-1.5 text-xs text-gray-500"><span className="w-3 h-3 rounded-sm bg-red-500 inline-block"></span> &gt; 80 mV — Agotado</span>
                 </div>
             </div>
 
