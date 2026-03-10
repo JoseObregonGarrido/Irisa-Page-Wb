@@ -238,7 +238,6 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
 
                                 {/* ── MÓVIL / TABLET: card apilada (< lg) ── */}
                                 <div className="lg:hidden p-4 space-y-3">
-                                    {/* Header card */}
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-2">
                                             <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">#{index + 1}</span>
@@ -388,12 +387,10 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                                             <div className="lg:px-2 lg:py-3 lg:bg-red-50/20"><InputField label="Err %" unit="%" value={m.errorPercentage} isError readOnly /></div>
                                         </>
                                     )}
-                                    {/* BOTÓN ELIMINAR DESKTOP */}
                                     <div className="flex justify-center items-center py-2 lg:py-0">
                                         <DeleteBtn index={index} />
                                     </div>
                                 </div>
-
                             </div>
                         ))}
                     </div>
