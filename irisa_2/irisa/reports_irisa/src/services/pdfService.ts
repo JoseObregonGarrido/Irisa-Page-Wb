@@ -25,26 +25,22 @@ export interface ReportData {
     observations: string;
     hasUeTransmitter?: boolean;
     outputUnit?: 'mA' | 'ohm' | 'mv';
-    transmitterMeasurements?: any[];
+    // ── Arrays separados por modo (reemplaza transmitterMeasurements) ─────────
+    measurementsMA?: any[];
+    measurementsOhm?: any[];
+    measurementsMV?: any[];
+    // ─────────────────────────────────────────────────────────────────────────
     pressureSwitchTests?: any[];
     thermostatTests?: any[];
     phTests?: any[];
 }
 
-// ─── Constantes pH (iguales a PHTable y PHChart) ──────────────────────────────
-const K_PH  = 0.1;
-const V0_PH = 174;
-
-/** Desgaste = k × (V − V₀), mínimo 0 */
-const calcDesgaste = (voltaje: number): number =>
-    Math.max(0, K_PH * (voltaje - V0_PH));
-
-/** Umbrales fijos sobre el desgaste */
-const getEstadoPH = (desgaste: number): 'OK' | 'Verificar' | 'Agotado' => {
-    if (desgaste <= 20) return 'OK';
-    if (desgaste <= 30) return 'Verificar';
-    return 'Agotado';
-};
+// ─── Fórmula Rango de Vida pH ─────────────────────────────────────────────────
+const V0 = 174;
+const T0 = 30;
+const calcRangoVida  = (v: number) => Math.max(0, Math.min(T0, T0 - (v - V0)));
+const getEstadoPH    = (t: number): 'OK' | 'Verificar' | 'Agotado' =>
+    t >= 20 ? 'OK' : t >= 10 ? 'Verificar' : 'Agotado';
 // ─────────────────────────────────────────────────────────────────────────────
 
 const capitalize = (text: string) => {
@@ -60,7 +56,7 @@ const getContactLabel = (t: any) => {
 };
 
 const getBase64ImageFromUrl = async (url: string): Promise<string> => {
-    const res = await fetch(url);
+    const res  = await fetch(url);
     const blob = await res.blob();
     return new Promise(resolve => {
         const reader = new FileReader();
@@ -70,17 +66,22 @@ const getBase64ImageFromUrl = async (url: string): Promise<string> => {
 };
 
 export const generatePDFReport = async (data: ReportData, chartImages?: string[]): Promise<void> => {
-    const pdf = new jsPDF({ orientation: 'landscape' });
-    const pageW = pdf.internal.pageSize.getWidth();
-    const pageH = pdf.internal.pageSize.getHeight();
-    const marginX = 15;
+    const pdf      = new jsPDF({ orientation: 'landscape' });
+    const pageW    = pdf.internal.pageSize.getWidth();
+    const pageH    = pdf.internal.pageSize.getHeight();
+    const marginX  = 15;
     const contentW = pageW - marginX * 2;
 
-    const measurements = data.transmitterMeasurements || [];
     const unit  = data.outputUnit || 'mA';
     const hasUE = data.hasUeTransmitter ?? false;
     const isOhm = unit === 'ohm';
     const isMv  = unit === 'mv';
+
+    // ── Seleccionar array correcto según modo ─────────────────────────────────
+    const measurements = isMv  ? (data.measurementsMV  || [])
+                       : isOhm ? (data.measurementsOhm || [])
+                       :          (data.measurementsMA  || []);
+    // ─────────────────────────────────────────────────────────────────────────
 
     let yPos = 20;
 
@@ -100,7 +101,8 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         if (yPos + 40 > pageH - 15) { pdf.addPage(); yPos = 20; }
         pdf.setDrawColor(119, 158, 79).setLineWidth(0.8).line(marginX, yPos, pageW - marginX, yPos);
         yPos += 10;
-        pdf.setFontSize(11).setFont('helvetica', 'bold').setTextColor(60).text(title.toUpperCase(), marginX, yPos);
+        pdf.setFontSize(11).setFont('helvetica', 'bold').setTextColor(60)
+           .text(title.toUpperCase(), marginX, yPos);
         yPos += 8;
     };
 
@@ -121,12 +123,12 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             startY: yPos,
             margin: { left: marginX, right: marginX },
             body: [
-                ['Nombre del equipo',      data.deviceName,        'Código del equipo',    data.deviceCode],
-                ['Marca del equipo',       data.deviceBrand,       'Modelo del equipo',    data.deviceModel],
-                ['Serial del instrumento', data.deviceSerial,      'Rango del instrumento',`${data.deviceRange} ${data.unity}`],
-                ['Área del instrumento',   data.instrumentArea,    'Tipo de dispositivo',  capitalize(data.deviceType)],
-                ['Nombre instrumentista',  data.instrumentistName, 'Código instrumentista',data.instrumentistCode],
-                ['Orden de trabajo',       data.workOrder,         'Fecha de revisión',    data.reviewDate || 'N/a'],
+                ['Nombre del equipo',      data.deviceName,        'Código del equipo',     data.deviceCode],
+                ['Marca del equipo',       data.deviceBrand,       'Modelo del equipo',     data.deviceModel],
+                ['Serial del instrumento', data.deviceSerial,      'Rango del instrumento', `${data.deviceRange} ${data.unity}`],
+                ['Área del instrumento',   data.instrumentArea,    'Tipo de dispositivo',   capitalize(data.deviceType)],
+                ['Nombre instrumentista',  data.instrumentistName, 'Código instrumentista', data.instrumentistCode],
+                ['Orden de trabajo',       data.workOrder,         'Fecha de revisión',     data.reviewDate || 'N/a'],
             ],
             theme: 'plain',
             styles: { fontSize: 8.5, cellPadding: 3, textColor: 50 },
@@ -142,6 +144,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             if (isMv) {
                 const mvRows = measurements.filter(m => !m.rowType || m.rowType === 'mv');
                 const txRows = measurements.filter(m => m.rowType === 'tx');
+
                 if (mvRows.length > 0) {
                     addHeader('Resultados de las mediciones - Termopar (mV)');
                     autoTable(pdf, {
@@ -176,10 +179,11 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 if (isOhm) headers.push('Ohm Sens.');
                 if (hasUE) headers.push('Err UE');
                 headers.push('Err mA', 'Err %');
+
                 const body = measurements.map(m => {
-                    const row: any[] = [m.idealUE || m.idealUe, m.idealmA];
-                    if (isOhm) row.push(m.idealohm || m.idealOhm || '0');
-                    row.push(m.patronUE || m.patronUe);
+                    const row: any[] = [m.idealUE, m.idealmA];
+                    if (isOhm) row.push(m.idealohm || '0');
+                    row.push(m.patronUE);
                     if (hasUE) row.push(m.ueTransmitter);
                     row.push(m.maTransmitter);
                     if (isOhm) row.push(m.ohmTransmitter || '0');
@@ -187,6 +191,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                     row.push(m.errormA || '0.000', m.errorPercentage || '0.00');
                     return row;
                 });
+
                 autoTable(pdf, {
                     startY: yPos, margin: { left: marginX, right: marginX },
                     head: [headers], body, theme: 'grid',
@@ -222,33 +227,27 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }
 
-        // ── TABLA pH — desgaste = k×(V−V₀), umbrales fijos ≤20/20-30/>30 ──
+        // ── TABLA pH ──────────────────────────────────────────────────────────
         if (data.deviceType === 'ph' && data.phTests?.length) {
             addHeader('RESULTADOS MEDICIONES DE pH');
             autoTable(pdf, {
                 startY: yPos,
                 margin: { left: marginX, right: marginX },
-                head: [[
-                    'Patrón Buffer', 'Promedio pH', 'Desviación',
-                    'Voltaje (mV)', 'Temp (°C)',
-                    'Desgaste (mV)',   // = K×(V−V₀)
-                    'Estado Electrodo',
-                    'Error %',
-                ]],
+                head: [['Patrón Buffer', 'Promedio pH', 'Desviación', 'Voltaje (mV)', 'Temp (°C)', 'Rango Vida (mV)', 'Estado Electrodo', 'Error %']],
                 body: data.phTests.map(t => {
-                    const voltaje  = parseFloat(t.voltaje);
-                    const desgaste = !isNaN(voltaje) ? calcDesgaste(voltaje) : 0;
-                    const mv       = parseFloat(t.errorMv);  // ya es el desgaste guardado
-                    // Preferir el valor ya calculado si existe, si no recalcular
-                    const valFinal = !isNaN(mv) && t.errorMv !== '' ? mv : desgaste;
-                    const estado   = getEstadoPH(valFinal);
+                    const voltaje    = parseFloat(t.voltaje);
+                    const mvGuardado = parseFloat(t.errorMv);
+                    const rangoVida  = !isNaN(mvGuardado) && t.errorMv !== ''
+                        ? mvGuardado
+                        : !isNaN(voltaje) ? calcRangoVida(voltaje) : 0;
+                    const estado = getEstadoPH(rangoVida);
                     return [
                         t.patron      ? `pH ${t.patron}` : '—',
                         t.promedio    || '0',
                         t.desviacion  || '0',
                         t.voltaje     || '0',
                         t.temperatura || '0',
-                        valFinal.toFixed(2),
+                        rangoVida.toFixed(2),
                         estado,
                         t.error       ? `${t.error}%` : '0%',
                     ];
@@ -257,9 +256,9 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 headStyles: { fillColor: colors.tealPH, halign: 'center', fontSize: 8, fontStyle: 'bold' },
                 styles: { fontSize: 8, halign: 'center', cellPadding: 2.5 },
                 columnStyles: {
-                    5: { textColor: colors.orange, fontStyle: 'bold' },  // Desgaste
-                    6: { fontStyle: 'bold' },                             // Estado
-                    7: { textColor: colors.red,    fontStyle: 'bold' },  // Error %
+                    5: { textColor: colors.orange, fontStyle: 'bold' },
+                    6: { fontStyle: 'bold' },
+                    7: { textColor: colors.red, fontStyle: 'bold' },
                 },
                 didParseCell: (hookData: any) => {
                     if (hookData.column.index === 6 && hookData.section === 'body') {
@@ -297,7 +296,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 ph: [
                     'CURVA DE RESPUESTA DEL ELECTRODO — VOLTAJE vs pH',
                     'ERROR DE MEDICIÓN POR BUFFER (%)',
-                    'RANGO DE VIDA DEL ELECTRODO — DESGASTE k·(V−V₀)',
+                    'RANGO DE VIDA DEL ELECTRODO — T = 30−(V−174)',
                 ],
             };
             const deviceKey = data.deviceType === 'transmitter' ? `transmitter_${unit}` : data.deviceType;
