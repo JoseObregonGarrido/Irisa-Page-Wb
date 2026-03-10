@@ -6,7 +6,7 @@ export interface PHTest {
     voltaje: string;
     temperatura: string;
     patron: string;
-    errorMv: string;   // Rango Vida = desgaste = k × (V − V₀)
+    errorMv: string;   // Rango Vida = T = 30 - (V - 174)
     estadoElectrodo: string;
     error: string;
 }
@@ -18,29 +18,31 @@ interface PHTableProps {
 
 const BUFFER_OPTIONS = ['4', '7', '9'];
 
-// ─── Constantes (fórmula de la foto) ─────────────────────────────────────────
-const V0 = 174;  // mV — voltaje base del electrodo nuevo
-const K  = 0.1;  // factor de reducción lineal
+// ─── Fórmula Rango de Vida ────────────────────────────────────────────────────
+const V0 = 174;  // mV base
+const T0 = 30;   // tolerancia inicial
 
 /**
- * Rango de Vida (desgaste) = k × (V − V₀)
- * Mínimo 0 mV. Si V < V₀ el electrodo está por encima de lo esperado → desgaste 0.
+ * Rango Vida = T = T₀ - (V_medido - V₀) = 30 - (V - 174)
+ * T alto (cerca de 30) = electrodo nuevo = OK
+ * T bajo (cerca de 0)  = electrodo agotado
+ * Mínimo 0, máximo 30.
  */
-const calcDesgaste = (voltajeMedido: number): number =>
-    Math.max(0, K * (voltajeMedido - V0));
+const calcRangoVida = (v: number): number =>
+    Math.max(0, Math.min(T0, T0 - (v - V0)));
 
 /**
- * Umbrales sobre el desgaste:
- *   OK        : desgaste ≤ 20 mV
- *   Verificar : 20 < desgaste ≤ 30 mV
- *   Agotado   : desgaste > 30 mV
+ * Umbrales sobre T restante:
+ *   OK        : T ≥ 20
+ *   Verificar : 10 ≤ T < 20
+ *   Agotado   : T < 10
  */
 const getEstado = (
-    desgaste: number
+    t: number
 ): { estado: string; label: string; color: string; bg: string; border: string } => {
-    if (desgaste <= 20)
+    if (t >= 20)
         return { estado: 'ok',          label: '✓ Electrodo OK',        color: 'text-green-700',  bg: 'bg-green-50',  border: 'border-green-200'  };
-    if (desgaste <= 30)
+    if (t >= 10)
         return { estado: 'advertencia', label: '⚠ Verificar electrodo', color: 'text-orange-700', bg: 'bg-orange-50', border: 'border-orange-200' };
     return    { estado: 'critico',     label: '✗ Electrodo agotado',   color: 'text-red-700',    bg: 'bg-red-50',    border: 'border-red-200'    };
 };
@@ -136,11 +138,11 @@ const PHTable: React.FC<PHTableProps> = ({ tests, onTestsChange }) => {
             ? ((Math.abs(patron - promedio) / patron) * 100).toFixed(3)
             : '';
 
-        // 3. Rango Vida = desgaste = k × (V − V₀)
+        // 3. Rango Vida = T = 30 - (V - 174)
         if (!isNaN(voltajeMedido)) {
-            const desgaste = calcDesgaste(voltajeMedido);
-            updated.errorMv         = desgaste.toFixed(2);
-            updated.estadoElectrodo = getEstado(desgaste).estado;
+            const t = calcRangoVida(voltajeMedido);
+            updated.errorMv         = t.toFixed(2);
+            updated.estadoElectrodo = getEstado(t).estado;
         } else {
             updated.errorMv         = '';
             updated.estadoElectrodo = '';
@@ -155,7 +157,6 @@ const PHTable: React.FC<PHTableProps> = ({ tests, onTestsChange }) => {
         onTestsChange(newTests);
     };
 
-    // Banner superior de estados
     const estadosBanner = tests
         .filter(t => t.patron && t.estadoElectrodo)
         .map((t, i) => ({
@@ -182,15 +183,12 @@ const PHTable: React.FC<PHTableProps> = ({ tests, onTestsChange }) => {
                         <p className="text-teal-100 text-xs">{tests.length} registro{tests.length !== 1 ? 's' : ''}</p>
                     </div>
                 </div>
-                <button
-                    onClick={handleAddRow}
-                    className="w-full sm:w-auto px-5 py-2.5 bg-white text-teal-700 hover:bg-teal-50 font-bold rounded-xl transition-all shadow-lg text-sm"
-                >
+                <button onClick={handleAddRow} className="w-full sm:w-auto px-5 py-2.5 bg-white text-teal-700 hover:bg-teal-50 font-bold rounded-xl transition-all shadow-lg text-sm">
                     + Nueva fila
                 </button>
             </div>
 
-            {/* ── Banner de estados ── */}
+            {/* ── Banner estados ── */}
             {estadosBanner.length > 0 && (
                 <div className="px-4 py-2 bg-gray-50 border-b border-gray-200 flex flex-wrap gap-2 items-center">
                     <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mr-1">Estado electrodos:</span>
@@ -205,8 +203,6 @@ const PHTable: React.FC<PHTableProps> = ({ tests, onTestsChange }) => {
             {/* ── Tabla ── */}
             <div className="overflow-x-auto">
                 <div className="w-full lg:min-w-[1200px]">
-
-                    {/* Headers desktop */}
                     <div className={`hidden lg:grid ${gridCols} bg-gray-50 border-b border-gray-200 text-[10px] font-bold text-gray-500 uppercase tracking-wider`}>
                         <div className="px-3 py-4 text-center">Patrón Buffer</div>
                         <div className="px-3 py-4 text-center">Promedio pH</div>
@@ -222,43 +218,23 @@ const PHTable: React.FC<PHTableProps> = ({ tests, onTestsChange }) => {
                     <div className="divide-y divide-gray-100">
                         {tests.map((test, index) => (
                             <div key={index} className="hover:bg-teal-50/20 transition-colors">
-
-                                {/* Desktop Row */}
+                                {/* Desktop */}
                                 <div className={`hidden lg:grid ${gridCols} items-center`}>
-                                    <div className="px-3 py-3">
-                                        <PatronSelect value={test.patron} onChange={(v) => handleChange(index, 'patron', v)} />
-                                    </div>
-                                    <div className="px-3 py-3">
-                                        <InputField unit="pH" value={test.promedio} onChange={(e: any) => handleChange(index, 'promedio', e.target.value)} />
-                                    </div>
-                                    <div className="px-3 py-3">
-                                        <InputField unit="pH" value={test.desviacion} readOnly />
-                                    </div>
-                                    <div className="px-3 py-3">
-                                        <InputField unit="mV" value={test.voltaje} onChange={(e: any) => handleChange(index, 'voltaje', e.target.value)} />
-                                    </div>
-                                    <div className="px-3 py-3">
-                                        <InputField unit="°C" value={test.temperatura} onChange={(e: any) => handleChange(index, 'temperatura', e.target.value)} />
-                                    </div>
-                                    <div className="px-3 py-3 bg-orange-50/20">
-                                        <InputField unit="mV" value={test.errorMv} readOnly />
-                                    </div>
-                                    <div className="px-3 py-3">
-                                        <EstadoBadge errorMv={test.errorMv} />
-                                    </div>
-                                    <div className="px-3 py-3 bg-red-50/20">
-                                        <InputField unit="%" value={test.error} isError={parseFloat(test.error) > 5} readOnly />
-                                    </div>
+                                    <div className="px-3 py-3"><PatronSelect value={test.patron} onChange={(v) => handleChange(index, 'patron', v)} /></div>
+                                    <div className="px-3 py-3"><InputField unit="pH" value={test.promedio} onChange={(e: any) => handleChange(index, 'promedio', e.target.value)} /></div>
+                                    <div className="px-3 py-3"><InputField unit="pH" value={test.desviacion} readOnly /></div>
+                                    <div className="px-3 py-3"><InputField unit="mV" value={test.voltaje} onChange={(e: any) => handleChange(index, 'voltaje', e.target.value)} /></div>
+                                    <div className="px-3 py-3"><InputField unit="°C" value={test.temperatura} onChange={(e: any) => handleChange(index, 'temperatura', e.target.value)} /></div>
+                                    <div className="px-3 py-3 bg-orange-50/20"><InputField unit="mV" value={test.errorMv} readOnly /></div>
+                                    <div className="px-3 py-3"><EstadoBadge errorMv={test.errorMv} /></div>
+                                    <div className="px-3 py-3 bg-red-50/20"><InputField unit="%" value={test.error} isError={parseFloat(test.error) > 5} readOnly /></div>
                                     <div className="flex justify-center">
                                         <button onClick={() => handleDeleteRow(index)} className="text-red-400 hover:text-red-600 p-2">
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                            </svg>
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                         </button>
                                     </div>
                                 </div>
-
-                                {/* Mobile Card */}
+                                {/* Mobile */}
                                 <div className="lg:hidden p-4 space-y-3">
                                     <div className="grid grid-cols-2 gap-3">
                                         <PatronSelect value={test.patron} onChange={(v) => handleChange(index, 'patron', v)} />
@@ -274,17 +250,12 @@ const PHTable: React.FC<PHTableProps> = ({ tests, onTestsChange }) => {
                                         <InputField label="Error %" unit="%" value={test.error} isError={parseFloat(test.error) > 5} readOnly />
                                     </div>
                                     <div className="flex items-center justify-between gap-3">
-                                        <div className="flex-1">
-                                            <EstadoBadge errorMv={test.errorMv} />
-                                        </div>
+                                        <div className="flex-1"><EstadoBadge errorMv={test.errorMv} /></div>
                                         <button onClick={() => handleDeleteRow(index)} className="text-red-400 hover:text-red-600 p-2 shrink-0">
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                            </svg>
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                         </button>
                                     </div>
                                 </div>
-
                             </div>
                         ))}
                     </div>
@@ -292,9 +263,7 @@ const PHTable: React.FC<PHTableProps> = ({ tests, onTestsChange }) => {
                     {tests.length === 0 && (
                         <div className="text-center py-16 bg-gray-50/50">
                             <p className="text-gray-500 font-semibold">No hay registros de pH.</p>
-                            <button onClick={handleAddRow} className="mt-4 text-teal-600 font-bold border-2 border-teal-600 px-6 py-2 rounded-lg hover:bg-teal-50">
-                                + Agregar primero
-                            </button>
+                            <button onClick={handleAddRow} className="mt-4 text-teal-600 font-bold border-2 border-teal-600 px-6 py-2 rounded-lg hover:bg-teal-50">+ Agregar primero</button>
                         </div>
                     )}
                 </div>
@@ -302,22 +271,11 @@ const PHTable: React.FC<PHTableProps> = ({ tests, onTestsChange }) => {
 
             {/* ── Footer ── */}
             <div className="px-4 py-3 border-t bg-gray-50 flex flex-wrap justify-between items-center gap-2">
-                <span className="text-[10px] text-gray-400 font-mono">
-                    Registros totales: {tests.length}
-                </span>
+                <span className="text-[10px] text-gray-400 font-mono">Registros totales: {tests.length}</span>
                 <div className="flex gap-4">
-                    <span className="text-[10px] flex items-center gap-1">
-                        <div className="w-2 h-2 rounded-full bg-green-500"/>
-                        ≤ 20 mV — OK
-                    </span>
-                    <span className="text-[10px] flex items-center gap-1">
-                        <div className="w-2 h-2 rounded-full bg-orange-400"/>
-                        20–30 mV — Verificar
-                    </span>
-                    <span className="text-[10px] flex items-center gap-1">
-                        <div className="w-2 h-2 rounded-full bg-red-500"/>
-                        &gt; 30 mV — Agotado
-                    </span>
+                    <span className="text-[10px] flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-green-500"/> ≥ 20 mV — OK</span>
+                    <span className="text-[10px] flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-orange-400"/> 10–20 mV — Verificar</span>
+                    <span className="text-[10px] flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-red-500"/> &lt; 10 mV — Agotado</span>
                 </div>
             </div>
         </div>
