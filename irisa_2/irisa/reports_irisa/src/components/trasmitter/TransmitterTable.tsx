@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 
 // --- INTERFACES ---
 export interface Measurement {
+    id: string; // ID único para evitar bugs de renderizado entre pestañas
     rowType?: 'mv' | 'tx';
     percentage: string;
     idealUE: string;
@@ -107,6 +108,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
 
     const addNewRow = (rowType?: 'mv' | 'tx') => {
         onMeasurementsChange([...measurements, { 
+            id: crypto.randomUUID(), // Usamos UUID para evitar colisiones entre tablas
             rowType,
             percentage: "", idealUE: "", patronUE: "", ueTransmitter: "", idealmA:"", 
             idealohm: "", idealMv: "", maTransmitter: "", ohmTransmitter: "", mvTransmitter: "", 
@@ -158,14 +160,14 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
         </span>
     );
 
-    const DeleteBtn = ({ index }: { index: number }) => (
-        <button onClick={() => onMeasurementsChange(measurements.filter((_, i) => i !== index))} className="text-red-500 hover:bg-red-50 p-2 rounded-full transition-colors">
+    const DeleteBtn = ({ id }: { id: string }) => (
+        <button onClick={() => onMeasurementsChange(measurements.filter((m) => m.id !== id))} className="text-red-500 hover:bg-red-50 p-2 rounded-full transition-colors">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
         </button>
     );
 
     return (
-        <div className="mt-8 w-full bg-white rounded-xl shadow-lg border border-gray-200">
+        <div className="mt-8 w-full bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
             {/* CABECERA */}
             <div className="bg-gradient-to-r from-teal-600 to-emerald-600 px-4 py-4 sm:px-6">
                 <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -234,21 +236,19 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                     {/* CUERPO */}
                     <div className="divide-y divide-gray-200 bg-gray-50 lg:bg-white">
                         {measurements.map((m, index) => (
-                            <div key={index} className="hover:bg-teal-50/30 transition-colors">
+                            <div key={m.id} className="hover:bg-teal-50/30 transition-colors">
 
-                                {/* ── MÓVIL / TABLET: card apilada (< lg) ── */}
+                                {/* MÓVIL / TABLET */}
                                 <div className="lg:hidden p-4 space-y-3">
-                                    {/* Header card */}
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-2">
                                             <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">#{index + 1}</span>
                                             {outputUnit === 'mv' && <RowTypeBadge type={m.rowType ?? 'mv'} />}
                                         </div>
                                         <button
-                                            onClick={() => onMeasurementsChange(measurements.filter((_, i) => i !== index))}
+                                            onClick={() => onMeasurementsChange(measurements.filter((item) => item.id !== m.id))}
                                             className="flex items-center gap-1 text-red-400 hover:text-red-600 text-xs font-bold px-2 py-1 rounded-lg hover:bg-red-50 transition-all"
                                         >
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                             Eliminar
                                         </button>
                                     </div>
@@ -324,7 +324,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                                     )}
                                 </div>
 
-                                {/* ── DESKTOP: fila en grid (≥ lg) ── */}
+                                {/* DESKTOP */}
                                 <div className={`hidden lg:grid ${config.gridCols} lg:items-center`}>
                                     {outputUnit === 'mv' ? (
                                         <>
@@ -388,9 +388,8 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                                             <div className="lg:px-2 lg:py-3 lg:bg-red-50/20"><InputField label="Err %" unit="%" value={m.errorPercentage} isError readOnly /></div>
                                         </>
                                     )}
-                                    {/* BOTÓN ELIMINAR DESKTOP */}
                                     <div className="flex justify-center items-center py-2 lg:py-0">
-                                        <DeleteBtn index={index} />
+                                        <DeleteBtn id={m.id} />
                                     </div>
                                 </div>
 
