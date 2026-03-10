@@ -31,17 +31,18 @@ export interface ReportData {
     phTests?: any[];
 }
 
-// ─── Tolerancia dinámica (misma lógica que PHTable.tsx) ───────────────────────
-const V0_PH = 174;
-const T0_PH = 30;
+// ─── Constantes pH (iguales a PHTable y PHChart) ──────────────────────────────
 const K_PH  = 0.1;
+const V0_PH = 174;
 
-const getToleranciaDinamica = (voltajeMedido: number): number =>
-    Math.max(10, T0_PH - K_PH * (voltajeMedido - V0_PH));
+/** Desgaste = k × (V − V₀), mínimo 0 */
+const calcDesgaste = (voltaje: number): number =>
+    Math.max(0, K_PH * (voltaje - V0_PH));
 
-const getEstadoPH = (errorMv: number, tolerancia: number): 'OK' | 'Verificar' | 'Agotado' => {
-    if (errorMv <= tolerancia * 0.60) return 'OK';
-    if (errorMv <= tolerancia)        return 'Verificar';
+/** Umbrales fijos sobre el desgaste */
+const getEstadoPH = (desgaste: number): 'OK' | 'Verificar' | 'Agotado' => {
+    if (desgaste <= 20) return 'OK';
+    if (desgaste <= 30) return 'Verificar';
     return 'Agotado';
 };
 // ─────────────────────────────────────────────────────────────────────────────
@@ -93,7 +94,6 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         green:              [21, 128, 61],
         orange:             [180, 90, 0],
         red:                [200, 30, 30],
-        blue:               [13, 100, 180],
     };
 
     const addHeader = (title: string) => {
@@ -142,12 +142,10 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             if (isMv) {
                 const mvRows = measurements.filter(m => !m.rowType || m.rowType === 'mv');
                 const txRows = measurements.filter(m => m.rowType === 'tx');
-
                 if (mvRows.length > 0) {
                     addHeader('Resultados de las mediciones - Termopar (mV)');
                     autoTable(pdf, {
-                        startY: yPos,
-                        margin: { left: marginX, right: marginX },
+                        startY: yPos, margin: { left: marginX, right: marginX },
                         head: [['mV Ideal', 'mV Sensor', 'Tipo Sensor', 'Error mV']],
                         body: mvRows.map(m => [m.idealmV || '0', m.sensormV || '0', m.sensorType || 'N/A', m.errormV || '0']),
                         theme: 'grid',
@@ -159,8 +157,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 if (txRows.length > 0) {
                     addHeader('Resultados de las mediciones - Transmisor (TX)');
                     autoTable(pdf, {
-                        startY: yPos,
-                        margin: { left: marginX, right: marginX },
+                        startY: yPos, margin: { left: marginX, right: marginX },
                         head: [['Ideal mA', 'mA TX', 'Tipo Sensor', 'Err mA']],
                         body: txRows.map(m => [m.idealmA || '0', m.mATX || '0', m.sensorType || 'N/A', m.errormA || '0']),
                         theme: 'grid',
@@ -170,8 +167,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                     yPos = (pdf as any).lastAutoTable.finalY + 12;
                 }
             } else {
-                const reportTypeLabel = isOhm ? 'RTD' : 'mA';
-                addHeader(`Resultados de las mediciones - ${reportTypeLabel}`);
+                addHeader(`Resultados de las mediciones - ${isOhm ? 'RTD' : 'mA'}`);
                 const headers: string[] = ['Ideal UE', 'Ideal mA'];
                 if (isOhm) headers.push('Ideal Ohm');
                 headers.push('Patrón UE');
@@ -180,7 +176,6 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 if (isOhm) headers.push('Ohm Sens.');
                 if (hasUE) headers.push('Err UE');
                 headers.push('Err mA', 'Err %');
-
                 const body = measurements.map(m => {
                     const row: any[] = [m.idealUE || m.idealUe, m.idealmA];
                     if (isOhm) row.push(m.idealohm || m.idealOhm || '0');
@@ -192,13 +187,9 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                     row.push(m.errormA || '0.000', m.errorPercentage || '0.00');
                     return row;
                 });
-
                 autoTable(pdf, {
-                    startY: yPos,
-                    margin: { left: marginX, right: marginX },
-                    head: [headers],
-                    body,
-                    theme: 'grid',
+                    startY: yPos, margin: { left: marginX, right: marginX },
+                    head: [headers], body, theme: 'grid',
                     headStyles: { fillColor: colors.risaraldaGreen, halign: 'center', fontSize: 8, fontStyle: 'bold' },
                     styles: { fontSize: 8, halign: 'center', cellPadding: 2.5 },
                 });
@@ -209,13 +200,11 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         // ── PRESOSTATO / TERMOSTATO ──
         const isThermostat = data.deviceType === 'thermostat';
         const switchTests  = isThermostat ? data.thermostatTests : data.pressureSwitchTests;
-
         if ((data.deviceType === 'pressure_switch' || isThermostat) && switchTests?.length) {
             addHeader(isThermostat ? 'RESULTADOS TERMOSTATO' : 'RESULTADOS PRESOSTATO');
             const unitLabel = data.unity || (isThermostat ? '°C' : 'psi');
             autoTable(pdf, {
-                startY: yPos,
-                margin: { left: marginX, right: marginX },
+                startY: yPos, margin: { left: marginX, right: marginX },
                 head: [[
                     isThermostat ? `Temp. disparo (${unitLabel})` : `Presión disparo (${unitLabel})`,
                     isThermostat ? `Temp. repone (${unitLabel})`  : `Presión repone (${unitLabel})`,
@@ -233,58 +222,47 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }
 
-        // ── TABLA pH ── con tolerancia dinámica T = T₀ − k(V − V₀) ──────────
+        // ── TABLA pH — desgaste = k×(V−V₀), umbrales fijos ≤20/20-30/>30 ──
         if (data.deviceType === 'ph' && data.phTests?.length) {
             addHeader('RESULTADOS MEDICIONES DE pH');
-
             autoTable(pdf, {
                 startY: yPos,
                 margin: { left: marginX, right: marginX },
                 head: [[
-                    'Patrón Buffer',
-                    'Promedio pH',
-                    'Desviación',
-                    'Voltaje (mV)',
-                    'Temp (°C)',
-                    'Rango Vida (mV)',
-                    'Tol. Dinámica',
+                    'Patrón Buffer', 'Promedio pH', 'Desviación',
+                    'Voltaje (mV)', 'Temp (°C)',
+                    'Desgaste (mV)',   // = K×(V−V₀)
                     'Estado Electrodo',
                     'Error %',
                 ]],
                 body: data.phTests.map(t => {
-                    const mv          = parseFloat(t.errorMv);
-                    const voltaje     = parseFloat(t.voltaje);
-                    const tolerancia  = !isNaN(voltaje)
-                        ? getToleranciaDinamica(voltaje)
-                        : T0_PH;
-
-                    const estado = (isNaN(mv) || t.errorMv === '')
-                        ? '—'
-                        : getEstadoPH(mv, tolerancia);
-
+                    const voltaje  = parseFloat(t.voltaje);
+                    const desgaste = !isNaN(voltaje) ? calcDesgaste(voltaje) : 0;
+                    const mv       = parseFloat(t.errorMv);  // ya es el desgaste guardado
+                    // Preferir el valor ya calculado si existe, si no recalcular
+                    const valFinal = !isNaN(mv) && t.errorMv !== '' ? mv : desgaste;
+                    const estado   = getEstadoPH(valFinal);
                     return [
-                        t.patron    ? `pH ${t.patron}` : '—',
-                        t.promedio  || '0',
-                        t.desviacion|| '0',
-                        t.voltaje   || '0',
+                        t.patron      ? `pH ${t.patron}` : '—',
+                        t.promedio    || '0',
+                        t.desviacion  || '0',
+                        t.voltaje     || '0',
                         t.temperatura || '0',
-                        t.errorMv   || '0',
-                        `${tolerancia.toFixed(1)} mV`,
+                        valFinal.toFixed(2),
                         estado,
-                        t.error     ? `${t.error}%` : '0%',
+                        t.error       ? `${t.error}%` : '0%',
                     ];
                 }),
                 theme: 'grid',
-                headStyles: { fillColor: colors.tealPH, halign: 'center', fontSize: 7.5, fontStyle: 'bold' },
-                styles: { fontSize: 7.5, halign: 'center', cellPadding: 2.5 },
+                headStyles: { fillColor: colors.tealPH, halign: 'center', fontSize: 8, fontStyle: 'bold' },
+                styles: { fontSize: 8, halign: 'center', cellPadding: 2.5 },
                 columnStyles: {
-                    5: { textColor: colors.orange, fontStyle: 'bold' },  // Rango Vida
-                    6: { textColor: colors.blue,   fontStyle: 'bold' },  // Tol. Dinámica
-                    7: { fontStyle: 'bold' },                             // Estado
-                    8: { textColor: colors.red,    fontStyle: 'bold' },  // Error %
+                    5: { textColor: colors.orange, fontStyle: 'bold' },  // Desgaste
+                    6: { fontStyle: 'bold' },                             // Estado
+                    7: { textColor: colors.red,    fontStyle: 'bold' },  // Error %
                 },
                 didParseCell: (hookData: any) => {
-                    if (hookData.column.index === 7 && hookData.section === 'body') {
+                    if (hookData.column.index === 6 && hookData.section === 'body') {
                         const v = hookData.cell.text[0];
                         if      (v === 'OK')        hookData.cell.styles.textColor = colors.green;
                         else if (v === 'Verificar') hookData.cell.styles.textColor = colors.orange;
@@ -300,8 +278,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             if (yPos + 60 > pageH - 15) { pdf.addPage(); yPos = 20; }
             addHeader('OBSERVACIONES Y NOTAS TÉCNICAS');
             autoTable(pdf, {
-                startY: yPos,
-                margin: { left: marginX, right: marginX },
+                startY: yPos, margin: { left: marginX, right: marginX },
                 body: [[data.observations]],
                 styles: { fontSize: 9, cellPadding: 5, fillColor: colors.white, textColor: 60 },
                 theme: 'plain',
@@ -320,12 +297,11 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 ph: [
                     'CURVA DE RESPUESTA DEL ELECTRODO — VOLTAJE vs pH',
                     'ERROR DE MEDICIÓN POR BUFFER (%)',
-                    'RANGO DE VIDA DEL ELECTRODO (mV)',
+                    'RANGO DE VIDA DEL ELECTRODO — DESGASTE k·(V−V₀)',
                 ],
             };
             const deviceKey = data.deviceType === 'transmitter' ? `transmitter_${unit}` : data.deviceType;
             const titles    = chartTitles[deviceKey] || ['ANÁLISIS GRÁFICO'];
-
             chartImages.forEach((img, index) => {
                 pdf.addPage();
                 yPos = 15;
@@ -341,10 +317,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         for (let i = 1; i <= pageCount; i++) {
             pdf.setPage(i);
             pdf.setFontSize(8).setTextColor(150);
-            pdf.text(
-                `Ingenio Risaralda - Generado el ${new Date().toLocaleDateString()}`,
-                pageW / 2, pageH - 5, { align: 'center' }
-            );
+            pdf.text(`Ingenio Risaralda - Generado el ${new Date().toLocaleDateString()}`, pageW / 2, pageH - 5, { align: 'center' });
             pdf.text(`Página ${i} de ${pageCount}`, pageW - marginX, pageH - 5, { align: 'right' });
         }
 

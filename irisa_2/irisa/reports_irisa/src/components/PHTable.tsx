@@ -6,10 +6,9 @@ export interface PHTest {
     voltaje: string;
     temperatura: string;
     patron: string;
-    errorMv: string;
+    errorMv: string;   // Rango Vida = desgaste = k × (V − V₀)
     estadoElectrodo: string;
     error: string;
-    tolerancia?: string;
 }
 
 interface PHTableProps {
@@ -19,32 +18,29 @@ interface PHTableProps {
 
 const BUFFER_OPTIONS = ['4', '7', '9'];
 
-// ─── Constantes de tolerancia dinámica ────────────────────────────────────────
-const V0 = 174;  // mV base fijo (voltaje de referencia del electrodo nuevo)
-const T0 = 30;   // mV tolerancia inicial
+// ─── Constantes (fórmula de la foto) ─────────────────────────────────────────
+const V0 = 174;  // mV — voltaje base del electrodo nuevo
 const K  = 0.1;  // factor de reducción lineal
 
 /**
- * Tolerancia dinámica: T = T₀ − k × (V_medido − V₀)
- * Mínimo garantizado 10 mV para que nunca sea negativo.
- * Si el voltaje baja de V₀, la tolerancia sube (más permisivo).
+ * Rango de Vida (desgaste) = k × (V − V₀)
+ * Mínimo 0 mV. Si V < V₀ el electrodo está por encima de lo esperado → desgaste 0.
  */
-const getToleranciaDinamica = (voltajeMedido: number): number =>
-    Math.max(10, T0 - K * (voltajeMedido - V0));
+const calcDesgaste = (voltajeMedido: number): number =>
+    Math.max(0, K * (voltajeMedido - V0));
 
 /**
- * Umbrales relativos a la tolerancia dinámica:
- *   OK          : errorMv ≤ T × 0.60
- *   Advertencia : errorMv ≤ T
- *   Agotado     : errorMv >  T
+ * Umbrales sobre el desgaste:
+ *   OK        : desgaste ≤ 20 mV
+ *   Verificar : 20 < desgaste ≤ 30 mV
+ *   Agotado   : desgaste > 30 mV
  */
 const getEstado = (
-    errorMv: number,
-    tolerancia: number = T0
+    desgaste: number
 ): { estado: string; label: string; color: string; bg: string; border: string } => {
-    if (errorMv <= tolerancia * 0.60)
+    if (desgaste <= 20)
         return { estado: 'ok',          label: '✓ Electrodo OK',        color: 'text-green-700',  bg: 'bg-green-50',  border: 'border-green-200'  };
-    if (errorMv <= tolerancia)
+    if (desgaste <= 30)
         return { estado: 'advertencia', label: '⚠ Verificar electrodo', color: 'text-orange-700', bg: 'bg-orange-50', border: 'border-orange-200' };
     return    { estado: 'critico',     label: '✗ Electrodo agotado',   color: 'text-red-700',    bg: 'bg-red-50',    border: 'border-red-200'    };
 };
@@ -92,9 +88,8 @@ const PatronSelect = ({ value, onChange }: { value: string; onChange: (v: string
     </div>
 );
 
-const EstadoBadge = ({ errorMv, tolerancia }: { errorMv: string; tolerancia?: string }) => {
+const EstadoBadge = ({ errorMv }: { errorMv: string }) => {
     const val = parseFloat(errorMv);
-    const tol = parseFloat(tolerancia || String(T0));
     if (isNaN(val) || errorMv === '') {
         return (
             <div className="w-full px-3 py-2.5 text-xs border border-gray-200 bg-gray-50 rounded-lg text-gray-400 text-center font-medium">
@@ -102,13 +97,10 @@ const EstadoBadge = ({ errorMv, tolerancia }: { errorMv: string; tolerancia?: st
             </div>
         );
     }
-    const { label, color, bg, border } = getEstado(val, tol);
+    const { label, color, bg, border } = getEstado(val);
     return (
-        <div className={`w-full px-2 py-1.5 text-[11px] border rounded-lg text-center font-bold ${color} ${bg} ${border}`}>
+        <div className={`w-full px-2 py-2 text-[11px] border rounded-lg text-center font-bold ${color} ${bg} ${border}`}>
             {label}
-            <div className="text-[9px] font-normal opacity-60 mt-0.5">
-                Tol: {tol.toFixed(1)} mV
-            </div>
         </div>
     );
 };
@@ -121,7 +113,7 @@ const PHTable: React.FC<PHTableProps> = ({ tests, onTestsChange }) => {
         onTestsChange([...tests, {
             promedio: '', desviacion: '', voltaje: '',
             temperatura: '', patron: '', errorMv: '',
-            estadoElectrodo: '', error: '', tolerancia: ''
+            estadoElectrodo: '', error: ''
         }]);
     };
 
@@ -144,17 +136,13 @@ const PHTable: React.FC<PHTableProps> = ({ tests, onTestsChange }) => {
             ? ((Math.abs(patron - promedio) / patron) * 100).toFixed(3)
             : '';
 
-        // 3. Rango Vida (mV) = |V_medido − V₀|  con tolerancia dinámica T = T₀ − k(V − V₀)
+        // 3. Rango Vida = desgaste = k × (V − V₀)
         if (!isNaN(voltajeMedido)) {
-            const diff       = Math.abs(voltajeMedido - V0);
-            const tolerancia = getToleranciaDinamica(voltajeMedido);
-
-            updated.errorMv         = diff.toFixed(2);
-            updated.tolerancia      = tolerancia.toFixed(1);
-            updated.estadoElectrodo = getEstado(diff, tolerancia).estado;
+            const desgaste = calcDesgaste(voltajeMedido);
+            updated.errorMv         = desgaste.toFixed(2);
+            updated.estadoElectrodo = getEstado(desgaste).estado;
         } else {
             updated.errorMv         = '';
-            updated.tolerancia      = '';
             updated.estadoElectrodo = '';
         }
 
@@ -167,13 +155,13 @@ const PHTable: React.FC<PHTableProps> = ({ tests, onTestsChange }) => {
         onTestsChange(newTests);
     };
 
-    // Resumen de estados para el banner superior
+    // Banner superior de estados
     const estadosBanner = tests
         .filter(t => t.patron && t.estadoElectrodo)
         .map((t, i) => ({
             key: i,
             patron: t.patron,
-            ...getEstado(parseFloat(t.errorMv), parseFloat(t.tolerancia || String(T0)))
+            ...getEstado(parseFloat(t.errorMv))
         }));
 
     const gridCols = 'lg:grid-cols-[1fr_1fr_1fr_1fr_1fr_1fr_1.5fr_1fr_70px]';
@@ -256,7 +244,7 @@ const PHTable: React.FC<PHTableProps> = ({ tests, onTestsChange }) => {
                                         <InputField unit="mV" value={test.errorMv} readOnly />
                                     </div>
                                     <div className="px-3 py-3">
-                                        <EstadoBadge errorMv={test.errorMv} tolerancia={test.tolerancia} />
+                                        <EstadoBadge errorMv={test.errorMv} />
                                     </div>
                                     <div className="px-3 py-3 bg-red-50/20">
                                         <InputField unit="%" value={test.error} isError={parseFloat(test.error) > 5} readOnly />
@@ -287,7 +275,7 @@ const PHTable: React.FC<PHTableProps> = ({ tests, onTestsChange }) => {
                                     </div>
                                     <div className="flex items-center justify-between gap-3">
                                         <div className="flex-1">
-                                            <EstadoBadge errorMv={test.errorMv} tolerancia={test.tolerancia} />
+                                            <EstadoBadge errorMv={test.errorMv} />
                                         </div>
                                         <button onClick={() => handleDeleteRow(index)} className="text-red-400 hover:text-red-600 p-2 shrink-0">
                                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -324,11 +312,11 @@ const PHTable: React.FC<PHTableProps> = ({ tests, onTestsChange }) => {
                     </span>
                     <span className="text-[10px] flex items-center gap-1">
                         <div className="w-2 h-2 rounded-full bg-orange-400"/>
-                        20–80 mV — Verificar
+                        20–30 mV — Verificar
                     </span>
                     <span className="text-[10px] flex items-center gap-1">
                         <div className="w-2 h-2 rounded-full bg-red-500"/>
-                        &gt; 80 mV — Agotado
+                        &gt; 30 mV — Agotado
                     </span>
                 </div>
             </div>
