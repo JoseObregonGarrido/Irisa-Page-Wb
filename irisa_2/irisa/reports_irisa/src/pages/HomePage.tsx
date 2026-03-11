@@ -41,7 +41,12 @@ const HomePage: React.FC = () => {
     const [deviceCode, setDeviceCode] = useLocalStorage('ir_dev_code', '');
     const [observations, setObservations] = useLocalStorage('ir_obs', '');
 
-    const [transmitterMeasurements, setTransmitterMeasurements] = useLocalStorage<Measurement[]>('ir_table_trans', []);
+    // ── CAMBIO 3: 3 arrays independientes por modo ────────────────────────────
+    const [measurementsMA,  setMeasurementsMA]  = useLocalStorage<Measurement[]>('ir_table_ma',  []);
+    const [measurementsOhm, setMeasurementsOhm] = useLocalStorage<Measurement[]>('ir_table_ohm', []);
+    const [measurementsMV,  setMeasurementsMV]  = useLocalStorage<Measurement[]>('ir_table_mv',  []);
+    // ─────────────────────────────────────────────────────────────────────────
+
     const [pressureSwitchTests, setPressureSwitchTests] = useLocalStorage<PressureSwitchTest[]>('ir_table_press', []);
     const [thermostatTests, setThermostatTests] = useLocalStorage<ThermostatTest[]>('ir_table_therm', []);
     const [phTests, setPhTests] = useLocalStorage<PHTest[]>('ir_table_ph', []);
@@ -66,6 +71,11 @@ const HomePage: React.FC = () => {
     const thermostatChartRef = useRef<any>(null);
     const phChartRef = useRef<any>(null);
 
+    // Array del modo activo (para charts y PDF)
+    const activeMeasurements = outputUnit === 'mA'  ? measurementsMA
+                             : outputUnit === 'ohm' ? measurementsOhm
+                             : measurementsMV;
+
     const handleLogout = () => {
         logout();
         navigate('/login');
@@ -87,7 +97,7 @@ const HomePage: React.FC = () => {
             unity,
             deviceCode,
             observations,
-            transmitterMeasurements,
+            transmitterMeasurements: activeMeasurements, // solo el modo activo al PDF
             pressureSwitchTests,
             thermostatTests,
             phTests,
@@ -117,7 +127,6 @@ const HomePage: React.FC = () => {
             } else if (deviceType === 'ph' && phChartRef.current) {
                 const els = phChartRef.current.getChartElements();
                 const captured: string[] = [];
-                // chart3 agregado — captura los 3 charts del pH
                 for (const el of [els.chart1, els.chart2, els.chart3]) {
                     if (!el) continue;
                     const orig = el.style.width;
@@ -167,7 +176,11 @@ const HomePage: React.FC = () => {
             setUnity('');
             setDeviceCode('');
             setObservations('');
-            setTransmitterMeasurements([]);
+            // ── Limpiar los 3 arrays ──────────────────────────────────────────
+            setMeasurementsMA([]);
+            setMeasurementsOhm([]);
+            setMeasurementsMV([]);
+            // ─────────────────────────────────────────────────────────────────
             setPressureSwitchTests([]);
             setThermostatTests([]);
             setPhTests([]);
@@ -312,9 +325,14 @@ const HomePage: React.FC = () => {
                             {deviceType === 'transmitter' && (
                                 <div className="w-full overflow-x-auto pb-4 custom-scrollbar">
                                     <div className="lg:min-w-[1000px]">
+                                        {/* ── CAMBIO: props separadas por modo ── */}
                                         <TransmitterTable
-                                            measurements={transmitterMeasurements}
-                                            onMeasurementsChange={setTransmitterMeasurements}
+                                            measurementsMA={measurementsMA}
+                                            onMeasurementsMAChange={setMeasurementsMA}
+                                            measurementsOhm={measurementsOhm}
+                                            onMeasurementsOhmChange={setMeasurementsOhm}
+                                            measurementsMV={measurementsMV}
+                                            onMeasurementsMVChange={setMeasurementsMV}
                                             outputUnit={outputUnit}
                                             setOutputUnit={setOutputUnit}
                                             hasUeTransmitter={hasUeTransmitter}
@@ -365,9 +383,10 @@ const HomePage: React.FC = () => {
                                         </span>
                                         Análisis Gráfico: {getDeviceTypeLabel(deviceType)}
                                     </h3>
-                                    {deviceType === 'transmitter' && outputUnit === 'ohm' && <RTDChart ref={rtdChartRef} measurements={transmitterMeasurements} hasUeTransmitter={hasUeTransmitter} />}
-                                    {deviceType === 'transmitter' && outputUnit === 'mv' && <MvChart ref={mvChartRef} measurements={transmitterMeasurements} />}
-                                    {deviceType === 'transmitter' && outputUnit === 'mA' && <TransmitterChart ref={transmitterChartRef} data={transmitterMeasurements} />}
+                                    {/* Charts usan activeMeasurements = array del modo activo */}
+                                    {deviceType === 'transmitter' && outputUnit === 'ohm' && <RTDChart ref={rtdChartRef} measurements={activeMeasurements} hasUeTransmitter={hasUeTransmitter} />}
+                                    {deviceType === 'transmitter' && outputUnit === 'mv' && <MvChart ref={mvChartRef} measurements={activeMeasurements} />}
+                                    {deviceType === 'transmitter' && outputUnit === 'mA' && <TransmitterChart ref={transmitterChartRef} data={activeMeasurements} />}
                                     {deviceType === 'pressure_switch' && <PressureSwitchChart ref={pressureSwitchChartRef} tests={pressureSwitchTests} />}
                                     {deviceType === 'thermostat' && <ThermostatChart ref={thermostatChartRef} tests={thermostatTests} />}
                                     {deviceType === 'ph' && <PHChart ref={phChartRef} tests={phTests} />}

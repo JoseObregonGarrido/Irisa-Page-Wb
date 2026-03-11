@@ -27,14 +27,20 @@ export interface Measurement {
     sensorTypeTx?: 'J' | 'K';
 }
 
+// ── CAMBIO 1: 3 arrays separados en vez de uno solo ──────────────────────────
 interface TransmitterTableProps {
-    measurements: Measurement[];
-    onMeasurementsChange: (measurements: Measurement[]) => void;
+    measurementsMA: Measurement[];
+    onMeasurementsMAChange: (m: Measurement[]) => void;
+    measurementsOhm: Measurement[];
+    onMeasurementsOhmChange: (m: Measurement[]) => void;
+    measurementsMV: Measurement[];
+    onMeasurementsMVChange: (m: Measurement[]) => void;
     outputUnit: 'mA' | 'ohm' | 'mv';
     setOutputUnit: (unit: 'mA' | 'ohm' | 'mv') => void;
     hasUeTransmitter: boolean;
     setHasUeTransmitter: (show: boolean) => void;
 }
+// ─────────────────────────────────────────────────────────────────────────────
 
 const InputField = ({ label, value, onChange, unit, isError = false, readOnly = false }: any) => (
     <div className="flex flex-col w-full">
@@ -58,13 +64,24 @@ const InputField = ({ label, value, onChange, unit, isError = false, readOnly = 
 );
 
 const TransmitterTable: React.FC<TransmitterTableProps> = ({ 
-    measurements, 
-    onMeasurementsChange,
+    measurementsMA, onMeasurementsMAChange,
+    measurementsOhm, onMeasurementsOhmChange,
+    measurementsMV, onMeasurementsMVChange,
     outputUnit,
     setOutputUnit,
     hasUeTransmitter,
     setHasUeTransmitter
 }) => {
+    // ── CAMBIO 2: seleccionar array activo según modo ─────────────────────────
+    const measurements = outputUnit === 'mA'  ? measurementsMA
+                       : outputUnit === 'ohm' ? measurementsOhm
+                       : measurementsMV;
+
+    const onMeasurementsChange = outputUnit === 'mA'  ? onMeasurementsMAChange
+                               : outputUnit === 'ohm' ? onMeasurementsOhmChange
+                               : onMeasurementsMVChange;
+    // ─────────────────────────────────────────────────────────────────────────
+
     const [showDropdown, setShowDropdown] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -238,7 +255,6 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
 
                                 {/* ── MÓVIL / TABLET: card apilada (< lg) ── */}
                                 <div className="lg:hidden p-4 space-y-3">
-                                    {/* Header card */}
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-2">
                                             <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">#{index + 1}</span>
@@ -388,7 +404,6 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                                             <div className="lg:px-2 lg:py-3 lg:bg-red-50/20"><InputField label="Err %" unit="%" value={m.errorPercentage} isError readOnly /></div>
                                         </>
                                     )}
-                                    {/* BOTÓN ELIMINAR DESKTOP */}
                                     <div className="flex justify-center items-center py-2 lg:py-0">
                                         <DeleteBtn index={index} />
                                     </div>
