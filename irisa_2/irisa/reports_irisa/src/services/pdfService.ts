@@ -329,7 +329,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         if (chartImages?.length) {
             const chartTitles: { [key: string]: string[] } = {
                 transmitter_mA:  ['CURVA DE RESPUESTA DEL TRANSMISOR'],
-                transmitter_ohm: ['DESVIACIÓN DE OHM (RTD)'],
+                transmitter_ohm: ['DESVIACIÓN DE OHM (RTD)', 'CURVA DE RESPUESTA DEL TRANSMISOR (mA) — RTD'],
                 transmitter_mv:  ['ANÁLISIS mV / TX'],
                 pressure_switch: ['CURVA DE CALIBRACIÓN Y LINEALIDAD'],
                 thermostat:      ['CURVA DE CALIBRACIÓN Y LINEALIDAD'],
