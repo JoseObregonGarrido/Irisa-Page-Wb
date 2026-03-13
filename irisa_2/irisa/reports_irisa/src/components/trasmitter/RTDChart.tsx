@@ -26,98 +26,161 @@ const RTDChart = forwardRef<any, RTDChartProps>(({
     measurements = [],
     hasUeTransmitter = true 
 }, ref) => {
-    const containerOhmRef = useRef<HTMLDivElement>(null);
-    const containerMaRef = useRef<HTMLDivElement>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
 
-    // Procesamiento de datos
+    // Procesamiento de datos para RTD
     const processedData = measurements.map((m) => {
-        const idealUeVal = m.idealUE ? parseFloat(m.idealUE) : 0;
-        const idealMaVal = m.idealmA ? parseFloat(m.idealmA) : 0;
-        const maTransVal = m.maTransmitter ? parseFloat(m.maTransmitter) : 0;
-        const idealOhmVal = m.idealohm ? parseFloat(m.idealohm) : 0;
-        const sensorOhmVal = m.ohmTransmitter ? parseFloat(m.ohmTransmitter) : 0;
+        const idealUeVal = m.idealUE ? parseFloat(m.idealUE) : null;
+        const idealOhmVal = m.idealohm ? parseFloat(m.idealohm) : null;
+        const sensorOhmVal = m.ohmTransmitter ? parseFloat(m.ohmTransmitter) : null;
+        const ueTransVal = m.ueTransmitter ? parseFloat(m.ueTransmitter) : null;
 
         return {
-            temperatura: idealUeVal,
+            percentage: parseFloat(m.percentage) || 0,
+            temperatura: idealUeVal, // Eje X ahora es temperatura (Ideal UE)
             idealOhm: idealOhmVal,
             sensorOhm: sensorOhmVal,
-            idealMa: idealMaVal,
-            maTransmitter: maTransVal,
+            idealUE: idealUeVal,
+            ueTransmitter: ueTransVal
         };
-    }).sort((a, b) => a.temperatura - b.temperatura);
+    }).sort((a, b) => (a.temperatura || 0) - (b.temperatura || 0));
 
-    // Lógica de Ticks
-    const getYTicksOhm = () => {
-        const values = processedData.flatMap(d => [d.idealOhm, d.sensorOhm]);
-        const maxVal = Math.max(...values, 100);
-        const minVal = Math.min(...values, 0);
-        let step = maxVal > 500 ? 100 : 20;
+    // LÓGICA DE SALTOS DINÁMICOS PARA EL EJE Y
+    const getYTicks = () => {
+        if (processedData.length === 0) return [0, 10, 20, 30, 40, 50];
+        
+        const activeValues = processedData.flatMap(d => {
+            const values = [];
+            if (d.idealOhm !== null) values.push(d.idealOhm);
+            if (d.sensorOhm !== null) values.push(d.sensorOhm);
+            if (hasUeTransmitter && d.idealUE !== null) values.push(d.idealUE);
+            if (hasUeTransmitter && d.ueTransmitter !== null) values.push(d.ueTransmitter);
+            return values.filter(v => v !== null) as number[];
+        });
+
+        const maxVal = activeValues.length > 0 ? Math.max(...activeValues) : 50;
+        const minVal = activeValues.length > 0 ? Math.min(...activeValues, 0) : 0; 
+        
+        // Ajuste de escala automático
+        let step = 10;
+        if (maxVal > 200) step = 50;
+        if (maxVal > 1000) step = 200;
+
         const ticks = [];
-        for (let i = Math.floor(minVal/step)*step; i <= Math.ceil(maxVal/step)*step; i += step) ticks.push(i);
+        const start = Math.floor(minVal / step) * step;
+        const end = Math.ceil(maxVal / step) * step;
+        
+        for (let i = start; i <= end; i += step) {
+            ticks.push(i);
+        }
         return ticks;
     };
 
+    // LÓGICA DE SALTOS DINÁMICOS PARA EL EJE X (TEMPERATURA)
+    const getXTicks = () => {
+        if (processedData.length === 0) return [];
+        
+        const temperaturas = processedData
+            .map(d => d.temperatura)
+            .filter(t => t !== null) as number[];
+        
+        if (temperaturas.length === 0) return [];
+        
+        const minTemp = Math.min(...temperaturas);
+        const maxTemp = Math.max(...temperaturas);
+        
+        // Generar ticks distribuidos
+        let step = 10;
+        if (maxTemp - minTemp > 100) step = 20;
+        if (maxTemp - minTemp > 500) step = 50;
+        
+        const ticks = [];
+        const start = Math.floor(minTemp / step) * step;
+        const end = Math.ceil(maxTemp / step) * step;
+        
+        for (let i = start; i <= end; i += step) {
+            ticks.push(i);
+        }
+        return ticks.length > 0 ? ticks : [minTemp, maxTemp];
+    };
+
+    const yTicks = getYTicks();
+    const xTicks = getXTicks();
+
     useImperativeHandle(ref, () => ({
         captureAllCharts: async () => {
-            const images = [];
-            const options = { backgroundColor: '#ffffff', pixelRatio: 2, cacheBust: true };
-            
-            if (containerOhmRef.current) {
-                const imgOhm = await toPng(containerOhmRef.current, options);
-                images.push(imgOhm);
+            if (containerRef.current) {
+                const dataUrl = await toPng(containerRef.current, {
+                    backgroundColor: '#ffffff',
+                    pixelRatio: 2,
+                    cacheBust: true
+                });
+                return [dataUrl];
             }
-            if (containerMaRef.current) {
-                const imgMa = await toPng(containerMaRef.current, options);
-                images.push(imgMa);
-            }
-            return images;
+            return [];
         }
     }));
 
-    if (processedData.length === 0) return <div className="p-10 text-center text-gray-400">Sin datos para gráficas</div>;
-
     return (
-        <div className="flex flex-col gap-10 mt-8">
-            {/* GRÁFICA 1: RESISTENCIA (OHM) */}
-            <div className="shadow-lg rounded-xl overflow-hidden border border-gray-200 bg-white" ref={containerOhmRef}>
-                <div className="bg-gradient-to-r from-teal-600 to-emerald-600 px-6 py-5 text-white">
-                    <h3 className="text-xl font-bold">📈 Desviación de Ohm (RTD)</h3>
-                    <p className="text-teal-50 text-sm">Ideal Ω vs Sensor Ω | Eje X: Temperatura</p>
-                </div>
-                <div className="p-6 h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={processedData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="temperatura" type="number" domain={['auto', 'auto']} label={{ value: '°C', position: 'insideBottomRight', offset: -5 }} />
-                            <YAxis ticks={getYTicksOhm()} label={{ value: 'Ω', angle: -90, position: 'insideLeft' }} />
-                            <Tooltip />
-                            <Legend verticalAlign="top"/>
-                            <Line type="monotone" dataKey="idealOhm" stroke="#10b981" name="Ideal Ohm" strokeWidth={3} dot={{ r: 4 }} isAnimationActive={false} />
-                            <Line type="monotone" dataKey="sensorOhm" stroke="#f59e0b" name="Sensor Ohm" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 4 }} isAnimationActive={false} />
-                        </LineChart>
-                    </ResponsiveContainer>
+        <div className="mt-8 shadow-lg rounded-xl overflow-hidden border border-gray-200 bg-white" ref={containerRef}>
+            <div className="bg-gradient-to-r from-teal-600 to-emerald-600 px-6 py-5 text-white">
+                <div className="flex items-center gap-4">
+                    <span className="text-3xl">📈</span>
+                    <div>
+                        <h3 className="text-xl font-bold">Desviación de Ohm (RTD)</h3>
+                        <p className="text-blue-100 text-sm opacity-90">Ideal Ω vs Sensor Ω | Eje X: Temperatura (UE)</p>
+                    </div>
                 </div>
             </div>
 
-            {/* GRÁFICA 2: TRANSMISOR (mA) */}
-            <div className="shadow-lg rounded-xl overflow-hidden border border-gray-200 bg-white" ref={containerMaRef}>
-                <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-5 text-white">
-                    <h3 className="text-xl font-bold">📉 Curva de Respuesta del Transmisor</h3>
-                    <p className="text-blue-50 text-sm">Entrada (Temp) vs Salida (mA)</p>
-                </div>
-                <div className="p-6 h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={processedData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="temperatura" type="number" domain={['auto', 'auto']} />
-                            <YAxis domain={[4, 20]} ticks={[4, 8, 12, 16, 20]} label={{ value: 'mA', angle: -90, position: 'insideLeft' }} />
-                            <Tooltip />
-                            <Legend verticalAlign="top"/>
-                            <Line type="monotone" dataKey="idealMa" stroke="#3b82f6" name="mA Ideal" strokeWidth={3} dot={{ r: 4 }} isAnimationActive={false} />
-                            <Line type="monotone" dataKey="maTransmitter" stroke="#ef4444" name="mA Transmisor" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 4 }} isAnimationActive={false} />
-                        </LineChart>
-                    </ResponsiveContainer>
-                </div>
+            <div className="p-6 bg-white">
+                {processedData.length === 0 ? (
+                    <div className="text-center py-12 text-gray-400">
+                        <p>No hay datos suficientes para generar la curva de respuesta.</p>
+                    </div>
+                ) : (
+                    <div className="h-96 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={processedData} margin={{ top: 20, right: 30, left: 20, bottom: 25 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                                
+                                <XAxis 
+                                    dataKey="temperatura" 
+                                    type="number"
+                                    ticks={xTicks}
+                                    tick={{ fontSize: 11 }}
+                                    label={{ value: 'Temperatura (UE)', position: 'insideBottom', offset: -10, fontSize: 12, fontWeight: 'bold' }} 
+                                />
+
+                                <YAxis 
+                                    ticks={yTicks} 
+                                    domain={[yTicks[0], yTicks[yTicks.length - 1]]}
+                                    tick={{ fontSize: 10 }}
+                                    label={{ value: 'Resistencia (Ω)', angle: -90, position: 'insideLeft', fontWeight: 'bold', fontSize: 12 }}
+                                />
+
+                                <Tooltip 
+                                    contentStyle={{ borderRadius: '8px', fontSize: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                                    formatter={(value: any, name: string) => [value !== null ? value.toFixed(3) : '---', name]}
+                                    labelFormatter={(label) => `Temperatura: ${label} UE`}
+                                />
+                                <Legend verticalAlign="top" height={36} />
+                                
+                                {/* LÍNEAS PARA OHMS */}
+                                <Line type="monotone" dataKey="idealOhm" stroke="#10b981" name="Ideal Ohm" strokeWidth={2} dot={{ r: 4 }} isAnimationActive={false} />
+                                <Line type="monotone" dataKey="sensorOhm" stroke="#f59e0b" name="Sensor Ohm" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 4 }} isAnimationActive={false} />
+                                
+                                {/* LÍNEAS PARA UE (SOLO SI ESTÁ HABILITADO) */}
+                                {hasUeTransmitter && (
+                                    <>
+                                        <Line type="monotone" dataKey="idealUE" stroke="#3b82f6" name="Ideal UE" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} isAnimationActive={false} connectNulls={false} />
+                                        <Line type="monotone" dataKey="ueTransmitter" stroke="#ef4444" name="UE Transmisor" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} isAnimationActive={false} connectNulls={false} />
+                                    </>
+                                )}
+                            </LineChart>
+                        </ResponsiveContainer>
+                    </div>
+                )}
             </div>
         </div>
     );
