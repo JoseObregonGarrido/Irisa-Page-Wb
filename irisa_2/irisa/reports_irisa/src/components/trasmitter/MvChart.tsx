@@ -19,17 +19,28 @@ interface MVChartProps {
     measurements?: MVMeasurement[];
 }
 
-// --- Helpers de ticks reutilizables ---
+// ── Etiqueta personalizada: prefijo + 2 decimales ─────────────────────────────
+const makeLabel = (prefix: string) => (props: any) => {
+    const { x, y, value } = props;
+    if (value === null || value === undefined) return <g/>;
+    return (
+        <text x={x} y={y - 8} fill="#374151" fontSize={10} textAnchor="middle" fontWeight={500}>
+            {`${prefix}: ${Number(value).toFixed(2)}`}
+        </text>
+    );
+};
+
+// ── Helpers de ticks ──────────────────────────────────────────────────────────
 const getYTicks = (values: number[]) => {
     if (values.length === 0) return [0, 5, 10, 15, 20, 25];
     const max = Math.max(...values);
     const min = Math.min(...values, 0);
     let step = 5;
-    if (max > 50) step = 10;
+    if (max > 50)  step = 10;
     if (max > 100) step = 20;
-    const ticks = [];
+    const ticks: number[] = [];
     const start = Math.floor(min / step) * step;
-    const end = Math.ceil(max / step) * step;
+    const end   = Math.ceil(max  / step) * step;
     for (let i = start; i <= end; i += step) ticks.push(i);
     return ticks;
 };
@@ -41,9 +52,9 @@ const getXTicks = (temps: number[]) => {
     let step = 10;
     if (max - min > 100) step = 20;
     if (max - min > 500) step = 50;
-    const ticks = [];
+    const ticks: number[] = [];
     const start = Math.floor(min / step) * step;
-    const end = Math.ceil(max / step) * step;
+    const end   = Math.ceil(max  / step) * step;
     for (let i = start; i <= end; i += step) ticks.push(i);
     return ticks.length > 0 ? ticks : [min, max];
 };
@@ -51,44 +62,35 @@ const getXTicks = (temps: number[]) => {
 const MVChart = forwardRef<any, MVChartProps>(({ measurements = [] }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
 
-    // --- Separar filas por tipo ---
     const mvRows = measurements.filter(m => !m.rowType || m.rowType === 'mv');
     const txRows = measurements.filter(m => m.rowType === 'tx');
 
-    // --- Datos para gráfico mV ---
     const mvData = mvRows.map(m => ({
         temperatura: m.idealUE ? parseFloat(m.idealUE) : null,
-        idealMV: m.idealmV ? parseFloat(m.idealmV) : null,
-        sensorMV: m.sensormV ? parseFloat(m.sensormV) : null,
+        idealMV:     m.idealmV  ? parseFloat(m.idealmV)  : null,
+        sensorMV:    m.sensormV ? parseFloat(m.sensormV) : null,
     })).sort((a, b) => (a.temperatura || 0) - (b.temperatura || 0));
 
-    // --- Datos para gráfico TX ---
     const txData = txRows.map(m => ({
         temperatura: m.idealUE ? parseFloat(m.idealUE) : null,
-        idealMA: m.idealmA ? parseFloat(m.idealmA) : null,
-        maTX: m.mATX ? parseFloat(m.mATX) : null,
+        idealMA:     m.idealmA ? parseFloat(m.idealmA) : null,
+        maTX:        m.mATX    ? parseFloat(m.mATX)    : null,
     })).sort((a, b) => (a.temperatura || 0) - (b.temperatura || 0));
 
-    // --- Ticks mV ---
-    const mvYVals = mvData.flatMap(d => [d.idealMV, d.sensorMV].filter(v => v !== null) as number[]);
-    const mvXVals = mvData.map(d => d.temperatura).filter(t => t !== null) as number[];
+    const mvYVals  = mvData.flatMap(d => [d.idealMV,  d.sensorMV].filter(v => v !== null) as number[]);
+    const mvXVals  = mvData.map(d => d.temperatura).filter(t => t !== null) as number[];
     const mvYTicks = getYTicks(mvYVals);
     const mvXTicks = getXTicks(mvXVals);
 
-    // --- Ticks TX ---
-    const txYVals = txData.flatMap(d => [d.idealMA, d.maTX].filter(v => v !== null) as number[]);
-    const txXVals = txData.map(d => d.temperatura).filter(t => t !== null) as number[];
+    const txYVals  = txData.flatMap(d => [d.idealMA, d.maTX].filter(v => v !== null) as number[]);
+    const txXVals  = txData.map(d => d.temperatura).filter(t => t !== null) as number[];
     const txYTicks = getYTicks(txYVals);
     const txXTicks = getXTicks(txXVals);
 
     useImperativeHandle(ref, () => ({
         captureAllCharts: async () => {
             if (containerRef.current) {
-                const dataUrl = await toPng(containerRef.current, {
-                    backgroundColor: '#ffffff',
-                    pixelRatio: 2,
-                    cacheBust: true
-                });
+                const dataUrl = await toPng(containerRef.current, { backgroundColor: '#ffffff', pixelRatio: 2, cacheBust: true });
                 return [dataUrl];
             }
             return [];
@@ -97,6 +99,8 @@ const MVChart = forwardRef<any, MVChartProps>(({ measurements = [] }, ref) => {
 
     const hasMvData = mvData.length > 0;
     const hasTxData = txData.length > 0;
+    const tooltipStyle = { borderRadius: '8px', fontSize: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' };
+    const margin = { top: 30, right: 30, left: 20, bottom: 25 };
 
     if (!hasMvData && !hasTxData) {
         return (
@@ -104,9 +108,7 @@ const MVChart = forwardRef<any, MVChartProps>(({ measurements = [] }, ref) => {
                 <div className="bg-gradient-to-r from-orange-600 to-red-600 px-6 py-5 text-white">
                     <h3 className="text-xl font-bold">Análisis mV / TX</h3>
                 </div>
-                <div className="text-center py-12 text-gray-400">
-                    <p>No hay datos suficientes para generar los gráficos.</p>
-                </div>
+                <div className="text-center py-12 text-gray-400"><p>No hay datos suficientes para generar los gráficos.</p></div>
             </div>
         );
     }
@@ -129,29 +131,23 @@ const MVChart = forwardRef<any, MVChartProps>(({ measurements = [] }, ref) => {
                     <div className="p-6 bg-white">
                         <div className="h-96 w-full">
                             <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={mvData} margin={{ top: 20, right: 30, left: 20, bottom: 25 }}>
+                                <LineChart data={mvData} margin={margin}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                                     <XAxis
-                                        dataKey="temperatura"
-                                        type="number"
-                                        ticks={mvXTicks}
-                                        tick={{ fontSize: 11 }}
+                                        dataKey="temperatura" type="number" ticks={mvXTicks} tick={{ fontSize: 11 }}
                                         label={{ value: 'Temperatura (UE)', position: 'insideBottom', offset: -10, fontSize: 12, fontWeight: 'bold' }}
                                     />
                                     <YAxis
-                                        ticks={mvYTicks}
-                                        domain={[mvYTicks[0], mvYTicks[mvYTicks.length - 1]]}
-                                        tick={{ fontSize: 10 }}
+                                        ticks={mvYTicks} domain={[mvYTicks[0], mvYTicks[mvYTicks.length - 1]]} tick={{ fontSize: 10 }}
                                         label={{ value: 'Voltaje (mV)', angle: -90, position: 'insideLeft', fontWeight: 'bold', fontSize: 12 }}
                                     />
-                                    <Tooltip
-                                        contentStyle={{ borderRadius: '8px', fontSize: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                        formatter={(value: any, name: string) => [value !== null ? value.toFixed(3) : '---', name]}
+                                    <Tooltip contentStyle={tooltipStyle}
+                                        formatter={(value: any, name: string) => [value !== null ? Number(value).toFixed(2) : '---', name]}
                                         labelFormatter={(label) => `Temperatura: ${label} UE`}
                                     />
                                     <Legend verticalAlign="top" height={36} />
-                                    <Line type="monotone" dataKey="idealMV" stroke="#8b5cf6" name="Ideal mV" strokeWidth={2} dot={{ r: 4 }} isAnimationActive={false} />
-                                    <Line type="monotone" dataKey="sensorMV" stroke="#ec4899" name="Sensor mV" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 4 }} isAnimationActive={false} />
+                                    <Line type="monotone" dataKey="idealMV"  stroke="#8b5cf6" name="Ideal mV"  strokeWidth={2} dot={{ r: 4 }} isAnimationActive={false} label={makeLabel('Ideal mV')} />
+                                    <Line type="monotone" dataKey="sensorMV" stroke="#ec4899" name="Sensor mV" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 4 }} isAnimationActive={false} label={makeLabel('Sensor mV')} />
                                 </LineChart>
                             </ResponsiveContainer>
                         </div>
@@ -174,29 +170,23 @@ const MVChart = forwardRef<any, MVChartProps>(({ measurements = [] }, ref) => {
                     <div className="p-6 bg-white">
                         <div className="h-96 w-full">
                             <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={txData} margin={{ top: 20, right: 30, left: 20, bottom: 25 }}>
+                                <LineChart data={txData} margin={margin}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                                     <XAxis
-                                        dataKey="temperatura"
-                                        type="number"
-                                        ticks={txXTicks}
-                                        tick={{ fontSize: 11 }}
+                                        dataKey="temperatura" type="number" ticks={txXTicks} tick={{ fontSize: 11 }}
                                         label={{ value: 'Temperatura (UE)', position: 'insideBottom', offset: -10, fontSize: 12, fontWeight: 'bold' }}
                                     />
                                     <YAxis
-                                        ticks={txYTicks}
-                                        domain={[txYTicks[0], txYTicks[txYTicks.length - 1]]}
-                                        tick={{ fontSize: 10 }}
+                                        ticks={txYTicks} domain={[txYTicks[0], txYTicks[txYTicks.length - 1]]} tick={{ fontSize: 10 }}
                                         label={{ value: 'mA', angle: -90, position: 'insideLeft', fontWeight: 'bold', fontSize: 12 }}
                                     />
-                                    <Tooltip
-                                        contentStyle={{ borderRadius: '8px', fontSize: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                        formatter={(value: any, name: string) => [value !== null ? value.toFixed(3) : '---', name]}
+                                    <Tooltip contentStyle={tooltipStyle}
+                                        formatter={(value: any, name: string) => [value !== null ? Number(value).toFixed(2) : '---', name]}
                                         labelFormatter={(label) => `Temperatura: ${label} UE`}
                                     />
                                     <Legend verticalAlign="top" height={36} />
-                                    <Line type="monotone" dataKey="idealMA" stroke="#3b82f6" name="Ideal mA" strokeWidth={2} dot={{ r: 4 }} isAnimationActive={false} />
-                                    <Line type="monotone" dataKey="maTX" stroke="#ef4444" name="mA TX" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 4 }} isAnimationActive={false} />
+                                    <Line type="monotone" dataKey="idealMA" stroke="#3b82f6" name="Ideal mA" strokeWidth={2} dot={{ r: 4 }} isAnimationActive={false} label={makeLabel('Ideal mA')} />
+                                    <Line type="monotone" dataKey="maTX"    stroke="#ef4444" name="mA TX"    strokeWidth={2} strokeDasharray="5 5" dot={{ r: 4 }} isAnimationActive={false} label={makeLabel('mA TX')} />
                                 </LineChart>
                             </ResponsiveContainer>
                         </div>
