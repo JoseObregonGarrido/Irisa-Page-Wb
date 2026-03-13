@@ -30,16 +30,61 @@ interface TransmitterChartProps {
     hasUeTransmitter?: boolean;
 }
 
-// ── Etiqueta personalizada: prefijo + 2 decimales ─────────────────────────────
-const makeLabel = (prefix: string) => (props: any) => {
-    const { x, y, value } = props;
-    if (value === null || value === undefined) return <g/>;
-    return (
-        <text x={x} y={y - 8} fill="#374151" fontSize={10} textAnchor="middle" fontWeight={500}>
-            {`${prefix}: ${Number(value).toFixed(2)}`}
-        </text>
-    );
-};
+// ── Cajita SVG siempre visible encima/debajo del punto ───────────────────────
+// offset > 0 → cajita arriba   |   offset < 0 → cajita abajo
+const makeDot = (color: string, label: string, offset: number = -40) =>
+    (props: any) => {
+        const { cx, cy, value } = props;
+        if (value === null || value === undefined || cx === undefined || cy === undefined) {
+            return <g />;
+        }
+
+        const text   = `${label}: ${Number(value).toFixed(2)}`;
+        const padX   = 6;
+        const padY   = 4;
+        const fSize  = 10;
+        const charW  = fSize * 0.58;
+        const boxW   = text.length * charW + padX * 2;
+        const boxH   = fSize + padY * 2;
+        const boxX   = cx - boxW / 2;
+        const boxY   = cy + offset - boxH;          // encima si offset negativo
+        const arrowY = offset < 0 ? boxY + boxH : boxY; // punta de flecha
+
+        return (
+            <g>
+                {/* Punto del dot */}
+                <circle cx={cx} cy={cy} r={4} fill={color} stroke="#fff" strokeWidth={2} />
+
+                {/* Cajita */}
+                <rect
+                    x={boxX} y={boxY} width={boxW} height={boxH}
+                    rx={4} ry={4}
+                    fill="white"
+                    stroke={color}
+                    strokeWidth={1.2}
+                    style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.12))' }}
+                />
+
+                {/* Triángulo indicador */}
+                <polygon
+                    points={`${cx - 4},${arrowY} ${cx + 4},${arrowY} ${cx},${arrowY + (offset < 0 ? 5 : -5)}`}
+                    fill={color}
+                />
+
+                {/* Texto */}
+                <text
+                    x={cx} y={boxY + padY + fSize - 1}
+                    textAnchor="middle"
+                    fontSize={fSize}
+                    fontWeight={600}
+                    fill={color}
+                    fontFamily="system-ui, sans-serif"
+                >
+                    {text}
+                </text>
+            </g>
+        );
+    };
 
 const TransmitterChart = forwardRef<any, TransmitterChartProps>(({
     measurements,
@@ -56,7 +101,7 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({
         const idealMa    = parseFloat(m.idealmA || m.idealMa || '0');
         const ueTrans    = m.ueTransmitter ? parseFloat(m.ueTransmitter) : null;
         const idealUeVal = (m.idealUE || m.idealUe) ? parseFloat(m.idealUE || m.idealUe || '0') : null;
-        const idealOhmVal  = m.idealohm      ? parseFloat(m.idealohm)      : null;
+        const idealOhmVal  = m.idealohm       ? parseFloat(m.idealohm)       : null;
         const sensorOhmVal = m.ohmTransmitter ? parseFloat(m.ohmTransmitter) : null;
         const idealMvVal   = m.idealMv        ? parseFloat(m.idealMv)        : null;
         const sensorMvVal  = m.mvTransmitter  ? parseFloat(m.mvTransmitter)  : null;
@@ -120,8 +165,7 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({
     const getChartTitle    = () => isOhm ? 'Desviación de Ohm' : isMv ? 'Curva de Respuesta Termopar (mV)' : 'Curva de Respuesta del Transmisor';
     const getChartSubtitle = () => isOhm ? 'Ideal Ω vs Sensor Ω' : isMv ? 'Ideal mV vs Sensor mV' : 'Eje X: Entrada (mA) | Eje Y: Rango UE / mA';
     const getYLabel        = () => isOhm ? 'Resistencia (Ω)' : isMv ? 'Voltaje (mV)' : 'Rango UE / mA';
-
-    const headerColor = isOhm ? 'from-teal-600 to-emerald-600' : isMv ? 'from-orange-600 to-red-600' : 'from-blue-600 to-indigo-600';
+    const headerColor      = isOhm ? 'from-teal-600 to-emerald-600' : isMv ? 'from-orange-600 to-red-600' : 'from-blue-600 to-indigo-600';
 
     return (
         <div className="mt-8 shadow-lg rounded-xl overflow-hidden border border-gray-200 bg-white" ref={containerRef}>
@@ -137,11 +181,14 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({
 
             <div className="p-6 bg-white">
                 {processedData.length === 0 ? (
-                    <div className="text-center py-12 text-gray-400"><p>No hay datos suficientes para generar la curva de respuesta.</p></div>
+                    <div className="text-center py-12 text-gray-400">
+                        <p>No hay datos suficientes para generar la curva de respuesta.</p>
+                    </div>
                 ) : (
-                    <div className="h-96 w-full">
+                    <div className="h-[500px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={processedData} margin={{ top: 30, right: 30, left: 20, bottom: 25 }}>
+                            {/* top/bottom grandes para que las cajitas no se corten */}
+                            <LineChart data={processedData} margin={{ top: 55, right: 40, left: 20, bottom: 30 }}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                                 <XAxis
                                     dataKey="idealValue" type="number" domain={[4, 20]} ticks={xTicks} tick={{ fontSize: 11 }}
@@ -158,31 +205,56 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({
                                 />
                                 <Legend verticalAlign="top" height={36} />
 
-                                {/* mA siempre presentes */}
-                                <Line type="monotone" dataKey="idealValue"    stroke="#3b82f6" name="Ideal mA"  strokeWidth={2} dot={{ r: 4 }} isAnimationActive={false} label={makeLabel('Ideal mA')} />
-                                <Line type="monotone" dataKey="measuredValue" stroke="#ef4444" name="Medido mA" strokeWidth={2} dot={{ r: 4 }} isAnimationActive={false} label={makeLabel('Medido mA')} />
+                                {/* mA — cajita arriba para Ideal, abajo para Medido */}
+                                <Line type="monotone" dataKey="idealValue"
+                                    stroke="#3b82f6" name="Ideal mA" strokeWidth={2}
+                                    dot={makeDot('#3b82f6', 'Ideal mA', -42)}
+                                    activeDot={{ r: 6 }} isAnimationActive={false} />
+
+                                <Line type="monotone" dataKey="measuredValue"
+                                    stroke="#ef4444" name="Medido mA" strokeWidth={2}
+                                    dot={makeDot('#ef4444', 'Medido mA', 28)}
+                                    activeDot={{ r: 6 }} isAnimationActive={false} />
 
                                 {/* RTD (Ohm) */}
                                 {isOhm && (
                                     <>
-                                        <Line type="monotone" dataKey="idealOhm"  stroke="#10b981" name="Ideal Ohm"  strokeWidth={2} dot={{ r: 3 }} isAnimationActive={false} label={makeLabel('Ideal Ω')} />
-                                        <Line type="monotone" dataKey="sensorOhm" stroke="#f59e0b" name="Sensor Ohm" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} isAnimationActive={false} label={makeLabel('Sensor Ω')} />
+                                        <Line type="monotone" dataKey="idealOhm"
+                                            stroke="#10b981" name="Ideal Ohm" strokeWidth={2}
+                                            dot={makeDot('#10b981', 'Ideal Ω', -42)}
+                                            activeDot={{ r: 6 }} isAnimationActive={false} />
+                                        <Line type="monotone" dataKey="sensorOhm"
+                                            stroke="#f59e0b" name="Sensor Ohm" strokeWidth={2} strokeDasharray="5 5"
+                                            dot={makeDot('#f59e0b', 'Sensor Ω', 28)}
+                                            activeDot={{ r: 6 }} isAnimationActive={false} />
                                     </>
                                 )}
 
                                 {/* Termopar (mV) */}
                                 {isMv && (
                                     <>
-                                        <Line type="monotone" dataKey="idealMv"  stroke="#8b5cf6" name="mV Ideal"  strokeWidth={2} dot={{ r: 3 }} isAnimationActive={false} label={makeLabel('Ideal mV')} />
-                                        <Line type="monotone" dataKey="sensorMv" stroke="#ec4899" name="mV Sensor" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} isAnimationActive={false} label={makeLabel('Sensor mV')} />
+                                        <Line type="monotone" dataKey="idealMv"
+                                            stroke="#8b5cf6" name="mV Ideal" strokeWidth={2}
+                                            dot={makeDot('#8b5cf6', 'Ideal mV', -42)}
+                                            activeDot={{ r: 6 }} isAnimationActive={false} />
+                                        <Line type="monotone" dataKey="sensorMv"
+                                            stroke="#ec4899" name="mV Sensor" strokeWidth={2} strokeDasharray="5 5"
+                                            dot={makeDot('#ec4899', 'Sensor mV', 28)}
+                                            activeDot={{ r: 6 }} isAnimationActive={false} />
                                     </>
                                 )}
 
                                 {/* UE */}
                                 {!isOhm && !isMv && hasUeTransmitter && (
                                     <>
-                                        <Line type="monotone" dataKey="idealUE"       stroke="#10b981" name="Ideal UE"      strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} isAnimationActive={false} connectNulls={false} label={makeLabel('Ideal UE')} />
-                                        <Line type="monotone" dataKey="ueTransmitter" stroke="#f59e0b" name="UE Transmisor" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} isAnimationActive={false} connectNulls={false} label={makeLabel('UE TX')} />
+                                        <Line type="monotone" dataKey="idealUE"
+                                            stroke="#10b981" name="Ideal UE" strokeWidth={2} strokeDasharray="5 5"
+                                            dot={makeDot('#10b981', 'Ideal UE', -42)}
+                                            activeDot={{ r: 6 }} isAnimationActive={false} connectNulls={false} />
+                                        <Line type="monotone" dataKey="ueTransmitter"
+                                            stroke="#f59e0b" name="UE Transmisor" strokeWidth={2} strokeDasharray="5 5"
+                                            dot={makeDot('#f59e0b', 'UE TX', 28)}
+                                            activeDot={{ r: 6 }} isAnimationActive={false} connectNulls={false} />
                                     </>
                                 )}
                             </LineChart>
