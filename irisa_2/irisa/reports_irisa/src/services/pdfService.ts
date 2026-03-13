@@ -176,6 +176,8 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 if (isOhm) headers.push('Ohm Sens.');
                 if (hasUE) headers.push('Err UE');
                 headers.push('Err mA', 'Err %');
+                // SE AGREGA COLUMNA DINÁMICA DE ERROR OHM
+                if (isOhm) headers.push('Err Ohm');
 
                 const body = measurements.map(m => {
                     const row: any[] = [m.idealUE || m.idealUe || '0', m.idealmA || '0'];
@@ -186,6 +188,8 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                     if (isOhm) row.push(m.ohmTransmitter || '0');
                     if (hasUE) row.push(m.errorUE || '0.000');
                     row.push(m.errormA || '0.000', m.errorPercentage || '0.00');
+                    // SE AGREGA EL DATO DINÁMICO DE ERROR OHM
+                    if (isOhm) row.push(m.errorOhm || '0.000');
                     return row;
                 });
 
@@ -311,7 +315,6 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 pdf.setFontSize(12).setFont('helvetica', 'bold').setTextColor(40)
                    .text(titles[index] ?? titles[titles.length - 1], pageW / 2, 15, { align: 'center' });
                 
-                // La imagen se ajusta al ancho disponible, manteniendo proporción
                 pdf.addImage(img, 'PNG', marginX, 25, contentW, pageH - 45);
             });
         }
