@@ -28,21 +28,18 @@ const RTDChart = forwardRef<any, RTDChartProps>(({
 }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
 
-    // Procesamiento de datos único para ambas gráficas
     const processedData = measurements.map((m) => {
-        const idealUeVal = m.idealUE ? parseFloat(m.idealUE) : null;
+        const idealUeVal = m.idealUE ? parseFloat(m.idealUE) : 0;
         return {
             temperatura: idealUeVal,
             idealOhm: m.idealohm ? parseFloat(m.idealohm) : null,
             sensorOhm: m.ohmTransmitter ? parseFloat(m.ohmTransmitter) : null,
             idealmA: m.idealmA ? parseFloat(m.idealmA) : null,
             maTransmitter: m.maTransmitter ? parseFloat(m.maTransmitter) : null,
-            idealUE: idealUeVal,
             ueTransmitter: m.ueTransmitter ? parseFloat(m.ueTransmitter) : null,
         };
     }).sort((a, b) => (a.temperatura || 0) - (b.temperatura || 0));
 
-    // Lógica de Ticks para el Eje X (Común)
     const getXTicks = () => {
         const temps = processedData.map(d => d.temperatura).filter(t => t !== null) as number[];
         if (temps.length === 0) return [];
@@ -64,52 +61,57 @@ const RTDChart = forwardRef<any, RTDChartProps>(({
         }
     }));
 
-    if (processedData.length === 0) {
-        return <div className="text-center py-12 text-gray-400">No hay datos suficientes.</div>;
-    }
+    if (processedData.length === 0) return <div className="text-center py-12 text-gray-400">No hay datos suficientes.</div>;
 
     return (
         <div ref={containerRef} className="space-y-8 bg-white p-4">
-            
-            {/* --- GRÁFICA 1: RESISTENCIA (OHM) --- */}
+            {/* GRÁFICA 1: RESISTENCIA */}
             <div className="shadow-lg rounded-xl overflow-hidden border border-gray-200">
                 <div className="bg-gradient-to-r from-teal-600 to-emerald-600 px-6 py-4 text-white">
                     <h3 className="text-lg font-bold">Relación de Resistencia (Ω)</h3>
-                    <p className="text-xs opacity-90 text-teal-50">Eje X: Temperatura (UE)</p>
                 </div>
                 <div className="h-80 w-full p-4">
                     <ResponsiveContainer width="100%" height="100%">
                         <LineChart data={processedData} margin={{ top: 10, right: 30, left: 0, bottom: 20 }}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                            <XAxis dataKey="temperatura" type="number" ticks={xTicks} domain={['auto', 'auto']} tick={{fontSize: 10}} label={{ value: 'Temp (UE)', position: 'insideBottom', offset: -10, fontSize: 11 }} />
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                            <XAxis dataKey="temperatura" type="number" ticks={xTicks} tick={{fontSize: 10}} label={{ value: 'Temp (UE)', position: 'insideBottom', offset: -10, fontSize: 11 }} />
                             <YAxis tick={{fontSize: 10}} label={{ value: 'Ohm (Ω)', angle: -90, position: 'insideLeft', fontSize: 11 }} />
-                            <Tooltip formatter={(v: any) => v?.toFixed(3)} />
+                            <Tooltip />
                             <Legend verticalAlign="top" height={36}/>
-                            <Line type="monotone" dataKey="idealOhm" stroke="#10b981" name="Ideal Ohm" strokeWidth={2} dot={{ r: 3 }} />
-                            <Line type="monotone" dataKey="sensorOhm" stroke="#f59e0b" name="Sensor Ohm" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} />
+                            <Line type="monotone" dataKey="idealOhm" stroke="#10b981" name="Ideal Ohm" strokeWidth={2} />
+                            <Line type="monotone" dataKey="sensorOhm" stroke="#f59e0b" name="Sensor Ohm" strokeDasharray="5 5" />
                         </LineChart>
                     </ResponsiveContainer>
                 </div>
             </div>
 
-            {/* --- GRÁFICA 2: CORRIENTE (mA) --- */}
+            {/* GRÁFICA 2: CORRIENTE + UE (CON DOBLE EJE) */}
             <div className="shadow-lg rounded-xl overflow-hidden border border-gray-200">
                 <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4 text-white">
-                    <h3 className="text-lg font-bold">Salida de Corriente (mA)</h3>
-                    <p className="text-xs opacity-90 text-blue-50">Eje X: Temperatura (UE)</p>
+                    <h3 className="text-lg font-bold">Salida mA y Lectura Transmisor</h3>
                 </div>
                 <div className="h-80 w-full p-4">
                     <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={processedData} margin={{ top: 10, right: 30, left: 0, bottom: 20 }}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                            <XAxis dataKey="temperatura" type="number" ticks={xTicks} domain={['auto', 'auto']} tick={{fontSize: 10}} label={{ value: 'Temp (UE)', position: 'insideBottom', offset: -10, fontSize: 11 }} />
-                            <YAxis domain={[4, 20]} tick={{fontSize: 10}} label={{ value: 'mA', angle: -90, position: 'insideLeft', fontSize: 11 }} />
-                            <Tooltip formatter={(v: any) => v?.toFixed(3)} />
-                            <Legend verticalAlign="top" height={36}/>
-                            <Line type="monotone" dataKey="idealmA" stroke="#3b82f6" name="Ideal mA" strokeWidth={2} dot={{ r: 3 }} />
-                            <Line type="monotone" dataKey="maTransmitter" stroke="#ef4444" name="Medido mA" strokeWidth={2} dot={{ r: 3 }} />
+                        <LineChart data={processedData} margin={{ top: 10, right: 50, left: 0, bottom: 20 }}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                            <XAxis dataKey="temperatura" type="number" ticks={xTicks} tick={{fontSize: 10}} />
+                            
+                            {/* Eje Izquierdo: Corriente */}
+                            <YAxis yAxisId="left" domain={[4, 20]} tick={{fontSize: 10}} label={{ value: 'mA', angle: -90, position: 'insideLeft' }} />
+                            
+                            {/* Eje Derecho: Temperatura (UE) */}
                             {hasUeTransmitter && (
-                                <Line type="monotone" dataKey="ueTransmitter" stroke="#8b5cf6" name="UE Transmisor" strokeWidth={1} strokeDasharray="3 3" dot={false} />
+                                <YAxis yAxisId="right" orientation="right" tick={{fontSize: 10}} label={{ value: 'Lectura UE', angle: 90, position: 'insideRight' }} />
+                            )}
+
+                            <Tooltip />
+                            <Legend verticalAlign="top" height={36}/>
+                            
+                            <Line yAxisId="left" type="monotone" dataKey="idealmA" stroke="#3b82f6" name="Ideal mA" strokeWidth={2} dot={{r:4}} />
+                            <Line yAxisId="left" type="monotone" dataKey="maTransmitter" stroke="#ef4444" name="Medido mA" strokeWidth={2} dot={{r:4}} />
+                            
+                            {hasUeTransmitter && (
+                                <Line yAxisId="right" type="monotone" dataKey="ueTransmitter" stroke="#8b5cf6" name="UE Transmisor" strokeWidth={2} strokeDasharray="3 3" dot={{r:5}} />
                             )}
                         </LineChart>
                     </ResponsiveContainer>
