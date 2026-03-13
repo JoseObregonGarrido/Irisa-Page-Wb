@@ -29,27 +29,21 @@ export interface ReportData {
     pressureSwitchTests?: any[];
     thermostatTests?: any[];
     phTests?: any[];
-    // ── NUEVO ────────────────────────────────────────────────────────────────
     signatureInstrumentista?: string;
     signatureJefe?: string;
-    // ─────────────────────────────────────────────────────────────────────────
 }
 
-// ─── Fórmula Rango de Vida (igual a PHTable y PHChart) ───────────────────────
 const V0 = 174;
 const T0 = 30;
 
-/** T = 30 - (V - 174) · Mínimo 0, máximo 30 */
 const calcRangoVida = (v: number): number =>
     Math.max(0, Math.min(T0, T0 - (v - V0)));
 
-/** T ≥ 20 → OK · 10–20 → Verificar · < 10 → Agotado */
 const getEstadoPH = (t: number): 'OK' | 'Verificar' | 'Agotado' => {
     if (t >= 20) return 'OK';
     if (t >= 10) return 'Verificar';
     return 'Agotado';
 };
-// ─────────────────────────────────────────────────────────────────────────────
 
 const capitalize = (text: string) => {
     if (!text) return '';
@@ -109,7 +103,6 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
     };
 
     try {
-        // ── LOGO ──
         try {
             const b64Logo = await getBase64ImageFromUrl(logo);
             pdf.addImage(b64Logo, 'PNG', marginX, 12, 50, 20);
@@ -119,7 +112,6 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
            .text('REPORTE DE CALIBRACIÓN', pageW / 2, 25, { align: 'center' });
         yPos = 45;
 
-        // ── ESPECIFICACIONES ──
         addHeader('Especificaciones del instrumento');
         autoTable(pdf, {
             startY: yPos,
@@ -141,7 +133,6 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         });
         yPos = (pdf as any).lastAutoTable.finalY + 12;
 
-        // ── TRANSMISORES ──
         if (data.deviceType === 'transmitter' && measurements.length) {
             if (isMv) {
                 const mvRows = measurements.filter(m => !m.rowType || m.rowType === 'mv');
@@ -201,7 +192,6 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             }
         }
 
-        // ── PRESOSTATO / TERMOSTATO ──
         const isThermostat = data.deviceType === 'thermostat';
         const switchTests  = isThermostat ? data.thermostatTests : data.pressureSwitchTests;
         if ((data.deviceType === 'pressure_switch' || isThermostat) && switchTests?.length) {
@@ -226,7 +216,6 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }
 
-        // ── TABLA pH — T = 30-(V-174) ─────────────────────────────────────────
         if (data.deviceType === 'ph' && data.phTests?.length) {
             addHeader('RESULTADOS MEDICIONES DE pH');
             autoTable(pdf, {
@@ -277,7 +266,6 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }
 
-        // ── OBSERVACIONES ──
         if (data.observations) {
             if (yPos + 60 > pageH - 15) { pdf.addPage(); yPos = 20; }
             addHeader('OBSERVACIONES Y NOTAS TÉCNICAS');
@@ -290,16 +278,12 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }
 
-        // ── NUEVO: FIRMAS ─────────────────────────────────────────────────────
         if (data.signatureInstrumentista || data.signatureJefe) {
             if (yPos + 80 > pageH - 15) { pdf.addPage(); yPos = 20; }
             addHeader('FIRMAS DE CONFORMIDAD');
-
             const firmaW = (contentW / 2) - 10;
             const firmaH = 40;
             const firmaY = yPos + 5;
-
-            // Instrumentista — izquierda
             const xLeft = marginX;
             if (data.signatureInstrumentista) {
                 pdf.addImage(data.signatureInstrumentista, 'PNG', xLeft, firmaY, firmaW, firmaH);
@@ -311,7 +295,6 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             pdf.setFontSize(7.5).setFont('helvetica', 'normal').setTextColor(100)
                .text(data.instrumentistName || '', xLeft + firmaW / 2, firmaY + firmaH + 16, { align: 'center' });
 
-            // Jefe — derecha
             const xRight = marginX + firmaW + 20;
             if (data.signatureJefe) {
                 pdf.addImage(data.signatureJefe, 'PNG', xRight, firmaY, firmaW, firmaH);
@@ -320,17 +303,15 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                .line(xRight, firmaY + firmaH + 4, xRight + firmaW, firmaY + firmaH + 4);
             pdf.setFontSize(8).setFont('helvetica', 'bold').setTextColor(80)
                .text('JEFE / SUPERVISOR', xRight + firmaW / 2, firmaY + firmaH + 10, { align: 'center' });
-
             yPos = firmaY + firmaH + 22;
         }
-        // ─────────────────────────────────────────────────────────────────────
 
-        // ── GRÁFICAS ──
+        // ── SECCIÓN DE GRÁFICAS ACTUALIZADA ──
         if (chartImages?.length) {
             const chartTitles: { [key: string]: string[] } = {
-                transmitter_mA:  ['CURVA DE RESPUESTA DEL TRANSMISOR'],
-                transmitter_ohm: ['DESVIACIÓN DE OHM (RTD)'],
-                transmitter_mv:  ['ANÁLISIS mV / TX'],
+                transmitter_mA:  ['CURVA DE RESPUESTA DEL TRANSMISOR (mA)'],
+                transmitter_ohm: ['CURVA DE DESVIACIÓN OHM (RTD)', 'CURVA DE RESPUESTA DEL TRANSMISOR (mA)'],
+                transmitter_mv:  ['ANÁLISIS mV SENSOR', 'CURVA DE RESPUESTA TRANSMISOR (TX)'],
                 pressure_switch: ['CURVA DE CALIBRACIÓN Y LINEALIDAD'],
                 thermostat:      ['CURVA DE CALIBRACIÓN Y LINEALIDAD'],
                 ph: [
@@ -339,19 +320,38 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                     'RANGO DE VIDA DEL ELECTRODO — T = 30−(V−174)',
                 ],
             };
+
             const deviceKey = data.deviceType === 'transmitter' ? `transmitter_${unit}` : data.deviceType;
-            const titles    = chartTitles[deviceKey] || ['ANÁLISIS GRÁFICO'];
+            const titles = chartTitles[deviceKey] || ['ANÁLISIS GRÁFICO'];
+
             chartImages.forEach((img, index) => {
                 pdf.addPage();
-                yPos = 15;
-                pdf.setFontSize(11).setFont('helvetica', 'bold').setTextColor(60)
-                   .text(titles[index] ?? titles[titles.length - 1], pageW / 2, yPos, { align: 'center' });
-                yPos += 8;
-                pdf.addImage(img, 'PNG', marginX, yPos, contentW, pageH - yPos - 15);
+                yPos = 20;
+                
+                // Título centrado
+                const currentTitle = titles[index] || titles[titles.length - 1];
+                pdf.setFontSize(12).setFont('helvetica', 'bold').setTextColor(colors.risaraldaGreen[0], colors.risaraldaGreen[1], colors.risaraldaGreen[2])
+                   .text(currentTitle.toUpperCase(), pageW / 2, yPos, { align: 'center' });
+                
+                // Cálculo de dimensiones para no deformar la imagen
+                const imgProps = pdf.getImageProperties(img);
+                const ratio = imgProps.height / imgProps.width;
+                const maxWidth = contentW;
+                const maxHeight = pageH - yPos - 30;
+                
+                let finalW = maxWidth;
+                let finalH = finalW * ratio;
+
+                if (finalH > maxHeight) {
+                    finalH = maxHeight;
+                    finalW = finalH / ratio;
+                }
+
+                const xPos = (pageW - finalW) / 2;
+                pdf.addImage(img, 'PNG', xPos, yPos + 10, finalW, finalH);
             });
         }
 
-        // ── PIE DE PÁGINA ──
         const pageCount = (pdf as any).internal.getNumberOfPages();
         for (let i = 1; i <= pageCount; i++) {
             pdf.setPage(i);
@@ -360,7 +360,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             pdf.text(`Página ${i} de ${pageCount}`, pageW - marginX, pageH - 5, { align: 'right' });
         }
 
-        pdf.save(`Reporte_${data.deviceType|| 'Instrumento'}.pdf`);
+        pdf.save(`Reporte_${data.deviceCode || 'Instrumento'}.pdf`);
     } catch (e) {
         console.error('Error generando PDF:', e);
     }
