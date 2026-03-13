@@ -32,6 +32,7 @@ const RTDChart = forwardRef<any, RTDChartProps>(({
         const idealUeVal = m.idealUE ? parseFloat(m.idealUE) : 0;
         return {
             temperatura: idealUeVal,
+            idealUE: idealUeVal, // Agregado explícitamente para la línea
             idealOhm: m.idealohm ? parseFloat(m.idealohm) : null,
             sensorOhm: m.ohmTransmitter ? parseFloat(m.ohmTransmitter) : null,
             idealmA: m.idealmA ? parseFloat(m.idealmA) : null,
@@ -97,7 +98,7 @@ const RTDChart = forwardRef<any, RTDChartProps>(({
                             <XAxis dataKey="temperatura" type="number" ticks={xTicks} tick={{fontSize: 10}} />
                             
                             {/* Eje Izquierdo: Corriente */}
-                            <YAxis yAxisId="left" domain={[4, 20]} tick={{fontSize: 10}} label={{ value: 'mA', angle: -90, position: 'insideLeft' }} />
+                            <YAxis yAxisId="left" domain={['auto', 'auto']} tick={{fontSize: 10}} label={{ value: 'mA', angle: -90, position: 'insideLeft' }} />
                             
                             {/* Eje Derecho: Temperatura (UE) */}
                             {hasUeTransmitter && (
@@ -111,7 +112,11 @@ const RTDChart = forwardRef<any, RTDChartProps>(({
                             <Line yAxisId="left" type="monotone" dataKey="maTransmitter" stroke="#ef4444" name="Medido mA" strokeWidth={2} dot={{r:4}} />
                             
                             {hasUeTransmitter && (
-                                <Line yAxisId="right" type="monotone" dataKey="ueTransmitter" stroke="#8b5cf6" name="UE Transmisor" strokeWidth={2} strokeDasharray="3 3" dot={{r:5}} />
+                                <>
+                                    <Line yAxisId="right" type="monotone" dataKey="ueTransmitter" stroke="#8b5cf6" name="UE Transmisor" strokeWidth={2} strokeDasharray="3 3" dot={{r:5}} />
+                                    {/* CORRECCIÓN: Se agrega yAxisId="right" y se mapea el dato idealUE */}
+                                    <Line yAxisId="right" type="monotone" dataKey="idealUE" stroke="#10b981" name="Ideal UE" strokeWidth={1} strokeDasharray="5 5" dot={{ r: 3 }} />
+                                </>
                             )}
                         </LineChart>
                     </ResponsiveContainer>
