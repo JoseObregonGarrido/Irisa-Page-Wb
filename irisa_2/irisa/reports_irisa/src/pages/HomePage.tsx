@@ -8,6 +8,7 @@ import { logout } from '../services/authService';
 import { generatePDFReport } from '../services/pdfService';
 
 // Components
+import SignatureCanvas from '../components/SignatureCanvas'; // ← NUEVO
 import TransmitterTable, { type Measurement } from '../components/trasmitter/TransmitterTable';
 import PressureSwitchTable, { type PressureSwitchTest } from '../components/PressureSwitchTable';
 import ThermostatTable, { type ThermostatTest } from '../components/ThermostatTable';
@@ -54,6 +55,11 @@ const HomePage: React.FC = () => {
     const [outputUnit, setOutputUnit] = useLocalStorage<'mA' | 'ohm' | 'mv'>('ir_output_unit', 'mA');
     const [hasUeTransmitter, setHasUeTransmitter] = useLocalStorage<boolean>('ir_has_ue', false);
 
+    // ── NUEVO: estados de firma ───────────────────────────────────────────────
+    const [signatureInstrumentista, setSignatureInstrumentista] = useState<string | null>(null);
+    const [signatureJefe,           setSignatureJefe]           = useState<string | null>(null);
+    // ─────────────────────────────────────────────────────────────────────────
+
     React.useEffect(() => {
         if (outputUnit === 'mv') {
             setHasUeTransmitter(false);
@@ -97,12 +103,16 @@ const HomePage: React.FC = () => {
             unity,
             deviceCode,
             observations,
-            transmitterMeasurements: activeMeasurements, // solo el modo activo al PDF
+            transmitterMeasurements: activeMeasurements,
             pressureSwitchTests,
             thermostatTests,
             phTests,
             outputUnit,
             hasUeTransmitter,
+            // ── NUEVO: pasar firmas al PDF ────────────────────────────────────
+            signatureInstrumentista: signatureInstrumentista ?? undefined,
+            signatureJefe:           signatureJefe           ?? undefined,
+            // ─────────────────────────────────────────────────────────────────
         };
 
         const wasShowingChart = showChart;
@@ -176,11 +186,9 @@ const HomePage: React.FC = () => {
             setUnity('');
             setDeviceCode('');
             setObservations('');
-            // ── Limpiar los 3 arrays ──────────────────────────────────────────
             setMeasurementsMA([]);
             setMeasurementsOhm([]);
             setMeasurementsMV([]);
-            // ─────────────────────────────────────────────────────────────────
             setPressureSwitchTests([]);
             setThermostatTests([]);
             setPhTests([]);
@@ -325,7 +333,6 @@ const HomePage: React.FC = () => {
                             {deviceType === 'transmitter' && (
                                 <div className="w-full overflow-x-auto pb-4 custom-scrollbar">
                                     <div className="lg:min-w-[1000px]">
-                                        {/* ── CAMBIO: props separadas por modo ── */}
                                         <TransmitterTable
                                             measurementsMA={measurementsMA}
                                             onMeasurementsMAChange={setMeasurementsMA}
@@ -355,6 +362,28 @@ const HomePage: React.FC = () => {
                             </p>
                         </div>
 
+                        {/* ── NUEVO: SECCIÓN DE FIRMAS ─────────────────────────────────────────── */}
+                        <div className="mt-8 p-6 bg-gray-50 rounded-xl border border-gray-200">
+                            <h4 className="text-sm font-bold text-gray-600 mb-5 flex items-center gap-2">
+                                <svg className="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                </svg>
+                                Firmas del reporte
+                            </h4>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                <SignatureCanvas
+                                    label="Instrumentista"
+                                    sublabel={instrumentistName || undefined}
+                                    onSignatureChange={setSignatureInstrumentista}
+                                />
+                                <SignatureCanvas
+                                    label="Jefe / Supervisor"
+                                    onSignatureChange={setSignatureJefe}
+                                />
+                            </div>
+                        </div>
+                        {/* ──────────────────────────────────────────────────────────────────────── */}
+
                         <div className="mt-8 p-6 bg-gray-50 rounded-xl border border-gray-200">
                             <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
                                 {(deviceType === 'transmitter' || deviceType === 'ph' || deviceType === 'pressure_switch' || deviceType === 'thermostat') && (
@@ -383,7 +412,6 @@ const HomePage: React.FC = () => {
                                         </span>
                                         Análisis Gráfico: {getDeviceTypeLabel(deviceType)}
                                     </h3>
-                                    {/* Charts usan activeMeasurements = array del modo activo */}
                                     {deviceType === 'transmitter' && outputUnit === 'ohm' && <RTDChart ref={rtdChartRef} measurements={activeMeasurements} hasUeTransmitter={hasUeTransmitter} />}
                                     {deviceType === 'transmitter' && outputUnit === 'mv' && <MvChart ref={mvChartRef} measurements={activeMeasurements} />}
                                     {deviceType === 'transmitter' && outputUnit === 'mA' && <TransmitterChart ref={transmitterChartRef} data={activeMeasurements} />}

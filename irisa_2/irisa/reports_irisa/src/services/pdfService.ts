@@ -29,6 +29,10 @@ export interface ReportData {
     pressureSwitchTests?: any[];
     thermostatTests?: any[];
     phTests?: any[];
+    // ── NUEVO ────────────────────────────────────────────────────────────────
+    signatureInstrumentista?: string;
+    signatureJefe?: string;
+    // ─────────────────────────────────────────────────────────────────────────
 }
 
 // ─── Fórmula Rango de Vida (igual a PHTable y PHChart) ───────────────────────
@@ -231,13 +235,12 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 head: [[
                     'Patrón Buffer', 'Promedio pH', 'Desviación',
                     'Voltaje (mV)', 'Temp (°C)',
-                    'Rango Vida (mV)',   // T = 30-(V-174)
+                    'Rango Vida (mV)',
                     'Estado Electrodo',
                     'Error %',
                 ]],
                 body: data.phTests.map(t => {
                     const voltaje    = parseFloat(t.voltaje);
-                    // Usar errorMv guardado si existe, si no recalcular
                     const mvGuardado = parseFloat(t.errorMv);
                     const rangoVida  = !isNaN(mvGuardado) && t.errorMv !== ''
                         ? mvGuardado
@@ -258,9 +261,9 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 headStyles: { fillColor: colors.tealPH, halign: 'center', fontSize: 8, fontStyle: 'bold' },
                 styles: { fontSize: 8, halign: 'center', cellPadding: 2.5 },
                 columnStyles: {
-                    5: { textColor: colors.orange, fontStyle: 'bold' },  // Rango Vida
-                    6: { fontStyle: 'bold' },                             // Estado
-                    7: { textColor: colors.red,    fontStyle: 'bold' },  // Error %
+                    5: { textColor: colors.orange, fontStyle: 'bold' },
+                    6: { fontStyle: 'bold' },
+                    7: { textColor: colors.red,    fontStyle: 'bold' },
                 },
                 didParseCell: (hookData: any) => {
                     if (hookData.column.index === 6 && hookData.section === 'body') {
@@ -286,6 +289,41 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             });
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }
+
+        // ── NUEVO: FIRMAS ─────────────────────────────────────────────────────
+        if (data.signatureInstrumentista || data.signatureJefe) {
+            if (yPos + 80 > pageH - 15) { pdf.addPage(); yPos = 20; }
+            addHeader('FIRMAS DE CONFORMIDAD');
+
+            const firmaW = (contentW / 2) - 10;
+            const firmaH = 40;
+            const firmaY = yPos + 5;
+
+            // Instrumentista — izquierda
+            const xLeft = marginX;
+            if (data.signatureInstrumentista) {
+                pdf.addImage(data.signatureInstrumentista, 'PNG', xLeft, firmaY, firmaW, firmaH);
+            }
+            pdf.setDrawColor(180).setLineWidth(0.5)
+               .line(xLeft, firmaY + firmaH + 4, xLeft + firmaW, firmaY + firmaH + 4);
+            pdf.setFontSize(8).setFont('helvetica', 'bold').setTextColor(80)
+               .text('INSTRUMENTISTA', xLeft + firmaW / 2, firmaY + firmaH + 10, { align: 'center' });
+            pdf.setFontSize(7.5).setFont('helvetica', 'normal').setTextColor(100)
+               .text(data.instrumentistName || '', xLeft + firmaW / 2, firmaY + firmaH + 16, { align: 'center' });
+
+            // Jefe — derecha
+            const xRight = marginX + firmaW + 20;
+            if (data.signatureJefe) {
+                pdf.addImage(data.signatureJefe, 'PNG', xRight, firmaY, firmaW, firmaH);
+            }
+            pdf.setDrawColor(180).setLineWidth(0.5)
+               .line(xRight, firmaY + firmaH + 4, xRight + firmaW, firmaY + firmaH + 4);
+            pdf.setFontSize(8).setFont('helvetica', 'bold').setTextColor(80)
+               .text('JEFE / SUPERVISOR', xRight + firmaW / 2, firmaY + firmaH + 10, { align: 'center' });
+
+            yPos = firmaY + firmaH + 22;
+        }
+        // ─────────────────────────────────────────────────────────────────────
 
         // ── GRÁFICAS ──
         if (chartImages?.length) {
