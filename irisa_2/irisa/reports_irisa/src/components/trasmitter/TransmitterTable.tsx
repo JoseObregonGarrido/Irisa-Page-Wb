@@ -96,24 +96,41 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
     }, []);
     
     const calculateErrors = (m: Measurement) => {
-        const idealUE = parseFloat(m.idealUE) || 0;
-        const ueTrans = parseFloat(m.ueTransmitter) || 0;
-        const idealmA = parseFloat(m.idealmA) || 0;
-        const maTrans = parseFloat(m.maTransmitter) || 0;
-        const errorUE = ueTrans - idealUE;
-        const errormA = maTrans - idealmA;
-        const errorPercentage = (errormA / 16) * 100;
-        const errorOhm = (parseFloat(m.ohmTransmitter || "0") || 0) - (parseFloat(m.idealohm || "0") || 0);
-        const errorMvPuro = (parseFloat(m.sensormV || "0") || 0) - (parseFloat(m.idealmV || "0") || 0);
-        return {
-            ...m,
-            errorUE: errorUE.toFixed(3),
-            errormA: errormA.toFixed(3),
-            errorPercentage: errorPercentage.toFixed(2),
-            errorOhm: errorOhm.toFixed(3),
-            errormV: errorMvPuro.toFixed(3)
-        };
+    // Fila TX del modo mV: solo calcula error de mA TX
+    if (m.rowType === 'tx') {
+        const idealmA = parseFloat(m.idealmA ?? '0');
+        const mATX    = parseFloat(m.mATX    ?? '0');
+        const errormA = (isNaN(mATX) ? 0 : idealmA) - (isNaN(idealmA) ? 0 : mATX);
+        return { ...m, errormA: errormA.toFixed(3) };
+    }
+
+    // Fila mV del modo mV: solo calcula error de mV
+    if (m.rowType === 'mv') {
+        const idealVal  = parseFloat(m.idealmV  ?? '0');
+        const sensorVal = parseFloat(m.sensormV ?? '0');
+        const errormV = (isNaN(idealVal) ? 0 : idealVal) - (isNaN(sensorVal) ? 0 : sensorVal);
+        return { ...m, errormV: errormV.toFixed(3) };
+    }
+
+    // Filas normales (mA y ohm)
+    const idealUE = parseFloat(m.idealUE) || 0;
+    const ueTrans = parseFloat(m.ueTransmitter) || 0;
+    const idealmA = parseFloat(m.idealmA) || 0;
+    const maTrans = parseFloat(m.maTransmitter) || 0;
+    const errorUE = ueTrans - idealUE;
+    const errormA = maTrans - idealmA;
+    const errorPercentage = (errormA / 16) * 100;
+    const errorOhm = (parseFloat(m.ohmTransmitter || "0") || 0) - (parseFloat(m.idealohm || "0") || 0);
+    const errorMvPuro = (parseFloat(m.sensormV || "0") || 0) - (parseFloat(m.idealmV || "0") || 0);
+    return {
+        ...m,
+        errorUE: errorUE.toFixed(3),
+        errormA: errormA.toFixed(3),
+        errorPercentage: errorPercentage.toFixed(2),
+        errorOhm: errorOhm.toFixed(3),
+        errormV: errorMvPuro.toFixed(3)
     };
+};
 
     const handleChange = (index: number, field: keyof Measurement, value: any) => {
         const newMeasurements = [...measurements];

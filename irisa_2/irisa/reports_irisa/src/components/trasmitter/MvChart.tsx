@@ -60,8 +60,7 @@ const makeDot = (color: string, label: string, offset: number) =>
         );
     };
 
-// Offsets escalonados — L1 L2 arriba, L3 L4 abajo
-const OFF = { L1: -80, L2: -45, L3: 22, L4: 57 };
+const OFF = { L1: -80, L3: 22 };
 
 // ── Helpers de ticks ──────────────────────────────────────────────────────────
 const getYTicks = (values: number[]) => {
@@ -76,12 +75,13 @@ const getYTicks = (values: number[]) => {
     return ticks;
 };
 
-const getXTicks = (temps: number[]) => {
-    if (temps.length === 0) return [];
-    const min = Math.min(...temps), max = Math.max(...temps);
+const getXTicks = (vals: number[]) => {
+    if (vals.length === 0) return [];
+    const min = Math.min(...vals), max = Math.max(...vals);
     let step = 10;
     if (max - min > 100) step = 20;
     if (max - min > 500) step = 50;
+    if (max - min <= 20) step = 2;   // rango mA (4-20)
     const ticks: number[] = [];
     for (let i = Math.floor(min/step)*step; i <= Math.ceil(max/step)*step; i += step) ticks.push(i);
     return ticks.length > 0 ? ticks : [min, max];
@@ -93,25 +93,27 @@ const MVChart = forwardRef<any, MVChartProps>(({ measurements = [] }, ref) => {
     const mvRows = measurements.filter(m => !m.rowType || m.rowType === 'mv');
     const txRows = measurements.filter(m => m.rowType === 'tx');
 
+    // ── mV: eje X = temperatura (idealUE) ────────────────────────────────────
     const mvData = mvRows.map(m => ({
-        temperatura: m.idealUE  ? parseFloat(m.idealUE)  : null,
-        idealMV:     m.idealmV  ? parseFloat(m.idealmV)  : null,
-        sensorMV:    m.sensormV ? parseFloat(m.sensormV) : null,
-    })).sort((a, b) => (a.temperatura || 0) - (b.temperatura || 0));
+        ejeX:    m.idealUE  ? parseFloat(m.idealUE)  : null,
+        idealMV: m.idealmV  ? parseFloat(m.idealmV)  : null,
+        sensorMV:m.sensormV ? parseFloat(m.sensormV) : null,
+    })).sort((a, b) => (a.ejeX || 0) - (b.ejeX || 0));
 
+    // ── TX: eje X = idealmA ───────────────────────────────────────────────────
     const txData = txRows.map(m => ({
-        temperatura: m.idealUE ? parseFloat(m.idealUE) : null,
-        idealMA:     m.idealmA ? parseFloat(m.idealmA) : null,
-        maTX:        m.mATX    ? parseFloat(m.mATX)    : null,
-    })).sort((a, b) => (a.temperatura || 0) - (b.temperatura || 0));
+        ejeX:   m.idealmA ? parseFloat(m.idealmA) : null,
+        idealMA:m.idealmA ? parseFloat(m.idealmA) : null,
+        maTX:   m.mATX    ? parseFloat(m.mATX)    : null,
+    })).sort((a, b) => (a.ejeX || 0) - (b.ejeX || 0));
 
     const mvYVals  = mvData.flatMap(d => [d.idealMV,  d.sensorMV].filter(v => v !== null) as number[]);
-    const mvXVals  = mvData.map(d => d.temperatura).filter(t => t !== null) as number[];
+    const mvXVals  = mvData.map(d => d.ejeX).filter(t => t !== null) as number[];
     const mvYTicks = getYTicks(mvYVals);
     const mvXTicks = getXTicks(mvXVals);
 
     const txYVals  = txData.flatMap(d => [d.idealMA, d.maTX].filter(v => v !== null) as number[]);
-    const txXVals  = txData.map(d => d.temperatura).filter(t => t !== null) as number[];
+    const txXVals  = txData.map(d => d.ejeX).filter(t => t !== null) as number[];
     const txYTicks = getYTicks(txYVals);
     const txXTicks = getXTicks(txXVals);
 
@@ -143,7 +145,7 @@ const MVChart = forwardRef<any, MVChartProps>(({ measurements = [] }, ref) => {
     return (
         <div ref={containerRef} className="space-y-6">
 
-            {/* ── GRÁFICO mV ── */}
+            {/* ── GRÁFICO mV — eje X: temperatura ─────────────────────────── */}
             {hasMvData && (
                 <div className="shadow-lg rounded-xl overflow-hidden border border-gray-200 bg-white">
                     <div className="bg-gradient-to-r from-orange-600 to-red-600 px-6 py-5 text-white">
@@ -160,28 +162,18 @@ const MVChart = forwardRef<any, MVChartProps>(({ measurements = [] }, ref) => {
                             <ResponsiveContainer width="100%" height="100%">
                                 <LineChart data={mvData} margin={{ top: 95, right: 50, left: 20, bottom: 80 }}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                                    <XAxis
-                                        dataKey="temperatura" type="number" ticks={mvXTicks} tick={{ fontSize: 11 }}
-                                        label={{ value: 'Temperatura (UE)', position: 'insideBottom', offset: -55, fontSize: 12, fontWeight: 'bold' }}
-                                    />
-                                    <YAxis
-                                        ticks={mvYTicks} domain={[mvYTicks[0], mvYTicks[mvYTicks.length - 1]]} tick={{ fontSize: 10 }}
-                                        label={{ value: 'Voltaje (mV)', angle: -90, position: 'insideLeft', fontWeight: 'bold', fontSize: 12 }}
-                                    />
+                                    <XAxis dataKey="ejeX" type="number" ticks={mvXTicks} tick={{ fontSize: 11 }}
+                                        label={{ value: 'Temperatura (UE)', position: 'insideBottom', offset: -55, fontSize: 12, fontWeight: 'bold' }} />
+                                    <YAxis ticks={mvYTicks} domain={[mvYTicks[0], mvYTicks[mvYTicks.length - 1]]} tick={{ fontSize: 10 }}
+                                        label={{ value: 'Voltaje (mV)', angle: -90, position: 'insideLeft', fontWeight: 'bold', fontSize: 12 }} />
                                     <Tooltip contentStyle={tooltipStyle}
-                                        formatter={(value: any, name: string) => [value !== null ? Number(value).toFixed(2) : '---', name]}
-                                        labelFormatter={(label) => `Temperatura: ${label} UE`}
-                                    />
+                                        formatter={(v: any, n: string) => [v !== null ? Number(v).toFixed(2) : '---', n]}
+                                        labelFormatter={(l) => `Temperatura: ${l} UE`} />
                                     <Legend verticalAlign="top" height={36} />
-                                    {/* 2 líneas: L1 arriba, L3 abajo */}
-                                    <Line type="monotone" dataKey="idealMV"
-                                        stroke="#8b5cf6" name="Ideal mV" strokeWidth={2}
-                                        dot={makeDot('#8b5cf6', 'Ideal mV', OFF.L1)}
-                                        activeDot={{ r: 6 }} isAnimationActive={false} />
-                                    <Line type="monotone" dataKey="sensorMV"
-                                        stroke="#ec4899" name="Sensor mV" strokeWidth={2} strokeDasharray="5 5"
-                                        dot={makeDot('#ec4899', 'Sensor mV', OFF.L3)}
-                                        activeDot={{ r: 6 }} isAnimationActive={false} />
+                                    <Line type="monotone" dataKey="idealMV"  stroke="#8b5cf6" name="Ideal mV"  strokeWidth={2}
+                                        dot={makeDot('#8b5cf6', 'Ideal mV',  OFF.L1)} activeDot={{ r: 6 }} isAnimationActive={false} />
+                                    <Line type="monotone" dataKey="sensorMV" stroke="#ec4899" name="Sensor mV" strokeWidth={2} strokeDasharray="5 5"
+                                        dot={makeDot('#ec4899', 'Sensor mV', OFF.L3)} activeDot={{ r: 6 }} isAnimationActive={false} />
                                 </LineChart>
                             </ResponsiveContainer>
                         </div>
@@ -189,7 +181,7 @@ const MVChart = forwardRef<any, MVChartProps>(({ measurements = [] }, ref) => {
                 </div>
             )}
 
-            {/* ── GRÁFICO TX ── */}
+            {/* ── GRÁFICO TX — eje X: Ideal mA ─────────────────────────────── */}
             {hasTxData && (
                 <div className="shadow-lg rounded-xl overflow-hidden border border-gray-200 bg-white">
                     <div className="bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-5 text-white">
@@ -197,7 +189,7 @@ const MVChart = forwardRef<any, MVChartProps>(({ measurements = [] }, ref) => {
                             <span className="text-3xl">📈</span>
                             <div>
                                 <h3 className="text-xl font-bold">Ideal mA vs mA TX</h3>
-                                <p className="text-purple-100 text-sm opacity-90">Eje X: Ideal UE (temperatura) | Eje Y: mA</p>
+                                <p className="text-purple-100 text-sm opacity-90">Eje X: Ideal mA | Eje Y: mA TX</p>
                             </div>
                         </div>
                     </div>
@@ -206,28 +198,18 @@ const MVChart = forwardRef<any, MVChartProps>(({ measurements = [] }, ref) => {
                             <ResponsiveContainer width="100%" height="100%">
                                 <LineChart data={txData} margin={{ top: 95, right: 50, left: 20, bottom: 80 }}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                                    <XAxis
-                                        dataKey="temperatura" type="number" ticks={txXTicks} tick={{ fontSize: 11 }}
-                                        label={{ value: 'Temperatura (UE)', position: 'insideBottom', offset: -55, fontSize: 12, fontWeight: 'bold' }}
-                                    />
-                                    <YAxis
-                                        ticks={txYTicks} domain={[txYTicks[0], txYTicks[txYTicks.length - 1]]} tick={{ fontSize: 10 }}
-                                        label={{ value: 'mA', angle: -90, position: 'insideLeft', fontWeight: 'bold', fontSize: 12 }}
-                                    />
+                                    <XAxis dataKey="ejeX" type="number" ticks={txXTicks} tick={{ fontSize: 11 }}
+                                        label={{ value: 'Señal de Entrada (mA)', position: 'insideBottom', offset: -55, fontSize: 12, fontWeight: 'bold' }} />
+                                    <YAxis ticks={txYTicks} domain={[txYTicks[0], txYTicks[txYTicks.length - 1]]} tick={{ fontSize: 10 }}
+                                        label={{ value: 'mA TX', angle: -90, position: 'insideLeft', fontWeight: 'bold', fontSize: 12 }} />
                                     <Tooltip contentStyle={tooltipStyle}
-                                        formatter={(value: any, name: string) => [value !== null ? Number(value).toFixed(2) : '---', name]}
-                                        labelFormatter={(label) => `Temperatura: ${label} UE`}
-                                    />
+                                        formatter={(v: any, n: string) => [v !== null ? Number(v).toFixed(2) : '---', n]}
+                                        labelFormatter={(l) => `Ideal mA: ${l}`} />
                                     <Legend verticalAlign="top" height={36} />
-                                    {/* 2 líneas: L1 arriba, L3 abajo */}
-                                    <Line type="monotone" dataKey="idealMA"
-                                        stroke="#3b82f6" name="Ideal mA" strokeWidth={2}
-                                        dot={makeDot('#3b82f6', 'Ideal mA', OFF.L1)}
-                                        activeDot={{ r: 6 }} isAnimationActive={false} />
-                                    <Line type="monotone" dataKey="maTX"
-                                        stroke="#ef4444" name="mA TX" strokeWidth={2} strokeDasharray="5 5"
-                                        dot={makeDot('#ef4444', 'mA TX', OFF.L3)}
-                                        activeDot={{ r: 6 }} isAnimationActive={false} />
+                                    <Line type="monotone" dataKey="idealMA" stroke="#3b82f6" name="Ideal mA" strokeWidth={2}
+                                        dot={makeDot('#3b82f6', 'Ideal mA', OFF.L1)} activeDot={{ r: 6 }} isAnimationActive={false} />
+                                    <Line type="monotone" dataKey="maTX"    stroke="#ef4444" name="mA TX"    strokeWidth={2} strokeDasharray="5 5"
+                                        dot={makeDot('#ef4444', 'mA TX',    OFF.L3)} activeDot={{ r: 6 }} isAnimationActive={false} />
                                 </LineChart>
                             </ResponsiveContainer>
                         </div>
