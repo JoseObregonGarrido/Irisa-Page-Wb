@@ -100,7 +100,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
     if (m.rowType === 'tx') {
         const idealmA = parseFloat(m.idealmA ?? '0');
         const mATX    = parseFloat(m.mATX    ?? '0');
-        const errormA = (isNaN(mATX) ? 0 : idealmA) - (isNaN(idealmA) ? 0 : mATX);
+        const errormA = (isNaN(mATX) ? 0 : mATX) - (isNaN(idealmA) ? 0 : idealmA);
         return { ...m, errormA: errormA.toFixed(3) };
     }
 
