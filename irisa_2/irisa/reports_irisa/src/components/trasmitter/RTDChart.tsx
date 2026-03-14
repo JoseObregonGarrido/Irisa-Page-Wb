@@ -22,16 +22,49 @@ interface RTDChartProps {
     hasUeTransmitter?: boolean;
 }
 
-// ── Etiqueta personalizada: prefijo + 2 decimales ─────────────────────────────
-const makeLabel = (prefix: string) => (props: any) => {
-    const { x, y, value } = props;
-    if (value === null || value === undefined) return <g/>;
-    return (
-        <text x={x} y={y - 8} fill="#374151" fontSize={10} textAnchor="middle" fontWeight={500}>
-            {`${prefix}: ${Number(value).toFixed(2)}`}
-        </text>
-    );
-};
+// ── Cajita SVG siempre visible ────────────────────────────────────────────────
+const makeDot = (color: string, label: string, offset: number) =>
+    (props: any) => {
+        const { cx, cy, value } = props;
+        if (value === null || value === undefined || cx === undefined || cy === undefined) return <g />;
+
+        const text  = `${label}: ${Number(value).toFixed(2)}`;
+        const fSize = 10;
+        const padX  = 7;
+        const padY  = 4;
+        const charW = fSize * 0.58;
+        const boxW  = text.length * charW + padX * 2;
+        const boxH  = fSize + padY * 2;
+
+        const above  = offset < 0;
+        const boxY   = above ? cy + offset - boxH : cy + offset;
+        const tipY   = above ? boxY + boxH : boxY;
+        const tipDir = above ? 1 : -1;
+        const boxX   = cx - boxW / 2;
+        const lineY1 = above ? cy - 4 : cy + 4;
+
+        return (
+            <g>
+                <circle cx={cx} cy={cy} r={4} fill={color} stroke="#fff" strokeWidth={2} />
+                <line x1={cx} y1={lineY1} x2={cx} y2={tipY}
+                    stroke={color} strokeWidth={1} strokeDasharray="3 2" opacity={0.6} />
+                <rect x={boxX} y={boxY} width={boxW} height={boxH}
+                    rx={4} ry={4} fill="white" stroke={color} strokeWidth={1.5}
+                    style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.15))' }} />
+                <polygon
+                    points={`${cx - 4},${tipY} ${cx + 4},${tipY} ${cx},${tipY + tipDir * 5}`}
+                    fill={color} />
+                <text x={cx} y={boxY + padY + fSize - 1}
+                    textAnchor="middle" fontSize={fSize} fontWeight={600}
+                    fill={color} fontFamily="system-ui, sans-serif">
+                    {text}
+                </text>
+            </g>
+        );
+    };
+
+// Offsets escalonados para 4 líneas
+const OFF = { L1: -80, L2: -45, L3: 22, L4: 57 };
 
 const RTDChart = forwardRef<any, RTDChartProps>(({
     measurements = [],
@@ -56,7 +89,7 @@ const RTDChart = forwardRef<any, RTDChartProps>(({
         };
     }).sort((a, b) => (a.temperatura || 0) - (b.temperatura || 0));
 
-    // ── CHART 2: eje X = idealMA (igual que TransmitterChart) ─────────────────
+    // ── CHART 2: eje X = idealMA ──────────────────────────────────────────────
     const processedDataMA = measurements.map((m) => {
         const idealMaVal  = parseFloat(m.idealmA       || '0');
         const maSensorVal = parseFloat(m.maTransmitter || '0');
@@ -132,7 +165,6 @@ const RTDChart = forwardRef<any, RTDChartProps>(({
     const xTicks    = getXTicks();
     const xTicksMA  = [4, 8, 12, 16, 20];
 
-    // ── Captura ───────────────────────────────────────────────────────────────
     useImperativeHandle(ref, () => ({
         captureAllCharts: async () => {
             const images: string[] = [];
@@ -147,8 +179,7 @@ const RTDChart = forwardRef<any, RTDChartProps>(({
     }));
 
     const tooltipStyle = { borderRadius: '8px', fontSize: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' };
-    const margin       = { top: 30, right: 30, left: 20, bottom: 25 };
-    const noData       = <div className="text-center py-12 text-gray-400"><p>No hay datos suficientes para generar la curva de respuesta.</p></div>;
+    const noData = <div className="text-center py-12 text-gray-400"><p>No hay datos suficientes para generar la curva de respuesta.</p></div>;
 
     return (
         <div className="space-y-6">
@@ -166,13 +197,13 @@ const RTDChart = forwardRef<any, RTDChartProps>(({
                 </div>
                 <div className="p-6 bg-white">
                     {processedData.length === 0 ? noData : (
-                        <div className="h-96 w-full">
+                        <div className="h-[700px] w-full">
                             <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={processedData} margin={margin}>
+                                <LineChart data={processedData} margin={{ top: 95, right: 50, left: 20, bottom: 80 }}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                                     <XAxis
                                         dataKey="temperatura" type="number" ticks={xTicks} tick={{ fontSize: 11 }}
-                                        label={{ value: 'Temperatura (UE)', position: 'insideBottom', offset: -10, fontSize: 12, fontWeight: 'bold' }}
+                                        label={{ value: 'Temperatura (UE)', position: 'insideBottom', offset: -55, fontSize: 12, fontWeight: 'bold' }}
                                     />
                                     <YAxis
                                         ticks={yTicksOhm} domain={[yTicksOhm[0], yTicksOhm[yTicksOhm.length - 1]]} tick={{ fontSize: 10 }}
@@ -183,12 +214,28 @@ const RTDChart = forwardRef<any, RTDChartProps>(({
                                         labelFormatter={(label) => `Temperatura: ${label} UE`}
                                     />
                                     <Legend verticalAlign="top" height={36} />
-                                    <Line type="monotone" dataKey="idealOhm"  stroke="#10b981" name="Ideal Ohm"  strokeWidth={2} dot={{ r: 4 }} isAnimationActive={false} label={makeLabel('Ideal Ω')} />
-                                    <Line type="monotone" dataKey="sensorOhm" stroke="#f59e0b" name="Sensor Ohm" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 4 }} isAnimationActive={false} label={makeLabel('Sensor Ω')} />
+
+                                    {/* 2 líneas: L1 arriba, L3 abajo */}
+                                    <Line type="monotone" dataKey="idealOhm"
+                                        stroke="#10b981" name="Ideal Ohm" strokeWidth={2}
+                                        dot={makeDot('#10b981', 'Ideal Ω', OFF.L1)}
+                                        activeDot={{ r: 6 }} isAnimationActive={false} />
+                                    <Line type="monotone" dataKey="sensorOhm"
+                                        stroke="#f59e0b" name="Sensor Ohm" strokeWidth={2} strokeDasharray="5 5"
+                                        dot={makeDot('#f59e0b', 'Sensor Ω', OFF.L3)}
+                                        activeDot={{ r: 6 }} isAnimationActive={false} />
+
+                                    {/* UE: L2 y L4 */}
                                     {hasUeTransmitter && (
                                         <>
-                                            <Line type="monotone" dataKey="idealUE"       stroke="#3b82f6" name="Ideal UE"      strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} isAnimationActive={false} connectNulls={false} label={makeLabel('Ideal UE')} />
-                                            <Line type="monotone" dataKey="ueTransmitter" stroke="#ef4444" name="UE Transmisor" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} isAnimationActive={false} connectNulls={false} label={makeLabel('UE TX')} />
+                                            <Line type="monotone" dataKey="idealUE"
+                                                stroke="#3b82f6" name="Ideal UE" strokeWidth={2} strokeDasharray="5 5"
+                                                dot={makeDot('#3b82f6', 'Ideal UE', OFF.L2)}
+                                                activeDot={{ r: 6 }} isAnimationActive={false} connectNulls={false} />
+                                            <Line type="monotone" dataKey="ueTransmitter"
+                                                stroke="#ef4444" name="UE Transmisor" strokeWidth={2} strokeDasharray="5 5"
+                                                dot={makeDot('#ef4444', 'UE TX', OFF.L4)}
+                                                activeDot={{ r: 6 }} isAnimationActive={false} connectNulls={false} />
                                         </>
                                     )}
                                 </LineChart>
@@ -198,7 +245,7 @@ const RTDChart = forwardRef<any, RTDChartProps>(({
                 </div>
             </div>
 
-            {/* ── CHART 2: mA — idéntico a TransmitterChart ─────────────────── */}
+            {/* ── CHART 2: mA ───────────────────────────────────────────────── */}
             <div className="shadow-lg rounded-xl overflow-hidden border border-gray-200 bg-white" ref={chart2Ref}>
                 <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-5 text-white">
                     <div className="flex items-center gap-4">
@@ -211,13 +258,13 @@ const RTDChart = forwardRef<any, RTDChartProps>(({
                 </div>
                 <div className="p-6 bg-white">
                     {processedDataMA.length === 0 ? noData : (
-                        <div className="h-96 w-full">
+                        <div className="h-[700px] w-full">
                             <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={processedDataMA} margin={margin}>
+                                <LineChart data={processedDataMA} margin={{ top: 95, right: 50, left: 20, bottom: 80 }}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                                     <XAxis
                                         dataKey="idealValue" type="number" domain={[4, 20]} ticks={xTicksMA} tick={{ fontSize: 11 }}
-                                        label={{ value: 'Señal de Entrada (mA)', position: 'insideBottom', offset: -10, fontSize: 12, fontWeight: 'bold' }}
+                                        label={{ value: 'Señal de Entrada (mA)', position: 'insideBottom', offset: -55, fontSize: 12, fontWeight: 'bold' }}
                                     />
                                     <YAxis
                                         ticks={yTicksMA} domain={[yTicksMA[0], yTicksMA[yTicksMA.length - 1]]} tick={{ fontSize: 10 }}
@@ -228,12 +275,28 @@ const RTDChart = forwardRef<any, RTDChartProps>(({
                                         labelFormatter={(label) => `Punto: ${label} mA`}
                                     />
                                     <Legend verticalAlign="top" height={36} />
-                                    <Line type="monotone" dataKey="idealValue"    stroke="#3b82f6" name="Ideal mA"      strokeWidth={2} dot={{ r: 4 }} isAnimationActive={false} label={makeLabel('Ideal mA')} />
-                                    <Line type="monotone" dataKey="measuredValue" stroke="#ef4444" name="Medido mA"     strokeWidth={2} dot={{ r: 4 }} isAnimationActive={false} label={makeLabel('Medido mA')} />
+
+                                    {/* 2 líneas base: L1 y L3 */}
+                                    <Line type="monotone" dataKey="idealValue"
+                                        stroke="#3b82f6" name="Ideal mA" strokeWidth={2}
+                                        dot={makeDot('#3b82f6', 'Ideal mA', OFF.L1)}
+                                        activeDot={{ r: 6 }} isAnimationActive={false} />
+                                    <Line type="monotone" dataKey="measuredValue"
+                                        stroke="#ef4444" name="Medido mA" strokeWidth={2}
+                                        dot={makeDot('#ef4444', 'Medido mA', OFF.L3)}
+                                        activeDot={{ r: 6 }} isAnimationActive={false} />
+
+                                    {/* UE: L2 y L4 */}
                                     {hasUeTransmitter && (
                                         <>
-                                            <Line type="monotone" dataKey="idealUE"       stroke="#10b981" name="Ideal UE"      strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} isAnimationActive={false} connectNulls={false} label={makeLabel('Ideal UE')} />
-                                            <Line type="monotone" dataKey="ueTransmitter" stroke="#f59e0b" name="UE Transmisor" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 3 }} isAnimationActive={false} connectNulls={false} label={makeLabel('UE TX')} />
+                                            <Line type="monotone" dataKey="idealUE"
+                                                stroke="#10b981" name="Ideal UE" strokeWidth={2} strokeDasharray="5 5"
+                                                dot={makeDot('#10b981', 'Ideal UE', OFF.L2)}
+                                                activeDot={{ r: 6 }} isAnimationActive={false} connectNulls={false} />
+                                            <Line type="monotone" dataKey="ueTransmitter"
+                                                stroke="#f59e0b" name="UE Transmisor" strokeWidth={2} strokeDasharray="5 5"
+                                                dot={makeDot('#f59e0b', 'UE Transmisor', OFF.L4)}
+                                                activeDot={{ r: 6 }} isAnimationActive={false} connectNulls={false} />
                                         </>
                                     )}
                                 </LineChart>

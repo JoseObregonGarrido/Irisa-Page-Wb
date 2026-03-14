@@ -279,7 +279,7 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({
                                             activeDot={{ r: 6 }} isAnimationActive={false} />
                                         <Line type="monotone" dataKey="ueTransmitter"
                                             stroke="#f59e0b" name="UE Transmisor" strokeWidth={2} strokeDasharray="5 5"
-                                            dot={makeDot('#f59e0b', 'UE TX', OFF.L4)}
+                                            dot={makeDot('#f59e0b', 'UE Transmisor', OFF.L4)}
                                             activeDot={{ r: 6 }} isAnimationActive={false} connectNulls={false} />
                                     </>
                                 )}

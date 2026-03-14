@@ -19,16 +19,49 @@ interface MVChartProps {
     measurements?: MVMeasurement[];
 }
 
-// ── Etiqueta personalizada: prefijo + 2 decimales ─────────────────────────────
-const makeLabel = (prefix: string) => (props: any) => {
-    const { x, y, value } = props;
-    if (value === null || value === undefined) return <g/>;
-    return (
-        <text x={x} y={y - 8} fill="#374151" fontSize={10} textAnchor="middle" fontWeight={500}>
-            {`${prefix}: ${Number(value).toFixed(2)}`}
-        </text>
-    );
-};
+// ── Cajita SVG siempre visible ────────────────────────────────────────────────
+const makeDot = (color: string, label: string, offset: number) =>
+    (props: any) => {
+        const { cx, cy, value } = props;
+        if (value === null || value === undefined || cx === undefined || cy === undefined) return <g />;
+
+        const text  = `${label}: ${Number(value).toFixed(2)}`;
+        const fSize = 10;
+        const padX  = 7;
+        const padY  = 4;
+        const charW = fSize * 0.58;
+        const boxW  = text.length * charW + padX * 2;
+        const boxH  = fSize + padY * 2;
+
+        const above  = offset < 0;
+        const boxY   = above ? cy + offset - boxH : cy + offset;
+        const tipY   = above ? boxY + boxH : boxY;
+        const tipDir = above ? 1 : -1;
+        const boxX   = cx - boxW / 2;
+        const lineY1 = above ? cy - 4 : cy + 4;
+
+        return (
+            <g>
+                <circle cx={cx} cy={cy} r={4} fill={color} stroke="#fff" strokeWidth={2} />
+                <line x1={cx} y1={lineY1} x2={cx} y2={tipY}
+                    stroke={color} strokeWidth={1} strokeDasharray="3 2" opacity={0.6} />
+                <rect x={boxX} y={boxY} width={boxW} height={boxH}
+                    rx={4} ry={4} fill="white" stroke={color} strokeWidth={1.5}
+                    style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.15))' }} />
+                <polygon
+                    points={`${cx - 4},${tipY} ${cx + 4},${tipY} ${cx},${tipY + tipDir * 5}`}
+                    fill={color} />
+                <text x={cx} y={boxY + padY + fSize - 1}
+                    textAnchor="middle" fontSize={fSize} fontWeight={600}
+                    fill={color} fontFamily="system-ui, sans-serif">
+                    {text}
+                </text>
+            </g>
+        );
+    };
+
+// Offsets escalonados — L1 L2 arriba, L3 L4 abajo
+const OFF = { L1: -80, L2: -45, L3: 22, L4: 57 };
 
 // ── Helpers de ticks ──────────────────────────────────────────────────────────
 const getYTicks = (values: number[]) => {
@@ -39,23 +72,18 @@ const getYTicks = (values: number[]) => {
     if (max > 50)  step = 10;
     if (max > 100) step = 20;
     const ticks: number[] = [];
-    const start = Math.floor(min / step) * step;
-    const end   = Math.ceil(max  / step) * step;
-    for (let i = start; i <= end; i += step) ticks.push(i);
+    for (let i = Math.floor(min/step)*step; i <= Math.ceil(max/step)*step; i += step) ticks.push(i);
     return ticks;
 };
 
 const getXTicks = (temps: number[]) => {
     if (temps.length === 0) return [];
-    const min = Math.min(...temps);
-    const max = Math.max(...temps);
+    const min = Math.min(...temps), max = Math.max(...temps);
     let step = 10;
     if (max - min > 100) step = 20;
     if (max - min > 500) step = 50;
     const ticks: number[] = [];
-    const start = Math.floor(min / step) * step;
-    const end   = Math.ceil(max  / step) * step;
-    for (let i = start; i <= end; i += step) ticks.push(i);
+    for (let i = Math.floor(min/step)*step; i <= Math.ceil(max/step)*step; i += step) ticks.push(i);
     return ticks.length > 0 ? ticks : [min, max];
 };
 
@@ -66,7 +94,7 @@ const MVChart = forwardRef<any, MVChartProps>(({ measurements = [] }, ref) => {
     const txRows = measurements.filter(m => m.rowType === 'tx');
 
     const mvData = mvRows.map(m => ({
-        temperatura: m.idealUE ? parseFloat(m.idealUE) : null,
+        temperatura: m.idealUE  ? parseFloat(m.idealUE)  : null,
         idealMV:     m.idealmV  ? parseFloat(m.idealmV)  : null,
         sensorMV:    m.sensormV ? parseFloat(m.sensormV) : null,
     })).sort((a, b) => (a.temperatura || 0) - (b.temperatura || 0));
@@ -100,7 +128,6 @@ const MVChart = forwardRef<any, MVChartProps>(({ measurements = [] }, ref) => {
     const hasMvData = mvData.length > 0;
     const hasTxData = txData.length > 0;
     const tooltipStyle = { borderRadius: '8px', fontSize: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' };
-    const margin = { top: 30, right: 30, left: 20, bottom: 25 };
 
     if (!hasMvData && !hasTxData) {
         return (
@@ -129,13 +156,13 @@ const MVChart = forwardRef<any, MVChartProps>(({ measurements = [] }, ref) => {
                         </div>
                     </div>
                     <div className="p-6 bg-white">
-                        <div className="h-96 w-full">
+                        <div className="h-[700px] w-full">
                             <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={mvData} margin={margin}>
+                                <LineChart data={mvData} margin={{ top: 95, right: 50, left: 20, bottom: 80 }}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                                     <XAxis
                                         dataKey="temperatura" type="number" ticks={mvXTicks} tick={{ fontSize: 11 }}
-                                        label={{ value: 'Temperatura (UE)', position: 'insideBottom', offset: -10, fontSize: 12, fontWeight: 'bold' }}
+                                        label={{ value: 'Temperatura (UE)', position: 'insideBottom', offset: -55, fontSize: 12, fontWeight: 'bold' }}
                                     />
                                     <YAxis
                                         ticks={mvYTicks} domain={[mvYTicks[0], mvYTicks[mvYTicks.length - 1]]} tick={{ fontSize: 10 }}
@@ -146,8 +173,15 @@ const MVChart = forwardRef<any, MVChartProps>(({ measurements = [] }, ref) => {
                                         labelFormatter={(label) => `Temperatura: ${label} UE`}
                                     />
                                     <Legend verticalAlign="top" height={36} />
-                                    <Line type="monotone" dataKey="idealMV"  stroke="#8b5cf6" name="Ideal mV"  strokeWidth={2} dot={{ r: 4 }} isAnimationActive={false} label={makeLabel('Ideal mV')} />
-                                    <Line type="monotone" dataKey="sensorMV" stroke="#ec4899" name="Sensor mV" strokeWidth={2} strokeDasharray="5 5" dot={{ r: 4 }} isAnimationActive={false} label={makeLabel('Sensor mV')} />
+                                    {/* 2 líneas: L1 arriba, L3 abajo */}
+                                    <Line type="monotone" dataKey="idealMV"
+                                        stroke="#8b5cf6" name="Ideal mV" strokeWidth={2}
+                                        dot={makeDot('#8b5cf6', 'Ideal mV', OFF.L1)}
+                                        activeDot={{ r: 6 }} isAnimationActive={false} />
+                                    <Line type="monotone" dataKey="sensorMV"
+                                        stroke="#ec4899" name="Sensor mV" strokeWidth={2} strokeDasharray="5 5"
+                                        dot={makeDot('#ec4899', 'Sensor mV', OFF.L3)}
+                                        activeDot={{ r: 6 }} isAnimationActive={false} />
                                 </LineChart>
                             </ResponsiveContainer>
                         </div>
@@ -168,13 +202,13 @@ const MVChart = forwardRef<any, MVChartProps>(({ measurements = [] }, ref) => {
                         </div>
                     </div>
                     <div className="p-6 bg-white">
-                        <div className="h-96 w-full">
+                        <div className="h-[700px] w-full">
                             <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={txData} margin={margin}>
+                                <LineChart data={txData} margin={{ top: 95, right: 50, left: 20, bottom: 80 }}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                                     <XAxis
                                         dataKey="temperatura" type="number" ticks={txXTicks} tick={{ fontSize: 11 }}
-                                        label={{ value: 'Temperatura (UE)', position: 'insideBottom', offset: -10, fontSize: 12, fontWeight: 'bold' }}
+                                        label={{ value: 'Temperatura (UE)', position: 'insideBottom', offset: -55, fontSize: 12, fontWeight: 'bold' }}
                                     />
                                     <YAxis
                                         ticks={txYTicks} domain={[txYTicks[0], txYTicks[txYTicks.length - 1]]} tick={{ fontSize: 10 }}
@@ -185,8 +219,15 @@ const MVChart = forwardRef<any, MVChartProps>(({ measurements = [] }, ref) => {
                                         labelFormatter={(label) => `Temperatura: ${label} UE`}
                                     />
                                     <Legend verticalAlign="top" height={36} />
-                                    <Line type="monotone" dataKey="idealMA" stroke="#3b82f6" name="Ideal mA" strokeWidth={2} dot={{ r: 4 }} isAnimationActive={false} label={makeLabel('Ideal mA')} />
-                                    <Line type="monotone" dataKey="maTX"    stroke="#ef4444" name="mA TX"    strokeWidth={2} strokeDasharray="5 5" dot={{ r: 4 }} isAnimationActive={false} label={makeLabel('mA TX')} />
+                                    {/* 2 líneas: L1 arriba, L3 abajo */}
+                                    <Line type="monotone" dataKey="idealMA"
+                                        stroke="#3b82f6" name="Ideal mA" strokeWidth={2}
+                                        dot={makeDot('#3b82f6', 'Ideal mA', OFF.L1)}
+                                        activeDot={{ r: 6 }} isAnimationActive={false} />
+                                    <Line type="monotone" dataKey="maTX"
+                                        stroke="#ef4444" name="mA TX" strokeWidth={2} strokeDasharray="5 5"
+                                        dot={makeDot('#ef4444', 'mA TX', OFF.L3)}
+                                        activeDot={{ r: 6 }} isAnimationActive={false} />
                                 </LineChart>
                             </ResponsiveContainer>
                         </div>

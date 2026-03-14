@@ -2,7 +2,7 @@ import { forwardRef, useImperativeHandle, useRef } from 'react';
 import {
     LineChart, Line, BarChart, Bar,
     XAxis, YAxis, CartesianGrid, Tooltip,
-    ResponsiveContainer, ReferenceLine, Cell, LabelList
+    ResponsiveContainer, ReferenceLine, Cell
 } from 'recharts';
 
 interface PHTest {
@@ -31,36 +31,87 @@ const V0 = 174;
 const T0 = 30;
 
 const calcRangoVida = (v: number) => Math.max(0, Math.min(T0, T0 - (v - V0)));
-
-const getBarColor = (t: number): string => {
-    if (t >= 20) return GREEN;
-    if (t >= 10) return ORANGE;
-    return RED;
-};
-
+const getBarColor   = (t: number) => t >= 20 ? GREEN : t >= 10 ? ORANGE : RED;
 const voltajeTeorico = (pH: number) => (7 - pH) * 59.16;
 
-// ── Etiqueta para LineChart: prefijo + 2 decimales ────────────────────────────
-const makeLabel = (prefix: string) => (props: any) => {
-    const { x, y, value } = props;
-    if (value === null || value === undefined) return <g/>;
+// ── Cajita SVG para LineChart ─────────────────────────────────────────────────
+const makeDot = (color: string, label: string, offset: number) =>
+    (props: any) => {
+        const { cx, cy, value } = props;
+        if (value === null || value === undefined || cx === undefined || cy === undefined) return <g />;
+
+        const text  = `${label}: ${Number(value).toFixed(2)}`;
+        const fSize = 9;
+        const padX  = 6;
+        const padY  = 3;
+        const charW = fSize * 0.58;
+        const boxW  = text.length * charW + padX * 2;
+        const boxH  = fSize + padY * 2;
+
+        const above  = offset < 0;
+        const boxY   = above ? cy + offset - boxH : cy + offset;
+        const tipY   = above ? boxY + boxH : boxY;
+        const tipDir = above ? 1 : -1;
+        const boxX   = cx - boxW / 2;
+        const lineY1 = above ? cy - 4 : cy + 4;
+
+        return (
+            <g>
+                <circle cx={cx} cy={cy} r={4} fill={color} stroke="#fff" strokeWidth={2} />
+                <line x1={cx} y1={lineY1} x2={cx} y2={tipY}
+                    stroke={color} strokeWidth={1} strokeDasharray="3 2" opacity={0.6} />
+                <rect x={boxX} y={boxY} width={boxW} height={boxH}
+                    rx={4} ry={4} fill="white" stroke={color} strokeWidth={1.5}
+                    style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.15))' }} />
+                <polygon
+                    points={`${cx - 4},${tipY} ${cx + 4},${tipY} ${cx},${tipY + tipDir * 5}`}
+                    fill={color} />
+                <text x={cx} y={boxY + padY + fSize - 1}
+                    textAnchor="middle" fontSize={fSize} fontWeight={600}
+                    fill={color} fontFamily="system-ui, sans-serif">
+                    {text}
+                </text>
+            </g>
+        );
+    };
+
+// ── Cajita SVG para BarChart (usa x, y, width del bar) ───────────────────────
+const makeBarLabel = (color: string) => (props: any) => {
+    const { x, y, width, value } = props;
+    if (value === null || value === undefined) return <g />;
+
+    const text  = `${Number(value).toFixed(2)}`;
+    const fSize = 10;
+    const padX  = 7;
+    const padY  = 4;
+    const charW = fSize * 0.6;
+    const boxW  = text.length * charW + padX * 2;
+    const boxH  = fSize + padY * 2;
+    const cx    = x + width / 2;
+    const boxX  = cx - boxW / 2;
+    const boxY  = y - boxH - 8;   // siempre arriba de la barra
+    const tipY  = boxY + boxH;
+
     return (
-        <text x={x} y={y - 8} fill="#374151" fontSize={9} textAnchor="middle" fontWeight={500}>
-            {`${prefix}: ${Number(value).toFixed(2)}`}
-        </text>
+        <g>
+            <line x1={cx} y1={y - 2} x2={cx} y2={tipY}
+                stroke={color} strokeWidth={1} strokeDasharray="3 2" opacity={0.5} />
+            <rect x={boxX} y={boxY} width={boxW} height={boxH}
+                rx={4} ry={4} fill="white" stroke={color} strokeWidth={1.5}
+                style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.15))' }} />
+            <polygon
+                points={`${cx - 4},${tipY} ${cx + 4},${tipY} ${cx},${tipY + 5}`}
+                fill={color} />
+            <text x={cx} y={boxY + padY + fSize - 1}
+                textAnchor="middle" fontSize={fSize} fontWeight={600}
+                fill={color} fontFamily="system-ui, sans-serif">
+                {text}
+            </text>
+        </g>
     );
 };
 
-// ── Etiqueta para BarChart (LabelList) ────────────────────────────────────────
-const BarValueLabel = (props: any) => {
-    const { x, y, width, value } = props;
-    if (value === null || value === undefined) return <g/>;
-    return (
-        <text x={x + width / 2} y={y - 5} fill="#374151" fontSize={9} textAnchor="middle" fontWeight={500}>
-            {Number(value).toFixed(2)}
-        </text>
-    );
-};
+const OFF = { L1: -52, L2: 18 };  // 1 línea por chart → arriba L1
 
 const PHChart = forwardRef(({ tests }: PHChartProps, ref) => {
     const chart1Ref = useRef<HTMLDivElement>(null);
@@ -86,10 +137,11 @@ const PHChart = forwardRef(({ tests }: PHChartProps, ref) => {
 
     const errorData = tests.map((t, i) => ({
         name:     `pH ${t.patron || '?'} M${i + 1}`,
-        error:    parseFloat(t.error)   || 0,
-        errorMv:  parseFloat(t.errorMv) || 0,
+        error:    parseFloat(t.error)    || 0,
+        errorMv:  parseFloat(t.errorMv)  || 0,
         promedio: parseFloat(t.promedio) || 0,
         patron:   t.patron || '?',
+        color:    parseFloat(t.error) < 0.5 ? GREEN : parseFloat(t.error) < 2 ? TEAL : RED,
     }));
 
     const vidaData = tests.map((t, i) => ({
@@ -98,6 +150,7 @@ const PHChart = forwardRef(({ tests }: PHChartProps, ref) => {
         patron:    t.patron || '?',
         promedio:  parseFloat(t.promedio) || 0,
         voltaje:   parseFloat(t.voltaje)  || 0,
+        color:     getBarColor(parseFloat(t.errorMv) || 0),
     }));
 
     // ── Tooltips ──────────────────────────────────────────────────────────────
@@ -198,11 +251,13 @@ const PHChart = forwardRef(({ tests }: PHChartProps, ref) => {
                                             V.teórico: {vTeo.toFixed(1)} mV
                                         </span>
                                     </div>
-                                    <ResponsiveContainer width="100%" height={220}>
-                                        <LineChart data={data} margin={{ top: 25, right: 20, left: 5, bottom: 10 }}>
+                                    <ResponsiveContainer width="100%" height={260}>
+                                        <LineChart data={data} margin={{ top: 60, right: 20, left: 5, bottom: 15 }}>
                                             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                                            <XAxis dataKey="label" tick={{ fontSize: 10 }} label={{ value: 'Medición', position: 'insideBottom', offset: -3, fontSize: 10 }} />
-                                            <YAxis tick={{ fontSize: 9 }} domain={[domainMin, domainMax]} label={{ value: 'mV', angle: -90, position: 'insideLeft', offset: 12, fontSize: 10 }} />
+                                            <XAxis dataKey="label" tick={{ fontSize: 10 }}
+                                                label={{ value: 'Medición', position: 'insideBottom', offset: -5, fontSize: 10 }} />
+                                            <YAxis tick={{ fontSize: 9 }} domain={[domainMin, domainMax]}
+                                                label={{ value: 'mV', angle: -90, position: 'insideLeft', offset: 12, fontSize: 10 }} />
                                             <Tooltip content={<CustomTooltipPatron patronVal={patron} />} />
                                             <ReferenceLine y={vTeo} stroke={color} strokeDasharray="6 3" strokeWidth={1.5}
                                                 label={{ value: `Teórico ${vTeo.toFixed(1)}mV`, position: 'insideTopRight', fontSize: 8, fill: color }} />
@@ -210,9 +265,8 @@ const PHChart = forwardRef(({ tests }: PHChartProps, ref) => {
                                                 label={{ value: `V₀ ${V0}mV`, position: 'insideBottomRight', fontSize: 8, fill: '#94a3b8' }} />
                                             <Line
                                                 type="monotone" dataKey="voltaje" stroke={color} strokeWidth={2}
-                                                dot={{ fill: color, r: 5, strokeWidth: 2, stroke: '#fff' }}
+                                                dot={makeDot(color, 'mV', OFF.L1)}
                                                 activeDot={{ r: 7 }} isAnimationActive={false}
-                                                label={makeLabel('mV')}
                                             />
                                         </LineChart>
                                     </ResponsiveContainer>
@@ -244,17 +298,21 @@ const PHChart = forwardRef(({ tests }: PHChartProps, ref) => {
                     </h4>
                     <p className="text-xs text-gray-400 mt-0.5">Desviación porcentual entre el pH medido y el valor nominal del buffer</p>
                 </div>
-                <ResponsiveContainer width="100%" height={280}>
-                    <BarChart data={errorData} margin={{ top: 25, right: 30, left: 10, bottom: 20 }}>
+                <ResponsiveContainer width="100%" height={320}>
+                    <BarChart data={errorData} margin={{ top: 50, right: 30, left: 10, bottom: 20 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                         <XAxis dataKey="name" tick={{ fontSize: 9 }} interval={0} angle={-10} />
                         <YAxis label={{ value: 'Error (%)', angle: -90, position: 'insideLeft', offset: 10, fontSize: 11 }} tick={{ fontSize: 10 }} />
                         <Tooltip content={<CustomTooltip2 />} />
                         <ReferenceLine y={0} stroke="#6b7280" strokeWidth={1.5} />
-                        <Bar dataKey="error" radius={[4, 4, 0, 0]} maxBarSize={60} isAnimationActive={false}>
-                            <LabelList dataKey="error" content={<BarValueLabel />} />
+                        <Bar dataKey="error" radius={[4, 4, 0, 0]} maxBarSize={60} isAnimationActive={false}
+                            label={(props: any) => {
+                                const entry = errorData[props.index];
+                                return makeBarLabel(entry?.color || GREEN)(props);
+                            }}
+                        >
                             {errorData.map((entry, i) => (
-                                <Cell key={i} fill={entry.error < 0.5 ? GREEN : entry.error < 2 ? TEAL : RED} />
+                                <Cell key={i} fill={entry.color} />
                             ))}
                         </Bar>
                     </BarChart>
@@ -277,8 +335,8 @@ const PHChart = forwardRef(({ tests }: PHChartProps, ref) => {
                         T alto = electrodo sano · T bajo = electrodo gastado. Máximo: {T0} mV (electrodo nuevo)
                     </p>
                 </div>
-                <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={vidaData} margin={{ top: 25, right: 30, left: 10, bottom: 20 }}>
+                <ResponsiveContainer width="100%" height={340}>
+                    <BarChart data={vidaData} margin={{ top: 50, right: 30, left: 10, bottom: 20 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                         <XAxis dataKey="name" tick={{ fontSize: 9 }} interval={0} angle={-10} />
                         <YAxis
@@ -290,10 +348,14 @@ const PHChart = forwardRef(({ tests }: PHChartProps, ref) => {
                             label={{ value: '20 mV — Límite OK', position: 'insideTopRight', fontSize: 9, fill: ORANGE }} />
                         <ReferenceLine y={10} stroke={RED} strokeDasharray="5 3" strokeWidth={2}
                             label={{ value: '10 mV — Límite crítico', position: 'insideTopRight', fontSize: 9, fill: RED }} />
-                        <Bar dataKey="rangoVida" name="Rango Vida (mV)" radius={[4, 4, 0, 0]} maxBarSize={60} isAnimationActive={false}>
-                            <LabelList dataKey="rangoVida" content={<BarValueLabel />} />
+                        <Bar dataKey="rangoVida" name="Rango Vida (mV)" radius={[4, 4, 0, 0]} maxBarSize={60} isAnimationActive={false}
+                            label={(props: any) => {
+                                const entry = vidaData[props.index];
+                                return makeBarLabel(entry?.color || GREEN)(props);
+                            }}
+                        >
                             {vidaData.map((entry, i) => (
-                                <Cell key={i} fill={getBarColor(entry.rangoVida)} />
+                                <Cell key={i} fill={entry.color} />
                             ))}
                         </Bar>
                     </BarChart>
