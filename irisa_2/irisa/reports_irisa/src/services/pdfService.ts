@@ -29,19 +29,27 @@ export interface ReportData {
     pressureSwitchTests?: any[];
     thermostatTests?: any[];
     phTests?: any[];
+    // ── NUEVO ────────────────────────────────────────────────────────────────
     signatureInstrumentista?: string;
     signatureJefe?: string;
+    // ─────────────────────────────────────────────────────────────────────────
 }
 
-// --- Utilidades ---
+// ─── Fórmula Rango de Vida (igual a PHTable y PHChart) ───────────────────────
 const V0 = 174;
 const T0 = 30;
-const calcRangoVida = (v: number): number => Math.max(0, Math.min(T0, T0 - (v - V0)));
+
+/** T = 30 - (V - 174) · Mínimo 0, máximo 30 */
+const calcRangoVida = (v: number): number =>
+    Math.max(0, Math.min(T0, T0 - (v - V0)));
+
+/** T ≥ 20 → OK · 10–20 → Verificar · < 10 → Agotado */
 const getEstadoPH = (t: number): 'OK' | 'Verificar' | 'Agotado' => {
     if (t >= 20) return 'OK';
     if (t >= 10) return 'Verificar';
     return 'Agotado';
 };
+// ─────────────────────────────────────────────────────────────────────────────
 
 const capitalize = (text: string) => {
     if (!text) return '';
@@ -65,7 +73,6 @@ const getBase64ImageFromUrl = async (url: string): Promise<string> => {
     });
 };
 
-// --- FUNCIÓN PRINCIPAL ---
 export const generatePDFReport = async (data: ReportData, chartImages?: string[]): Promise<void> => {
     const pdf = new jsPDF({ orientation: 'landscape' });
     const pageW = pdf.internal.pageSize.getWidth();
@@ -74,23 +81,23 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
     const contentW = pageW - marginX * 2;
 
     const measurements = data.transmitterMeasurements || [];
-    const unit = data.outputUnit || 'mA';
+    const unit  = data.outputUnit || 'mA';
     const hasUE = data.hasUeTransmitter ?? false;
     const isOhm = unit === 'ohm';
-    const isMv = unit === 'mv';
+    const isMv  = unit === 'mv';
 
     let yPos = 20;
 
     const colors: { [key: string]: [number, number, number] } = {
-        risaraldaGreen: [20, 110, 90],
+        risaraldaGreen:     [20, 110, 90],
         orangeThermocouple: [230, 126, 34],
-        purpleTX: [109, 40, 217],
-        tealPH: [13, 148, 136],
-        lightGray: [245, 245, 245],
-        white: [252, 252, 252],
-        green: [21, 128, 61],
-        orange: [180, 90, 0],
-        red: [200, 30, 30],
+        purpleTX:           [109, 40, 217],
+        tealPH:             [13, 148, 136],
+        lightGray:          [245, 245, 245],
+        white:              [252, 252, 252],
+        green:              [21, 128, 61],
+        orange:             [180, 90, 0],
+        red:                [200, 30, 30],
     };
 
     const addHeader = (title: string) => {
@@ -102,7 +109,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
     };
 
     try {
-        // 1. LOGO Y TÍTULO
+        // ── LOGO ──
         try {
             const b64Logo = await getBase64ImageFromUrl(logo);
             pdf.addImage(b64Logo, 'PNG', marginX, 12, 50, 20);
@@ -112,18 +119,18 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
            .text('REPORTE DE CALIBRACIÓN', pageW / 2, 25, { align: 'center' });
         yPos = 45;
 
-        // 2. ESPECIFICACIONES
+        // ── ESPECIFICACIONES ──
         addHeader('Especificaciones del instrumento');
         autoTable(pdf, {
             startY: yPos,
             margin: { left: marginX, right: marginX },
             body: [
-                ['Nombre del equipo', data.deviceName, 'Código del equipo', data.deviceCode],
-                ['Marca del equipo', data.deviceBrand, 'Modelo del equipo', data.deviceModel],
-                ['Serial del instrumento', data.deviceSerial, 'Rango del instrumento', `${data.deviceRange} ${data.unity}`],
-                ['Área del instrumento', data.instrumentArea, 'Tipo de dispositivo', capitalize(data.deviceType)],
-                ['Nombre instrumentista', data.instrumentistName, 'Código instrumentista', data.instrumentistCode],
-                ['Orden de trabajo', data.workOrder, 'Fecha de revisión', data.reviewDate || 'N/a'],
+                ['Nombre del equipo',      data.deviceName,        'Código del equipo',    data.deviceCode],
+                ['Marca del equipo',       data.deviceBrand,       'Modelo del equipo',    data.deviceModel],
+                ['Serial del instrumento', data.deviceSerial,      'Rango del instrumento',`${data.deviceRange} ${data.unity}`],
+                ['Área del instrumento',   data.instrumentArea,    'Tipo de dispositivo',  capitalize(data.deviceType)],
+                ['Nombre instrumentista',  data.instrumentistName, 'Código instrumentista',data.instrumentistCode],
+                ['Orden de trabajo',       data.workOrder,         'Fecha de revisión',    data.reviewDate || 'N/a'],
             ],
             theme: 'plain',
             styles: { fontSize: 8.5, cellPadding: 3, textColor: 50 },
@@ -134,10 +141,9 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         });
         yPos = (pdf as any).lastAutoTable.finalY + 12;
 
-        // 3. TABLAS DE MEDICIONES
+        // ── TRANSMISORES ──
         if (data.deviceType === 'transmitter' && measurements.length) {
             if (isMv) {
-                // --- Lógica Termopar (mV) ---
                 const mvRows = measurements.filter(m => !m.rowType || m.rowType === 'mv');
                 const txRows = measurements.filter(m => m.rowType === 'tx');
                 if (mvRows.length > 0) {
@@ -165,47 +171,39 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                     yPos = (pdf as any).lastAutoTable.finalY + 12;
                 }
             } else {
-                // --- Lógica RTD / mA ---
-                addHeader(`Resultados de las mediciones - ${isOhm ? 'RTD / Transmisor' : 'Salida de Corriente'}`);
-                
+                addHeader(`Resultados de las mediciones - ${isOhm ? 'RTD' : 'mA'}`);
                 const headers: string[] = ['Ideal UE', 'Ideal mA'];
                 if (isOhm) headers.push('Ideal Ohm');
                 headers.push('Patrón UE');
-                if (hasUE) headers.push('UE Trans.'); 
-                headers.push('mA Trans.');
+                if (hasUE) headers.push('UE Trans.');
+                headers.push(isOhm ? 'mA Sens.' : 'mA Trans.');
                 if (isOhm) headers.push('Ohm Sens.');
                 if (hasUE) headers.push('Err UE');
                 headers.push('Err mA', 'Err %');
-                // SE AGREGA COLUMNA DINÁMICA DE ERROR OHM
-                if (isOhm) headers.push('Err Ohm');
-
                 const body = measurements.map(m => {
-                    const row: any[] = [m.idealUE || m.idealUe || '0', m.idealmA || '0'];
+                    const row: any[] = [m.idealUE || m.idealUe, m.idealmA];
                     if (isOhm) row.push(m.idealohm || m.idealOhm || '0');
-                    row.push(m.patronUE || m.patronUe || '0');
-                    if (hasUE) row.push(m.ueTransmitter || '0');
-                    row.push(m.maTransmitter || m.mATransmitter || '0');
+                    row.push(m.patronUE || m.patronUe);
+                    if (hasUE) row.push(m.ueTransmitter);
+                    row.push(m.maTransmitter);
                     if (isOhm) row.push(m.ohmTransmitter || '0');
                     if (hasUE) row.push(m.errorUE || '0.000');
                     row.push(m.errormA || '0.000', m.errorPercentage || '0.00');
-                    // SE AGREGA EL DATO DINÁMICO DE ERROR OHM
-                    if (isOhm) row.push(m.errorOhm || '0.000');
                     return row;
                 });
-
                 autoTable(pdf, {
                     startY: yPos, margin: { left: marginX, right: marginX },
                     head: [headers], body, theme: 'grid',
-                    headStyles: { fillColor: colors.risaraldaGreen, halign: 'center', fontSize: 7, fontStyle: 'bold' },
-                    styles: { fontSize: 7, halign: 'center', cellPadding: 2 },
+                    headStyles: { fillColor: colors.risaraldaGreen, halign: 'center', fontSize: 8, fontStyle: 'bold' },
+                    styles: { fontSize: 8, halign: 'center', cellPadding: 2.5 },
                 });
                 yPos = (pdf as any).lastAutoTable.finalY + 12;
             }
         }
 
-        // 4. PRESOSTATO / TERMOSTATO
+        // ── PRESOSTATO / TERMOSTATO ──
         const isThermostat = data.deviceType === 'thermostat';
-        const switchTests = isThermostat ? data.thermostatTests : data.pressureSwitchTests;
+        const switchTests  = isThermostat ? data.thermostatTests : data.pressureSwitchTests;
         if ((data.deviceType === 'pressure_switch' || isThermostat) && switchTests?.length) {
             addHeader(isThermostat ? 'RESULTADOS TERMOSTATO' : 'RESULTADOS PRESOSTATO');
             const unitLabel = data.unity || (isThermostat ? '°C' : 'psi');
@@ -213,12 +211,12 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 startY: yPos, margin: { left: marginX, right: marginX },
                 head: [[
                     isThermostat ? `Temp. disparo (${unitLabel})` : `Presión disparo (${unitLabel})`,
-                    isThermostat ? `Temp. repone (${unitLabel})` : `Presión repone (${unitLabel})`,
+                    isThermostat ? `Temp. repone (${unitLabel})`  : `Presión repone (${unitLabel})`,
                     'Estado contacto',
                 ]],
                 body: switchTests.map(t => [
                     isThermostat ? (t.temperaturadeDisparo || '0') : (t.presiondeDisparo || '0'),
-                    isThermostat ? (t.temperaturadeRepone || '0') : (t.presiondeRepone || '0'),
+                    isThermostat ? (t.temperaturadeRepone  || '0') : (t.presiondeRepone  || '0'),
                     getContactLabel(t),
                 ]),
                 theme: 'grid',
@@ -228,22 +226,35 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }
 
-        // 5. TABLA pH
+        // ── TABLA pH — T = 30-(V-174) ─────────────────────────────────────────
         if (data.deviceType === 'ph' && data.phTests?.length) {
             addHeader('RESULTADOS MEDICIONES DE pH');
             autoTable(pdf, {
                 startY: yPos,
                 margin: { left: marginX, right: marginX },
-                head: [['Patrón Buffer', 'Promedio pH', 'Desviación', 'Voltaje (mV)', 'Temp (°C)', 'Rango Vida (mV)', 'Estado Electrodo', 'Error %']],
+                head: [[
+                    'Patrón Buffer', 'Promedio pH', 'Desviación',
+                    'Voltaje (mV)', 'Temp (°C)',
+                    'Rango Vida (mV)',
+                    'Estado Electrodo',
+                    'Error %',
+                ]],
                 body: data.phTests.map(t => {
-                    const voltaje = parseFloat(t.voltaje);
+                    const voltaje    = parseFloat(t.voltaje);
                     const mvGuardado = parseFloat(t.errorMv);
-                    const rangoVida = !isNaN(mvGuardado) && t.errorMv !== '' ? mvGuardado : !isNaN(voltaje) ? calcRangoVida(voltaje) : 0;
+                    const rangoVida  = !isNaN(mvGuardado) && t.errorMv !== ''
+                        ? mvGuardado
+                        : !isNaN(voltaje) ? calcRangoVida(voltaje) : 0;
                     const estado = getEstadoPH(rangoVida);
                     return [
-                        t.patron ? `pH ${t.patron}` : '—',
-                        t.promedio || '0', t.desviacion || '0', t.voltaje || '0', t.temperatura || '0',
-                        rangoVida.toFixed(2), estado, t.error ? `${t.error}%` : '0%',
+                        t.patron      ? `pH ${t.patron}` : '—',
+                        t.promedio    || '0',
+                        t.desviacion  || '0',
+                        t.voltaje     || '0',
+                        t.temperatura || '0',
+                        rangoVida.toFixed(2),
+                        estado,
+                        t.error       ? `${t.error}%` : '0%',
                     ];
                 }),
                 theme: 'grid',
@@ -252,23 +263,23 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 columnStyles: {
                     5: { textColor: colors.orange, fontStyle: 'bold' },
                     6: { fontStyle: 'bold' },
-                    7: { textColor: colors.red, fontStyle: 'bold' },
+                    7: { textColor: colors.red,    fontStyle: 'bold' },
                 },
                 didParseCell: (hookData: any) => {
                     if (hookData.column.index === 6 && hookData.section === 'body') {
                         const v = hookData.cell.text[0];
-                        if (v === 'OK') hookData.cell.styles.textColor = colors.green;
+                        if      (v === 'OK')        hookData.cell.styles.textColor = colors.green;
                         else if (v === 'Verificar') hookData.cell.styles.textColor = colors.orange;
-                        else if (v === 'Agotado') hookData.cell.styles.textColor = colors.red;
+                        else if (v === 'Agotado')   hookData.cell.styles.textColor = colors.red;
                     }
                 },
             });
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }
 
-        // 6. OBSERVACIONES
+        // ── OBSERVACIONES ──
         if (data.observations) {
-            if (yPos + 40 > pageH - 15) { pdf.addPage(); yPos = 20; }
+            if (yPos + 60 > pageH - 15) { pdf.addPage(); yPos = 20; }
             addHeader('OBSERVACIONES Y NOTAS TÉCNICAS');
             autoTable(pdf, {
                 startY: yPos, margin: { left: marginX, right: marginX },
@@ -279,47 +290,68 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }
 
-        // 7. FIRMAS
+        // ── NUEVO: FIRMAS ─────────────────────────────────────────────────────
         if (data.signatureInstrumentista || data.signatureJefe) {
-            if (yPos + 60 > pageH - 15) { pdf.addPage(); yPos = 20; }
+            if (yPos + 80 > pageH - 15) { pdf.addPage(); yPos = 20; }
             addHeader('FIRMAS DE CONFORMIDAD');
+
             const firmaW = (contentW / 2) - 10;
-            const firmaH = 25;
+            const firmaH = 40;
             const firmaY = yPos + 5;
 
-            if (data.signatureInstrumentista) pdf.addImage(data.signatureInstrumentista, 'PNG', marginX, firmaY, firmaW, firmaH);
-            pdf.setDrawColor(180).line(marginX, firmaY + firmaH + 2, marginX + firmaW, firmaY + firmaH + 2);
-            pdf.setFontSize(8).text('INSTRUMENTISTA: ' + (data.instrumentistName || ''), marginX, firmaY + firmaH + 7);
+            // Instrumentista — izquierda
+            const xLeft = marginX;
+            if (data.signatureInstrumentista) {
+                pdf.addImage(data.signatureInstrumentista, 'PNG', xLeft, firmaY, firmaW, firmaH);
+            }
+            pdf.setDrawColor(180).setLineWidth(0.5)
+               .line(xLeft, firmaY + firmaH + 4, xLeft + firmaW, firmaY + firmaH + 4);
+            pdf.setFontSize(8).setFont('helvetica', 'bold').setTextColor(80)
+               .text('INSTRUMENTISTA', xLeft + firmaW / 2, firmaY + firmaH + 10, { align: 'center' });
+            pdf.setFontSize(7.5).setFont('helvetica', 'normal').setTextColor(100)
+               .text(data.instrumentistName || '', xLeft + firmaW / 2, firmaY + firmaH + 16, { align: 'center' });
 
+            // Jefe — derecha
             const xRight = marginX + firmaW + 20;
-            if (data.signatureJefe) pdf.addImage(data.signatureJefe, 'PNG', xRight, firmaY, firmaW, firmaH);
-            pdf.setDrawColor(180).line(xRight, firmaY + firmaH + 2, xRight + firmaW, firmaY + firmaH + 2);
-            pdf.setFontSize(8).text('JEFE / SUPERVISOR', xRight, firmaY + firmaH + 7);
-        }
+            if (data.signatureJefe) {
+                pdf.addImage(data.signatureJefe, 'PNG', xRight, firmaY, firmaW, firmaH);
+            }
+            pdf.setDrawColor(180).setLineWidth(0.5)
+               .line(xRight, firmaY + firmaH + 4, xRight + firmaW, firmaY + firmaH + 4);
+            pdf.setFontSize(8).setFont('helvetica', 'bold').setTextColor(80)
+               .text('JEFE / SUPERVISOR', xRight + firmaW / 2, firmaY + firmaH + 10, { align: 'center' });
 
-        // 8. GRÁFICAS (OCUPANDO PÁGINAS COMPLETAS)
+            yPos = firmaY + firmaH + 22;
+        }
+        // ─────────────────────────────────────────────────────────────────────
+
+        // ── GRÁFICAS ──
         if (chartImages?.length) {
-            const chartTitlesMap: { [key: string]: string[] } = {
-                transmitter_mA: ['CURVA DE RESPUESTA DEL TRANSMISOR (mA)'],
-                transmitter_ohm: ['ANÁLISIS DE RESISTENCIA Y CORRIENTE'],
-                transmitter_mv: ['ANÁLISIS mV / TX'],
+            const chartTitles: { [key: string]: string[] } = {
+                transmitter_mA:  ['CURVA DE RESPUESTA DEL TRANSMISOR'],
+                transmitter_ohm: ['DESVIACIÓN DE OHM (RTD)', 'CURVA DE RESPUESTA DEL TRANSMISOR (mA) — RTD'],
+                transmitter_mv:  ['DESVIACIÓN DE mV (TERMOPAR)', 'IDEAL mA vs mA TX'],
                 pressure_switch: ['CURVA DE CALIBRACIÓN Y LINEALIDAD'],
-                thermostat: ['CURVA DE CALIBRACIÓN Y LINEALIDAD'],
-                ph: ['VOLTAJE vs pH', 'ERROR BUFFER (%)', 'RANGO DE VIDA'],
+                thermostat:      ['CURVA DE CALIBRACIÓN Y LINEALIDAD'],
+                ph: [
+                    'CURVA DE RESPUESTA DEL ELECTRODO — VOLTAJE vs pH',
+                    'ERROR DE MEDICIÓN POR BUFFER (%)',
+                    'RANGO DE VIDA DEL ELECTRODO — T = 30−(V−174)',
+                ],
             };
             const deviceKey = data.deviceType === 'transmitter' ? `transmitter_${unit}` : data.deviceType;
-            const titles = chartTitlesMap[deviceKey] || ['ANÁLISIS GRÁFICO'];
-
+            const titles    = chartTitles[deviceKey] || ['ANÁLISIS GRÁFICO'];
             chartImages.forEach((img, index) => {
                 pdf.addPage();
-                pdf.setFontSize(12).setFont('helvetica', 'bold').setTextColor(40)
-                   .text(titles[index] ?? titles[titles.length - 1], pageW / 2, 15, { align: 'center' });
-                
-                pdf.addImage(img, 'PNG', marginX, 25, contentW, pageH - 45);
+                yPos = 15;
+                pdf.setFontSize(11).setFont('helvetica', 'bold').setTextColor(60)
+                   .text(titles[index] ?? titles[titles.length - 1], pageW / 2, yPos, { align: 'center' });
+                yPos += 8;
+                pdf.addImage(img, 'PNG', marginX, yPos, contentW, pageH - yPos - 15);
             });
         }
 
-        // 9. PIE DE PÁGINA FINAL
+        // ── PIE DE PÁGINA ──
         const pageCount = (pdf as any).internal.getNumberOfPages();
         for (let i = 1; i <= pageCount; i++) {
             pdf.setPage(i);
@@ -328,7 +360,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             pdf.text(`Página ${i} de ${pageCount}`, pageW - marginX, pageH - 5, { align: 'right' });
         }
 
-        pdf.save(`Reporte_${data.deviceType || 'Instrumento'}.pdf`);
+        pdf.save(`Reporte_${data.deviceType|| 'Instrumento'}.pdf`);
     } catch (e) {
         console.error('Error generando PDF:', e);
     }

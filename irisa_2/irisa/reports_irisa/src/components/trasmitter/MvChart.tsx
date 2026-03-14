@@ -62,7 +62,6 @@ const makeDot = (color: string, label: string, offset: number) =>
 
 const OFF = { L1: -80, L3: 22 };
 
-// ── Helpers de ticks ──────────────────────────────────────────────────────────
 const getYTicks = (values: number[]) => {
     if (values.length === 0) return [0, 5, 10, 15, 20, 25];
     const max = Math.max(...values);
@@ -88,38 +87,35 @@ const getXTicksNum = (vals: number[]) => {
 };
 
 const MVChart = forwardRef<any, MVChartProps>(({ measurements = [] }, ref) => {
-    const containerRef = useRef<HTMLDivElement>(null);
+    // ── Ref separado por cada chart para capturar individualmente ─────────────
+    const chart1Ref = useRef<HTMLDivElement>(null); // mV
+    const chart2Ref = useRef<HTMLDivElement>(null); // TX
 
     const mvRows = measurements.filter(m => !m.rowType || m.rowType === 'mv');
     const txRows = measurements.filter(m => m.rowType === 'tx');
 
-    // ── mV: filtra filas que tengan al menos idealmV o sensormV ──────────────
-    // Usa idealUE como eje X si existe, sino usa el índice como label categórico
     const mvRowsConDatos = mvRows.filter(m => m.idealmV || m.sensormV);
-
     const usarEjeUE = mvRowsConDatos.some(m => m.idealUE && m.idealUE !== '');
 
     const mvData = usarEjeUE
         ? mvRowsConDatos.map(m => ({
-            ejeX:    parseFloat(m.idealUE || '0'),
-            label:   m.idealUE || '',
-            idealMV: m.idealmV  ? parseFloat(m.idealmV)  : null,
-            sensorMV:m.sensormV ? parseFloat(m.sensormV) : null,
+            ejeX:     parseFloat(m.idealUE || '0'),
+            label:    m.idealUE || '',
+            idealMV:  m.idealmV  ? parseFloat(m.idealmV)  : null,
+            sensorMV: m.sensormV ? parseFloat(m.sensormV) : null,
           })).sort((a, b) => a.ejeX - b.ejeX)
         : mvRowsConDatos.map((m, i) => ({
-            ejeX:    i + 1,
-            label:   `M${i + 1}`,
-            idealMV: m.idealmV  ? parseFloat(m.idealmV)  : null,
-            sensorMV:m.sensormV ? parseFloat(m.sensormV) : null,
+            ejeX:     i + 1,
+            label:    `M${i + 1}`,
+            idealMV:  m.idealmV  ? parseFloat(m.idealmV)  : null,
+            sensorMV: m.sensormV ? parseFloat(m.sensormV) : null,
           }));
 
-    // ── TX: filtra filas que tengan idealmA o mATX ───────────────────────────
     const txRowsConDatos = txRows.filter(m => m.idealmA || m.mATX);
-
     const txData = txRowsConDatos.map(m => ({
-        ejeX:   m.idealmA ? parseFloat(m.idealmA) : null,
-        idealMA:m.idealmA ? parseFloat(m.idealmA) : null,
-        maTX:   m.mATX    ? parseFloat(m.mATX)    : null,
+        ejeX:    m.idealmA ? parseFloat(m.idealmA) : null,
+        idealMA: m.idealmA ? parseFloat(m.idealmA) : null,
+        maTX:    m.mATX    ? parseFloat(m.mATX)    : null,
     })).sort((a, b) => (a.ejeX || 0) - (b.ejeX || 0));
 
     const mvYVals  = mvData.flatMap(d => [d.idealMV, d.sensorMV].filter(v => v !== null) as number[]);
@@ -132,15 +128,22 @@ const MVChart = forwardRef<any, MVChartProps>(({ measurements = [] }, ref) => {
     const txYTicks = getYTicks(txYVals);
     const txXTicks = getXTicksNum(txXVals);
 
+    // ── Captura cada chart por separado → 1 imagen por chart ─────────────────
     useImperativeHandle(ref, () => ({
         captureAllCharts: async () => {
-            if (containerRef.current) {
-                const dataUrl = await toPng(containerRef.current, {
-                    backgroundColor: '#ffffff', pixelRatio: 2, cacheBust: true
-                });
-                return [dataUrl];
+            const images: string[] = [];
+            for (const r of [chart1Ref, chart2Ref]) {
+                if (r.current) {
+                    // Solo captura si el chart tiene contenido visible
+                    if (r.current.offsetHeight > 50) {
+                        const url = await toPng(r.current, {
+                            backgroundColor: '#ffffff', pixelRatio: 2, cacheBust: true
+                        });
+                        images.push(url);
+                    }
+                }
             }
-            return [];
+            return images;
         }
     }));
 
@@ -162,11 +165,11 @@ const MVChart = forwardRef<any, MVChartProps>(({ measurements = [] }, ref) => {
     }
 
     return (
-        <div ref={containerRef} className="space-y-6">
+        <div className="space-y-6">
 
-            {/* ── GRÁFICO mV ───────────────────────────────────────────────── */}
+            {/* ── GRÁFICO mV — ref propio ───────────────────────────────────── */}
             {hasMvData && (
-                <div className="shadow-lg rounded-xl overflow-hidden border border-gray-200 bg-white">
+                <div ref={chart1Ref} className="shadow-lg rounded-xl overflow-hidden border border-gray-200 bg-white">
                     <div className="bg-gradient-to-r from-orange-600 to-red-600 px-6 py-5 text-white">
                         <div className="flex items-center gap-4">
                             <span className="text-3xl">📈</span>
@@ -210,9 +213,9 @@ const MVChart = forwardRef<any, MVChartProps>(({ measurements = [] }, ref) => {
                 </div>
             )}
 
-            {/* ── GRÁFICO TX ───────────────────────────────────────────────── */}
+            {/* ── GRÁFICO TX — ref propio ───────────────────────────────────── */}
             {hasTxData && (
-                <div className="shadow-lg rounded-xl overflow-hidden border border-gray-200 bg-white">
+                <div ref={chart2Ref} className="shadow-lg rounded-xl overflow-hidden border border-gray-200 bg-white">
                     <div className="bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-5 text-white">
                         <div className="flex items-center gap-4">
                             <span className="text-3xl">📈</span>
