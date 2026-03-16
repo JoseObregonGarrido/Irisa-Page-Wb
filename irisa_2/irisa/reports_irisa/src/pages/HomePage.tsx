@@ -361,21 +361,25 @@ const HomePage: React.FC = () => {
                         </div>
 
                         {/* ── NUEVO: SECCIÓN DE FIRMAS ─────────────────────────────────────────── */}
-                        <div className="mt-8 p-6 bg-gray-50 rounded-xl border border-gray-200">
-                            <h4 className="text-sm font-bold text-gray-600 mb-5 flex items-center gap-2">
-                                <svg className="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                </svg>
-                                Firmas del reporte
-                            </h4>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                                <SignatureCanvas
-                                    label="Instrumentista"
-                                    sublabel={instrumentistName || undefined}
-                                    onSignatureChange={setSignatureInstrumentista}
-                                />
-                            </div>
-                        </div>
+                    <div className="mt-8 p-6 bg-gray-50 rounded-xl border border-gray-200">
+                        <h4 className="text-sm font-bold text-gray-600 mb-5 flex items-center gap-2">
+                        <svg className="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
+                        Firmas del reporte
+                        </h4>
+    
+                        {/* Cambiamos grid por flex y centramos */}
+                        <div className="flex justify-center"> 
+                        <div className="w-full max-w-md"> {/* max-w-md para que no se estire demasiado en pantallas grandes */}
+                        <SignatureCanvas
+                        label="Instrumentista"
+                        sublabel={instrumentistName || undefined}
+                        onSignatureChange={setSignatureInstrumentista}
+                        />
+                    </div>
+                </div>
+            </div>
                         {/* ──────────────────────────────────────────────────────────────────────── */}
 
                         <div className="mt-8 p-6 bg-gray-50 rounded-xl border border-gray-200">
