@@ -311,15 +311,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             pdf.setFontSize(7.5).setFont('helvetica', 'normal').setTextColor(100)
                .text(data.instrumentistName || '', xLeft + firmaW / 2, firmaY + firmaH + 16, { align: 'center' });
 
-            // Jefe — derecha
-            const xRight = marginX + firmaW + 20;
-            if (data.signatureJefe) {
-                pdf.addImage(data.signatureJefe, 'PNG', xRight, firmaY, firmaW, firmaH);
-            }
-            pdf.setDrawColor(180).setLineWidth(0.5)
-               .line(xRight, firmaY + firmaH + 4, xRight + firmaW, firmaY + firmaH + 4);
-            pdf.setFontSize(8).setFont('helvetica', 'bold').setTextColor(80)
-               .text('JEFE / SUPERVISOR', xRight + firmaW / 2, firmaY + firmaH + 10, { align: 'center' });
+
 
             yPos = firmaY + firmaH + 22;
         }

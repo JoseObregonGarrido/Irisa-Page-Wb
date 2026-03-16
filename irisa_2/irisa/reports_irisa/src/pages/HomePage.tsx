@@ -57,7 +57,6 @@ const HomePage: React.FC = () => {
 
     // ── NUEVO: estados de firma ───────────────────────────────────────────────
     const [signatureInstrumentista, setSignatureInstrumentista] = useState<string | null>(null);
-    const [signatureJefe,           setSignatureJefe]           = useState<string | null>(null);
     // ─────────────────────────────────────────────────────────────────────────
 
     React.useEffect(() => {
@@ -111,7 +110,6 @@ const HomePage: React.FC = () => {
             hasUeTransmitter,
             // ── NUEVO: pasar firmas al PDF ────────────────────────────────────
             signatureInstrumentista: signatureInstrumentista ?? undefined,
-            signatureJefe:           signatureJefe           ?? undefined,
             // ─────────────────────────────────────────────────────────────────
         };
 
@@ -375,10 +373,6 @@ const HomePage: React.FC = () => {
                                     label="Instrumentista"
                                     sublabel={instrumentistName || undefined}
                                     onSignatureChange={setSignatureInstrumentista}
-                                />
-                                <SignatureCanvas
-                                    label="Jefe / Supervisor"
-                                    onSignatureChange={setSignatureJefe}
                                 />
                             </div>
                         </div>
