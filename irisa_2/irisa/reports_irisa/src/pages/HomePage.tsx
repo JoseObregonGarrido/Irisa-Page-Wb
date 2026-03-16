@@ -1,5 +1,4 @@
 import React, { useState, useRef } from 'react';
-import { flushSync } from 'react-dom';
 import { toPng } from 'html-to-image';
 import { useNavigate } from 'react-router-dom';
 
@@ -87,40 +86,37 @@ const HomePage: React.FC = () => {
     };
 
     const handleGeneratePdf = async () => {
-        const reportData = {
-            instrumentistName,
-            instrumentistCode,
-            deviceType,
-            workOrder,
-            instrumentArea,
-            reviewDate,
-            deviceName,
-            deviceBrand,
-            deviceModel,
-            deviceSerial,
-            deviceRange,
-            unity,
-            deviceCode,
-            observations,
-            transmitterMeasurements: activeMeasurements,
-            pressureSwitchTests,
-            thermostatTests,
-            phTests,
-            outputUnit,
-            hasUeTransmitter,
-            // ── NUEVO: pasar firmas al PDF ────────────────────────────────────
-            signatureInstrumentista: signatureInstrumentista ?? undefined,
-            // ─────────────────────────────────────────────────────────────────
-        };
+    const reportData = {
+        instrumentistName,
+        instrumentistCode,
+        deviceType,
+        workOrder,
+        instrumentArea,
+        reviewDate,
+        deviceName,
+        deviceBrand,
+        deviceModel,
+        deviceSerial,
+        deviceRange,
+        unity,
+        deviceCode,
+        observations,
+        transmitterMeasurements: activeMeasurements,
+        pressureSwitchTests,
+        thermostatTests,
+        phTests,
+        outputUnit,
+        hasUeTransmitter,
+        signatureInstrumentista: signatureInstrumentista ?? undefined,
+    };
 
-        const wasShowingChart = showChart;
-        flushSync(() => {
-            setShowChart(true);
-        });
+    let chartImages: string[] = [];
 
-        let chartImages: string[] = [];
+    // SOLO CAPTURAR SI EL USUARIO TIENE EL GRÁFICO VISIBLE
+    if (showChart) {
         try {
-            await new Promise(r => setTimeout(r, 1000));
+            // Un pequeño delay para asegurar que el DOM del chart esté listo
+            await new Promise(r => setTimeout(r, 500));
 
             if (deviceType === 'transmitter' && outputUnit === 'ohm' && rtdChartRef.current) {
                 chartImages = await rtdChartRef.current.captureAllCharts();
@@ -153,18 +149,18 @@ const HomePage: React.FC = () => {
                 chartImages = captured;
             }
         } catch (chartError) {
-            console.warn("Gráfica no capturada, PDF sin gráfica:", chartError);
-        } finally {
-            if (!wasShowingChart) setShowChart(false);
+            console.warn("Gráfica visible pero no pudo capturarse:", chartError);
         }
+    }
 
-        try {
-            await generatePDFReport(reportData, chartImages);
-        } catch (error) {
-            console.error("Error al generar PDF:", error);
-            alert("Hubo un error al generar el PDF.");
-        }
-    };
+    // Generar el reporte (si chartImages está vacío, el PDF simplemente no mostrará fotos)
+    try {
+        await generatePDFReport(reportData, chartImages);
+    } catch (error) {
+        console.error("Error al generar PDF:", error);
+        alert("Hubo un error al generar el PDF.");
+    }
+};
 
     const handleClearForm = () => {
         const confirmed = window.confirm('¿Está seguro de que desea limpiar todos los campos? Esta acción no se puede deshacer.');
