@@ -180,6 +180,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 if (isOhm) headers.push('Ohm Sens.');
                 if (hasUE) headers.push('Err UE');
                 headers.push('Err mA', 'Err %');
+                if (isOhm) headers.push('Err Ohm');
                 const body = measurements.map(m => {
                     const row: any[] = [m.idealUE || m.idealUe, m.idealmA];
                     if (isOhm) row.push(m.idealohm || m.idealOhm || '0');
@@ -189,6 +190,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                     if (isOhm) row.push(m.ohmTransmitter || '0');
                     if (hasUE) row.push(m.errorUE || '0.000');
                     row.push(m.errormA || '0.000', m.errorPercentage || '0.00');
+                    if (isOhm) row.push(m.errorOhm || '0.000');
                     return row;
                 });
                 autoTable(pdf, {
