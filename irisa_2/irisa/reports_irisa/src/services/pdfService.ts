@@ -269,14 +269,6 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             pdf.setDrawColor(180).setLineWidth(0.5).line(marginX, firmaY + firmaH + 2, marginX + 80, firmaY + firmaH + 2);
             pdf.setFontSize(8).setFont('helvetica', 'bold').setTextColor(80).text('INSTRUMENTISTA', marginX + 40, firmaY + firmaH + 7, { align: 'center' });
             pdf.setFontSize(7).setFont('helvetica', 'normal').text(data.instrumentistName || '', marginX + 40, firmaY + firmaH + 11, { align: 'center' });
-
-            // Jefe / Revisado
-            const xRight = pageW - marginX - 80;
-            if (data.signatureJefe) {
-                pdf.addImage(data.signatureJefe, 'PNG', xRight + 10, firmaY, firmaW, firmaH);
-            }
-            pdf.setDrawColor(180).setLineWidth(0.5).line(xRight, firmaY + firmaH + 2, xRight + 80, firmaY + firmaH + 2);
-            pdf.setFontSize(8).setFont('helvetica', 'bold').setTextColor(80).text('REVISADO POR', xRight + 40, firmaY + firmaH + 7, { align: 'center' });
         }
 
         // Numeración de páginas
