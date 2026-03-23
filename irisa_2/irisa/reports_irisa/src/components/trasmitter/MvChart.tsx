@@ -19,7 +19,7 @@ interface MVChartProps {
     measurements?: MVMeasurement[];
 }
 
-// ── Cajita SVG siempre visible ────────────────────────────────────────────────
+// ── Cajita SVG siempre visible con Offsets Diferenciados ──────────────────────
 const makeDot = (color: string, label: string, offset: number) =>
     (props: any) => {
         const { cx, cy, value } = props;
@@ -60,6 +60,7 @@ const makeDot = (color: string, label: string, offset: number) =>
         );
     };
 
+// L1 arriba para el ideal, L3 abajo para la medida real
 const OFF = { L1: -80, L3: 22 };
 
 const getYTicks = (values: number[]) => {
@@ -87,9 +88,8 @@ const getXTicksNum = (vals: number[]) => {
 };
 
 const MVChart = forwardRef<any, MVChartProps>(({ measurements = [] }, ref) => {
-    // ── Ref separado por cada chart para capturar individualmente ─────────────
-    const chart1Ref = useRef<HTMLDivElement>(null); // mV
-    const chart2Ref = useRef<HTMLDivElement>(null); // TX
+    const chart1Ref = useRef<HTMLDivElement>(null); 
+    const chart2Ref = useRef<HTMLDivElement>(null); 
 
     const mvRows = measurements.filter(m => !m.rowType || m.rowType === 'mv');
     const txRows = measurements.filter(m => m.rowType === 'tx');
@@ -128,19 +128,15 @@ const MVChart = forwardRef<any, MVChartProps>(({ measurements = [] }, ref) => {
     const txYTicks = getYTicks(txYVals);
     const txXTicks = getXTicksNum(txXVals);
 
-    // ── Captura cada chart por separado → 1 imagen por chart ─────────────────
     useImperativeHandle(ref, () => ({
         captureAllCharts: async () => {
             const images: string[] = [];
             for (const r of [chart1Ref, chart2Ref]) {
-                if (r.current) {
-                    // Solo captura si el chart tiene contenido visible
-                    if (r.current.offsetHeight > 50) {
-                        const url = await toPng(r.current, {
-                            backgroundColor: '#ffffff', pixelRatio: 2, cacheBust: true
-                        });
-                        images.push(url);
-                    }
+                if (r.current && r.current.offsetHeight > 50) {
+                    const url = await toPng(r.current, {
+                        backgroundColor: '#ffffff', pixelRatio: 2, cacheBust: true
+                    });
+                    images.push(url);
                 }
             }
             return images;
@@ -155,10 +151,10 @@ const MVChart = forwardRef<any, MVChartProps>(({ measurements = [] }, ref) => {
         return (
             <div className="mt-8 shadow-lg rounded-xl overflow-hidden border border-gray-200 bg-white">
                 <div className="bg-gradient-to-r from-orange-600 to-red-600 px-6 py-5 text-white">
-                    <h3 className="text-xl font-bold">Análisis mV / TX</h3>
+                    <h3 className="text-xl font-bold">Analisis mV / TX</h3>
                 </div>
                 <div className="text-center py-12 text-gray-400">
-                    <p>No hay datos suficientes para generar los gráficos.</p>
+                    <p>No hay datos suficientes para generar los graficos.</p>
                 </div>
             </div>
         );
@@ -166,17 +162,16 @@ const MVChart = forwardRef<any, MVChartProps>(({ measurements = [] }, ref) => {
 
     return (
         <div className="space-y-6">
-
-            {/* ── GRÁFICO mV — ref propio ───────────────────────────────────── */}
+            {/* ── GRAFICO mV (Termopar) ── */}
             {hasMvData && (
                 <div ref={chart1Ref} className="shadow-lg rounded-xl overflow-hidden border border-gray-200 bg-white">
                     <div className="bg-gradient-to-r from-orange-600 to-red-600 px-6 py-5 text-white">
                         <div className="flex items-center gap-4">
                             <span className="text-3xl">📈</span>
                             <div>
-                                <h3 className="text-xl font-bold">Desviación de mV (Termopar)</h3>
+                                <h3 className="text-xl font-bold">Desviacion de mV (Termopar)</h3>
                                 <p className="text-orange-100 text-sm opacity-90">
-                                    Ideal mV vs Sensor mV | Eje X: {usarEjeUE ? 'Temperatura (UE)' : 'Medición'}
+                                    Ideal mV vs Sensor mV | Eje X: {usarEjeUE ? 'Temperatura (UE)' : 'Medicion'}
                                 </p>
                             </div>
                         </div>
@@ -190,7 +185,7 @@ const MVChart = forwardRef<any, MVChartProps>(({ measurements = [] }, ref) => {
                                         ? <XAxis dataKey="ejeX" type="number" ticks={mvXTicks as number[]} tick={{ fontSize: 11 }}
                                             label={{ value: 'Temperatura (UE)', position: 'insideBottom', offset: -55, fontSize: 12, fontWeight: 'bold' }} />
                                         : <XAxis dataKey="label" type="category" tick={{ fontSize: 11 }}
-                                            label={{ value: 'Medición', position: 'insideBottom', offset: -55, fontSize: 12, fontWeight: 'bold' }} />
+                                            label={{ value: 'Medicion', position: 'insideBottom', offset: -55, fontSize: 12, fontWeight: 'bold' }} />
                                     }
                                     <YAxis ticks={mvYTicks} domain={[mvYTicks[0], mvYTicks[mvYTicks.length - 1]]} tick={{ fontSize: 10 }}
                                         label={{ value: 'Voltaje (mV)', angle: -90, position: 'insideLeft', fontWeight: 'bold', fontSize: 12 }} />
@@ -213,7 +208,7 @@ const MVChart = forwardRef<any, MVChartProps>(({ measurements = [] }, ref) => {
                 </div>
             )}
 
-            {/* ── GRÁFICO TX — ref propio ───────────────────────────────────── */}
+            {/* ── GRAFICO TX (Transmisor) ── */}
             {hasTxData && (
                 <div ref={chart2Ref} className="shadow-lg rounded-xl overflow-hidden border border-gray-200 bg-white">
                     <div className="bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-5 text-white">
@@ -252,7 +247,6 @@ const MVChart = forwardRef<any, MVChartProps>(({ measurements = [] }, ref) => {
                     </div>
                 </div>
             )}
-
         </div>
     );
 });
