@@ -29,27 +29,21 @@ export interface ReportData {
     pressureSwitchTests?: any[];
     thermostatTests?: any[];
     phTests?: any[];
-    // ── NUEVO ────────────────────────────────────────────────────────────────
     signatureInstrumentista?: string;
     signatureJefe?: string;
-    // ─────────────────────────────────────────────────────────────────────────
 }
 
-// ─── Fórmula Rango de Vida (igual a PHTable y PHChart) ───────────────────────
 const V0 = 174;
 const T0 = 30;
 
-/** T = 30 - (V - 174) · Mínimo 0, máximo 30 */
 const calcRangoVida = (v: number): number =>
     Math.max(0, Math.min(T0, T0 - (v - V0)));
 
-/** T ≥ 20 → OK · 10–20 → Verificar · < 10 → Agotado */
 const getEstadoPH = (t: number): 'OK' | 'Verificar' | 'Agotado' => {
     if (t >= 20) return 'OK';
     if (t >= 10) return 'Verificar';
     return 'Agotado';
 };
-// ─────────────────────────────────────────────────────────────────────────────
 
 const capitalize = (text: string) => {
     if (!text) return '';
@@ -71,6 +65,14 @@ const getBase64ImageFromUrl = async (url: string): Promise<string> => {
         reader.onloadend = () => resolve(reader.result as string);
         reader.readAsDataURL(blob);
     });
+};
+
+// Mapeo de tipos de dispositivo a español
+const deviceTypeMap: { [key: string]: string } = {
+    'transmitter': 'TRANSMISOR',
+    'pressure_switch': 'PRESOSTATO',
+    'thermostat': 'TERMOSTATO',
+    'ph': 'pH'
 };
 
 export const generatePDFReport = async (data: ReportData, chartImages?: string[]): Promise<void> => {
@@ -109,7 +111,6 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
     };
 
     try {
-        // ── LOGO ──
         try {
             const b64Logo = await getBase64ImageFromUrl(logo);
             pdf.addImage(b64Logo, 'PNG', marginX, 12, 50, 20);
@@ -119,8 +120,11 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
            .text('REPORTE DE CALIBRACIÓN', pageW / 2, 25, { align: 'center' });
         yPos = 45;
 
-        // ── ESPECIFICACIONES ──
         addHeader('Especificaciones del instrumento');
+        
+        // Obtener nombre en español o usar el valor original si no existe en el mapa
+        const deviceTypeSpanish = deviceTypeMap[data.deviceType] || data.deviceType;
+
         autoTable(pdf, {
             startY: yPos,
             margin: { left: marginX, right: marginX },
@@ -128,7 +132,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 ['Nombre del equipo',      data.deviceName,        'Código del equipo',    data.deviceCode],
                 ['Marca del equipo',       data.deviceBrand,       'Modelo del equipo',    data.deviceModel],
                 ['Serial del instrumento', data.deviceSerial,      'Rango del instrumento',`${data.deviceRange} ${data.unity}`],
-                ['Área del instrumento',   data.instrumentArea,    'Tipo de dispositivo',  capitalize(data.deviceType)],
+                ['Área del instrumento',   data.instrumentArea,    'Tipo de dispositivo',  deviceTypeSpanish],
                 ['Nombre instrumentista',  data.instrumentistName, 'Código instrumentista',data.instrumentistCode],
                 ['Orden de trabajo',       data.workOrder,         'Fecha de revisión',    data.reviewDate || 'N/a'],
             ],
@@ -141,7 +145,6 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         });
         yPos = (pdf as any).lastAutoTable.finalY + 12;
 
-        // ── TRANSMISORES ──
         if (data.deviceType === 'transmitter' && measurements.length) {
             if (isMv) {
                 const mvRows = measurements.filter(m => !m.rowType || m.rowType === 'mv');
@@ -203,7 +206,6 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             }
         }
 
-        // ── PRESOSTATO / TERMOSTATO ──
         const isThermostat = data.deviceType === 'thermostat';
         const switchTests  = isThermostat ? data.thermostatTests : data.pressureSwitchTests;
         if ((data.deviceType === 'pressure_switch' || isThermostat) && switchTests?.length) {
@@ -228,7 +230,6 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }
 
-        // ── TABLA pH — T = 30-(V-174) ─────────────────────────────────────────
         if (data.deviceType === 'ph' && data.phTests?.length) {
             addHeader('RESULTADOS MEDICIONES DE pH');
             autoTable(pdf, {
@@ -242,7 +243,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                     'Error %',
                 ]],
                 body: data.phTests.map(t => {
-                    const voltaje    = parseFloat(t.voltaje);
+                    const voltaje     = parseFloat(t.voltaje);
                     const mvGuardado = parseFloat(t.errorMv);
                     const rangoVida  = !isNaN(mvGuardado) && t.errorMv !== ''
                         ? mvGuardado
@@ -279,7 +280,6 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }
 
-        // ── OBSERVACIONES ──
         if (data.observations) {
             if (yPos + 60 > pageH - 15) { pdf.addPage(); yPos = 20; }
             addHeader('OBSERVACIONES Y NOTAS TÉCNICAS');
@@ -292,7 +292,6 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }
 
-        // ── NUEVO: FIRMAS ─────────────────────────────────────────────────────
         if (data.signatureInstrumentista || data.signatureJefe) {
             if (yPos + 80 > pageH - 15) { pdf.addPage(); yPos = 20; }
             addHeader('FIRMAS DE CONFORMIDAD');
@@ -301,7 +300,6 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             const firmaH = 40;
             const firmaY = yPos + 5;
 
-            // Instrumentista — izquierda
             const xLeft = marginX;
             if (data.signatureInstrumentista) {
                 pdf.addImage(data.signatureInstrumentista, 'PNG', xLeft, firmaY, firmaW, firmaH);
@@ -313,13 +311,9 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             pdf.setFontSize(7.5).setFont('helvetica', 'normal').setTextColor(100)
                .text(data.instrumentistName || '', xLeft + firmaW / 2, firmaY + firmaH + 16, { align: 'center' });
 
-
-
             yPos = firmaY + firmaH + 22;
         }
-        // ─────────────────────────────────────────────────────────────────────
 
-        // ── GRÁFICAS ──
         if (chartImages?.length) {
             const chartTitles: { [key: string]: string[] } = {
                 transmitter_mA:  ['CURVA DE RESPUESTA DEL TRANSMISOR'],
@@ -345,7 +339,6 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             });
         }
 
-        // ── PIE DE PÁGINA ──
         const pageCount = (pdf as any).internal.getNumberOfPages();
         for (let i = 1; i <= pageCount; i++) {
             pdf.setPage(i);
