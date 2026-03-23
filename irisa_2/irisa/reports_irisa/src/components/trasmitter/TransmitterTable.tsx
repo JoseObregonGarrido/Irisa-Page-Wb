@@ -95,40 +95,61 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
     
-    const calculateErrors = (m: Measurement) => {
-    // Fila TX del modo mV: solo calcula error de mA TX
+   const calculateErrors = (m: Measurement) => {
+    // Helper para formatear con signo + o -
+    const formatWithSign = (value: number, decimals: number) => {
+        if (isNaN(value)) return "0.000";
+        const sign = value > 0 ? "+" : ""; // El signo "-" ya lo pone el number.toFixed
+        return `${sign}${value.toFixed(decimals)}`;
+    };
+
+    // Helper para parsear valores de forma segura
+    const p = (val: any) => {
+        const parsed = parseFloat(val);
+        return isNaN(parsed) ? null : parsed;
+    };
+
+    // 1. Fila TX del modo mV
     if (m.rowType === 'tx') {
-        const idealmA = parseFloat(m.idealmA ?? '0');
-        const mATX    = parseFloat(m.mATX    ?? '0');
-        const errormA = (isNaN(mATX) ? 0 : mATX) - (isNaN(idealmA) ? 0 : idealmA);
-        return { ...m, errormA: errormA.toFixed(3) };
+        const ideal = p(m.idealmA);
+        const real = p(m.mATX);
+        const error = (real !== null && ideal !== null) ? real - ideal : 0;
+        return { ...m, errormA: formatWithSign(error, 3) };
     }
 
-    // Fila mV del modo mV: solo calcula error de mV
+    // 2. Fila mV del modo mV
     if (m.rowType === 'mv') {
-        const idealVal  = parseFloat(m.idealmV  ?? '0');
-        const sensorVal = parseFloat(m.sensormV ?? '0');
-        const errormV = (isNaN(idealVal) ? 0 : idealVal) - (isNaN(sensorVal) ? 0 : sensorVal);
-        return { ...m, errormV: errormV.toFixed(3) };
+        const ideal = p(m.idealmV);
+        const real = p(m.sensormV);
+        // Ajustado a: Real - Ideal para consistencia de signos
+        const error = (real !== null && ideal !== null) ? real - ideal : 0;
+        return { ...m, errormV: formatWithSign(error, 3) };
     }
 
-    // Filas normales (mA y ohm)
-    const idealUE = parseFloat(m.idealUE) || 0;
-    const ueTrans = parseFloat(m.ueTransmitter) || 0;
-    const idealmA = parseFloat(m.idealmA) || 0;
-    const maTrans = parseFloat(m.maTransmitter) || 0;
-    const errorUE = ueTrans - idealUE;
-    const errormA = maTrans - idealmA;
+    // 3. Filas normales (mA y ohm)
+    const idealUE = p(m.idealUE);
+    const ueTrans = p(m.ueTransmitter);
+    const idealmA = p(m.idealmA);
+    const maTrans = p(m.maTransmitter);
+    const idealOhm = p(m.idealohm);
+    const ohmTrans = p(m.ohmTransmitter);
+    const idealMvP = p(m.idealmV);
+    const sensorMvP = p(m.sensormV);
+
+    // Cálculos base
+    const errorUE = (ueTrans !== null && idealUE !== null) ? ueTrans - idealUE : 0;
+    const errormA = (maTrans !== null && idealmA !== null) ? maTrans - idealmA : 0;
     const errorPercentage = (errormA / 16) * 100;
-    const errorOhm = (parseFloat(m.ohmTransmitter || "0") || 0) - (parseFloat(m.idealohm || "0") || 0);
-    const errorMvPuro = (parseFloat(m.sensormV || "0") || 0) - (parseFloat(m.idealmV || "0") || 0);
+    const errorOhm = (ohmTrans !== null && idealOhm !== null) ? ohmTrans - idealOhm : 0;
+    const errorMvPuro = (sensorMvP !== null && idealMvP !== null) ? sensorMvP - idealMvP : 0;
+
     return {
         ...m,
-        errorUE: errorUE.toFixed(3),
-        errormA: errormA.toFixed(3),
-        errorPercentage: errorPercentage.toFixed(2),
-        errorOhm: errorOhm.toFixed(3),
-        errormV: errorMvPuro.toFixed(3)
+        errorUE: formatWithSign(errorUE, 3),
+        errormA: formatWithSign(errormA, 3),
+        errorPercentage: formatWithSign(errorPercentage, 2),
+        errorOhm: formatWithSign(errorOhm, 3),
+        errormV: formatWithSign(errorMvPuro, 3)
     };
 };
 
