@@ -30,7 +30,6 @@ export interface ReportData {
     thermostatTests?: any[];
     phTests?: any[];
     signatureInstrumentista?: string;
-    signatureJefe?: string;
 }
 
 const V0 = 174;
@@ -107,7 +106,6 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
     };
 
     try {
-        // Logo y Titulo Principal
         try {
             const b64Logo = await getBase64ImageFromUrl(logo);
             pdf.addImage(b64Logo, 'PNG', marginX, 12, 50, 20);
@@ -117,7 +115,6 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
            .text('REPORTE DE CALIBRACIÓN', pageW / 2, 25, { align: 'center' });
         yPos = 45;
 
-        // Secciones de datos (Especificaciones, Mediciones, Observaciones)
         addHeader('Especificaciones del instrumento');
         const deviceTypeSpanish = deviceTypeMap[data.deviceType] || data.deviceType;
 
@@ -141,7 +138,6 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         });
         yPos = (pdf as any).lastAutoTable.finalY + 12;
 
-        // Renderizado de tablas segun tipo de equipo...
         if (data.deviceType === 'transmitter' && measurements.length) {
             if (isMv) {
                 const mvRows = measurements.filter(m => !m.rowType || m.rowType === 'mv');
@@ -195,7 +191,6 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             }
         }
 
-        // Seccion de Switch/Termostato/pH...
         const isThermostat = data.deviceType === 'thermostat';
         const switchTests = isThermostat ? data.thermostatTests : data.pressureSwitchTests;
         if ((data.deviceType === 'pressure_switch' || isThermostat) && switchTests?.length) {
@@ -235,21 +230,19 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }
 
-        // --- 1. GRÁFICAS (Siguiente página si existen) ---
         if (chartImages?.length) {
             chartImages.forEach((img) => {
                 pdf.addPage();
                 pdf.setFontSize(11).setFont('helvetica', 'bold').setTextColor(60)
                    .text('ANÁLISIS GRÁFICO', pageW / 2, 15, { align: 'center' });
                 pdf.addImage(img, 'PNG', marginX, 25, contentW, pageH - 60);
-                yPos = pageH - 30; // Posicionamos yPos al final de la gráfica
+                yPos = pageH - 30; 
             });
         }
 
-        // --- 2. FIRMAS (Garantizado que sea lo último) ---
-        if (data.signatureInstrumentista || data.signatureJefe) {
-            // Si después de las gráficas o tablas no hay espacio (80 unidades), saltamos de página
-            if (yPos + 80 > pageH - 20) {
+        // --- SOLO FIRMA DEL INSTRUMENTISTA ---
+        if (data.signatureInstrumentista) {
+            if (yPos + 60 > pageH - 20) {
                 pdf.addPage();
                 yPos = 20;
             } else {
@@ -262,16 +255,12 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             const firmaH = 25;
             const firmaY = yPos + 5;
 
-            // Instrumentista
-            if (data.signatureInstrumentista) {
-                pdf.addImage(data.signatureInstrumentista, 'PNG', marginX + 10, firmaY, firmaW, firmaH);
-            }
+            pdf.addImage(data.signatureInstrumentista, 'PNG', marginX + 10, firmaY, firmaW, firmaH);
             pdf.setDrawColor(180).setLineWidth(0.5).line(marginX, firmaY + firmaH + 2, marginX + 80, firmaY + firmaH + 2);
             pdf.setFontSize(8).setFont('helvetica', 'bold').setTextColor(80).text('INSTRUMENTISTA', marginX + 40, firmaY + firmaH + 7, { align: 'center' });
             pdf.setFontSize(7).setFont('helvetica', 'normal').text(data.instrumentistName || '', marginX + 40, firmaY + firmaH + 11, { align: 'center' });
         }
 
-        // Numeración de páginas
         const pageCount = (pdf as any).internal.getNumberOfPages();
         for (let i = 1; i <= pageCount; i++) {
             pdf.setPage(i);
