@@ -7,7 +7,7 @@ import { logout } from '../services/authService';
 import { generatePDFReport } from '../services/pdfService';
 
 // Components
-import SignatureCanvas from '../components/SignatureCanvas'; // ← NUEVO
+import SignatureCanvas from '../components/SignatureCanvas'; 
 import TransmitterTable, { type Measurement } from '../components/trasmitter/TransmitterTable';
 import PressureSwitchTable, { type PressureSwitchTest } from '../components/PressureSwitchTable';
 import ThermostatTable, { type ThermostatTest } from '../components/ThermostatTable';
@@ -41,11 +41,9 @@ const HomePage: React.FC = () => {
     const [deviceCode, setDeviceCode] = useLocalStorage('ir_dev_code', '');
     const [observations, setObservations] = useLocalStorage('ir_obs', '');
 
-    // ── CAMBIO 3: 3 arrays independientes por modo ────────────────────────────
     const [measurementsMA,  setMeasurementsMA]  = useLocalStorage<Measurement[]>('ir_table_ma',  []);
     const [measurementsOhm, setMeasurementsOhm] = useLocalStorage<Measurement[]>('ir_table_ohm', []);
     const [measurementsMV,  setMeasurementsMV]  = useLocalStorage<Measurement[]>('ir_table_mv',  []);
-    // ─────────────────────────────────────────────────────────────────────────
 
     const [pressureSwitchTests, setPressureSwitchTests] = useLocalStorage<PressureSwitchTest[]>('ir_table_press', []);
     const [thermostatTests, setThermostatTests] = useLocalStorage<ThermostatTest[]>('ir_table_therm', []);
@@ -54,9 +52,7 @@ const HomePage: React.FC = () => {
     const [outputUnit, setOutputUnit] = useLocalStorage<'mA' | 'ohm' | 'mv'>('ir_output_unit', 'mA');
     const [hasUeTransmitter, setHasUeTransmitter] = useLocalStorage<boolean>('ir_has_ue', false);
 
-    // ── NUEVO: estados de firma ───────────────────────────────────────────────
     const [signatureInstrumentista, setSignatureInstrumentista] = useState<string | null>(null);
-    // ─────────────────────────────────────────────────────────────────────────
 
     React.useEffect(() => {
         if (outputUnit === 'mv') {
@@ -75,7 +71,6 @@ const HomePage: React.FC = () => {
     const thermostatChartRef = useRef<any>(null);
     const phChartRef = useRef<any>(null);
 
-    // Array del modo activo (para charts y PDF)
     const activeMeasurements = outputUnit === 'mA'  ? measurementsMA
                              : outputUnit === 'ohm' ? measurementsOhm
                              : measurementsMV;
@@ -86,84 +81,81 @@ const HomePage: React.FC = () => {
     };
 
     const handleGeneratePdf = async () => {
-    const reportData = {
-        instrumentistName,
-        instrumentistCode,
-        deviceType,
-        workOrder,
-        instrumentArea,
-        reviewDate,
-        deviceName,
-        deviceBrand,
-        deviceModel,
-        deviceSerial,
-        deviceRange,
-        unity,
-        deviceCode,
-        observations,
-        transmitterMeasurements: activeMeasurements,
-        pressureSwitchTests,
-        thermostatTests,
-        phTests,
-        outputUnit,
-        hasUeTransmitter,
-        signatureInstrumentista: signatureInstrumentista ?? undefined,
+        const reportData = {
+            instrumentistName,
+            instrumentistCode,
+            deviceType,
+            workOrder,
+            instrumentArea,
+            reviewDate,
+            deviceName,
+            deviceBrand,
+            deviceModel,
+            deviceSerial,
+            deviceRange,
+            unity,
+            deviceCode,
+            observations,
+            transmitterMeasurements: activeMeasurements,
+            pressureSwitchTests,
+            thermostatTests,
+            phTests,
+            outputUnit,
+            hasUeTransmitter,
+            signatureInstrumentista: signatureInstrumentista ?? undefined,
+        };
+
+        let chartImages: string[] = [];
+
+        if (showChart) {
+            try {
+                await new Promise(r => setTimeout(r, 500));
+
+                if (deviceType === 'transmitter' && outputUnit === 'ohm' && rtdChartRef.current) {
+                    chartImages = await rtdChartRef.current.captureAllCharts();
+                } else if (deviceType === 'transmitter' && outputUnit === 'mv' && mvChartRef.current) {
+                    chartImages = await mvChartRef.current.captureAllCharts();
+                } else if (deviceType === 'transmitter' && transmitterChartRef.current) {
+                    chartImages = await transmitterChartRef.current.captureAllCharts();
+                } else if (deviceType === 'pressure_switch' && pressureSwitchChartRef.current) {
+                    chartImages = await pressureSwitchChartRef.current.captureAllCharts();
+                } else if (deviceType === 'thermostat' && thermostatChartRef.current) {
+                    chartImages = await thermostatChartRef.current.captureAllCharts();
+                } else if (deviceType === 'ph' && phChartRef.current) {
+                    const els = phChartRef.current.getChartElements();
+                    const captured: string[] = [];
+                    for (const el of [els.chart1, els.chart2, els.chart3]) {
+                        if (!el) continue;
+                        const orig = el.style.width;
+                        el.style.width = '1100px';
+                        await new Promise(r => setTimeout(r, 400));
+                        try {
+                            const dataUrl = await toPng(el, {
+                                backgroundColor: '#ffffff',
+                                pixelRatio: 2,
+                            });
+                            captured.push(dataUrl);
+                        } finally {
+                            el.style.width = orig;
+                        }
+                    }
+                    chartImages = captured;
+                }
+            } catch (chartError) {
+                console.warn("Grafica visible pero no pudo capturarse:", chartError);
+            }
+        }
+
+        try {
+            await generatePDFReport(reportData, chartImages);
+        } catch (error) {
+            console.error("Error al generar PDF:", error);
+            alert("Hubo un error al generar el PDF.");
+        }
     };
 
-    let chartImages: string[] = [];
-
-    // SOLO CAPTURAR SI EL USUARIO TIENE EL GRÁFICO VISIBLE
-    if (showChart) {
-        try {
-            // Un pequeño delay para asegurar que el DOM del chart esté listo
-            await new Promise(r => setTimeout(r, 500));
-
-            if (deviceType === 'transmitter' && outputUnit === 'ohm' && rtdChartRef.current) {
-                chartImages = await rtdChartRef.current.captureAllCharts();
-            } else if (deviceType === 'transmitter' && outputUnit === 'mv' && mvChartRef.current) {
-                chartImages = await mvChartRef.current.captureAllCharts();
-            } else if (deviceType === 'transmitter' && transmitterChartRef.current) {
-                chartImages = await transmitterChartRef.current.captureAllCharts();
-            } else if (deviceType === 'pressure_switch' && pressureSwitchChartRef.current) {
-                chartImages = await pressureSwitchChartRef.current.captureAllCharts();
-            } else if (deviceType === 'thermostat' && thermostatChartRef.current) {
-                chartImages = await thermostatChartRef.current.captureAllCharts();
-            } else if (deviceType === 'ph' && phChartRef.current) {
-                const els = phChartRef.current.getChartElements();
-                const captured: string[] = [];
-                for (const el of [els.chart1, els.chart2, els.chart3]) {
-                    if (!el) continue;
-                    const orig = el.style.width;
-                    el.style.width = '1100px';
-                    await new Promise(r => setTimeout(r, 400));
-                    try {
-                        const dataUrl = await toPng(el, {
-                            backgroundColor: '#ffffff',
-                            pixelRatio: 2,
-                        });
-                        captured.push(dataUrl);
-                    } finally {
-                        el.style.width = orig;
-                    }
-                }
-                chartImages = captured;
-            }
-        } catch (chartError) {
-            console.warn("Gráfica visible pero no pudo capturarse:", chartError);
-        }
-    }
-
-    // Generar el reporte (si chartImages está vacío, el PDF simplemente no mostrará fotos)
-    try {
-        await generatePDFReport(reportData, chartImages);
-    } catch (error) {
-        console.error("Error al generar PDF:", error);
-        alert("Hubo un error al generar el PDF.");
-    }
-};
-
     const handleClearForm = () => {
-        const confirmed = window.confirm('¿Está seguro de que desea limpiar todos los campos? Esta acción no se puede deshacer.');
+        const confirmed = window.confirm('¿Esta seguro de que desea limpiar todos los campos? Esta accion no se puede deshacer.');
 
         if (confirmed) {
             setInstrumentistName('');
@@ -215,18 +207,18 @@ const HomePage: React.FC = () => {
                             </div>
                             <div>
                                 <h1 className="text-lg sm:text-2xl font-bold text-gray-800">Ingenio Risaralda</h1>
-                                <p className="text-xs sm:text-sm text-gray-600">Sistema de Gestión de Instrumentos</p>
+                                <p className="text-xs sm:text-sm text-gray-600">Sistema de Gestion de Instrumentos</p>
                             </div>
                         </div>
                         <button
                             onClick={handleLogout}
                             className="flex items-center justify-center p-2 sm:px-4 sm:py-2 text-white bg-gradient-to-r from-red-500 to-red-600 rounded-lg hover:from-red-600 hover:to-red-700 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105"
-                            title="Cerrar Sesión"
+                            title="Cerrar Sesion"
                         >
                             <svg className="w-5 h-5 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                             </svg>
-                            <span className="hidden sm:block font-medium">Cerrar Sesión</span>
+                            <span className="hidden sm:block font-medium">Cerrar Sesion</span>
                         </button>
                     </div>
                 </div>
@@ -241,7 +233,7 @@ const HomePage: React.FC = () => {
                             </svg>
                             Crear Nuevo Reporte
                         </h2>
-                        <p className="text-teal-100 mt-2">Complete la información del instrumento y las mediciones correspondientes</p>
+                        <p className="text-teal-100 mt-2">Complete la informacion del instrumento y las mediciones correspondientes</p>
                     </div>
 
                     <div className="p-3 sm:p-4 lg:p-8">
@@ -251,7 +243,7 @@ const HomePage: React.FC = () => {
                                 <input type="text" value={instrumentistName} onChange={(e) => setInstrumentistName(e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none" placeholder="Ingrese el nombre completo" required />
                             </div>
                             <div className="space-y-2">
-                                <label className="block text-sm font-semibold text-gray-700">Código de Instrumentista</label>
+                                <label className="block text-sm font-semibold text-gray-700">Codigo de Instrumentista</label>
                                 <input type="text" value={instrumentistCode} onChange={(e) => setInstrumentistCode(e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none" placeholder="Ej: 8298" />
                             </div>
                             <div className="space-y-2">
@@ -269,11 +261,11 @@ const HomePage: React.FC = () => {
                                 <input type="text" value={workOrder} onChange={(e) => setWorkOrder(e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none" placeholder="Ej: OT-2024-001" />
                             </div>
                             <div className="space-y-2">
-                                <label className="block text-sm font-semibold text-gray-700">Área del Instrumento</label>
-                                <input type="text" value={instrumentArea} onChange={(e) => setInstrumentArea(e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none" placeholder="Ej: Refinería, Destilería" />
+                                <label className="block text-sm font-semibold text-gray-700">Area del Instrumento</label>
+                                <input type="text" value={instrumentArea} onChange={(e) => setInstrumentArea(e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none" placeholder="Ej: Refineria, Destileria" />
                             </div>
                             <div className="space-y-2">
-                                <label className="block text-sm font-semibold text-gray-700">Fecha de Revisión</label>
+                                <label className="block text-sm font-semibold text-gray-700">Fecha de Revision</label>
                                 <input type="datetime-local" value={reviewDate} onChange={(e) => setReviewDate(e.target.value)} className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none" />
                             </div>
                             <div className="space-y-2">
@@ -356,34 +348,12 @@ const HomePage: React.FC = () => {
                             </p>
                         </div>
 
-                        {/* ── NUEVO: SECCIÓN DE FIRMAS ─────────────────────────────────────────── */}
-                    <div className="mt-8 p-6 bg-gray-50 rounded-xl border border-gray-200">
-                        <h4 className="text-sm font-bold text-gray-600 mb-5 flex items-center gap-2">
-                        <svg className="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                        </svg>
-                        Firmas del reporte
-                        </h4>
-    
-                        {/* Cambiamos grid por flex y centramos */}
-                        <div className="flex justify-center"> 
-                        <div className="w-full max-w-md"> {/* max-w-md para que no se estire demasiado en pantallas grandes */}
-                        <SignatureCanvas
-                        label="Instrumentista"
-                        sublabel={instrumentistName || undefined}
-                        onSignatureChange={setSignatureInstrumentista}
-                        />
-                    </div>
-                </div>
-            </div>
-                        {/* ──────────────────────────────────────────────────────────────────────── */}
-
                         <div className="mt-8 p-6 bg-gray-50 rounded-xl border border-gray-200">
                             <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
                                 {(deviceType === 'transmitter' || deviceType === 'ph' || deviceType === 'pressure_switch' || deviceType === 'thermostat') && (
                                     <button onClick={() => setShowChart(!showChart)} className="w-full sm:w-auto flex items-center justify-center px-6 py-2.5 text-sm bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-semibold rounded-lg shadow-md transition-all duration-200 transform hover:scale-105">
                                         <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
-                                        {showChart ? 'Ocultar Gráfico' : 'Ver Gráfico'}
+                                        {showChart ? 'Ocultar Grafico' : 'Ver Grafico'}
                                     </button>
                                 )}
                                 <button onClick={handleGeneratePdf} className="w-full sm:w-auto flex items-center justify-center px-6 py-2.5 text-sm bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-lg shadow-md transition-all duration-200 transform hover:scale-105">
@@ -404,7 +374,7 @@ const HomePage: React.FC = () => {
                                         <span className="bg-teal-100 text-teal-700 p-1.5 rounded-lg mr-2">
                                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" /></svg>
                                         </span>
-                                        Análisis Gráfico: {getDeviceTypeLabel(deviceType)}
+                                        Analisis Grafico: {getDeviceTypeLabel(deviceType)}
                                     </h3>
                                     {deviceType === 'transmitter' && outputUnit === 'ohm' && <RTDChart ref={rtdChartRef} measurements={activeMeasurements} hasUeTransmitter={hasUeTransmitter} />}
                                     {deviceType === 'transmitter' && outputUnit === 'mv' && <MvChart ref={mvChartRef} measurements={activeMeasurements} />}
@@ -414,6 +384,26 @@ const HomePage: React.FC = () => {
                                     {deviceType === 'ph' && <PHChart ref={phChartRef} tests={phTests} />}
                                 </div>
                             )}
+                        </div>
+
+                        {/* SECCION DE FIRMAS - AHORA AL FINAL */}
+                        <div className="mt-8 p-6 bg-gray-50 rounded-xl border border-gray-200">
+                            <h4 className="text-sm font-bold text-gray-600 mb-5 flex items-center gap-2">
+                                <svg className="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                </svg>
+                                Firmas del reporte
+                            </h4>
+        
+                            <div className="flex justify-center"> 
+                                <div className="w-full max-w-md"> 
+                                    <SignatureCanvas
+                                        label="Instrumentista"
+                                        sublabel={instrumentistName || undefined}
+                                        onSignatureChange={setSignatureInstrumentista}
+                                    />
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
