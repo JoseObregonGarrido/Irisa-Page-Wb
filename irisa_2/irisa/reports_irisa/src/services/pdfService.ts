@@ -292,28 +292,6 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }
 
-        if (data.signatureInstrumentista || data.signatureJefe) {
-            if (yPos + 80 > pageH - 15) { pdf.addPage(); yPos = 20; }
-            addHeader('FIRMAS DE CONFORMIDAD');
-
-            const firmaW = (contentW / 2) - 10;
-            const firmaH = 40;
-            const firmaY = yPos + 5;
-
-            const xLeft = marginX;
-            if (data.signatureInstrumentista) {
-                pdf.addImage(data.signatureInstrumentista, 'PNG', xLeft, firmaY, firmaW, firmaH);
-            }
-            pdf.setDrawColor(180).setLineWidth(0.5)
-               .line(xLeft, firmaY + firmaH + 4, xLeft + firmaW, firmaY + firmaH + 4);
-            pdf.setFontSize(8).setFont('helvetica', 'bold').setTextColor(80)
-               .text('INSTRUMENTISTA', xLeft + firmaW / 2, firmaY + firmaH + 10, { align: 'center' });
-            pdf.setFontSize(7.5).setFont('helvetica', 'normal').setTextColor(100)
-               .text(data.instrumentistName || '', xLeft + firmaW / 2, firmaY + firmaH + 16, { align: 'center' });
-
-            yPos = firmaY + firmaH + 22;
-        }
-
         if (chartImages?.length) {
             const chartTitles: { [key: string]: string[] } = {
                 transmitter_mA:  ['CURVA DE RESPUESTA DEL TRANSMISOR'],
@@ -337,6 +315,28 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 yPos += 8;
                 pdf.addImage(img, 'PNG', marginX, yPos, contentW, pageH - yPos - 15);
             });
+        }
+
+        if (data.signatureInstrumentista || data.signatureJefe) {
+            if (yPos + 80 > pageH - 15) { pdf.addPage(); yPos = 20; }
+            addHeader('FIRMAS DE CONFORMIDAD');
+
+            const firmaW = (contentW / 2) - 10;
+            const firmaH = 40;
+            const firmaY = yPos + 5;
+
+            const xLeft = marginX;
+            if (data.signatureInstrumentista) {
+                pdf.addImage(data.signatureInstrumentista, 'PNG', xLeft, firmaY, firmaW, firmaH);
+            }
+            pdf.setDrawColor(180).setLineWidth(0.5)
+               .line(xLeft, firmaY + firmaH + 4, xLeft + firmaW, firmaY + firmaH + 4);
+            pdf.setFontSize(8).setFont('helvetica', 'bold').setTextColor(80)
+               .text('INSTRUMENTISTA', xLeft + firmaW / 2, firmaY + firmaH + 10, { align: 'center' });
+            pdf.setFontSize(7.5).setFont('helvetica', 'normal').setTextColor(100)
+               .text(data.instrumentistName || '', xLeft + firmaW / 2, firmaY + firmaH + 16, { align: 'center' });
+
+            yPos = firmaY + firmaH + 22;
         }
 
         const pageCount = (pdf as any).internal.getNumberOfPages();
