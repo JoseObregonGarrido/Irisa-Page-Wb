@@ -45,12 +45,6 @@ const getEstadoPH = (t: number): 'OK' | 'Verificar' | 'Agotado' => {
     return 'Agotado';
 };
 
-const capitalize = (text: string) => {
-    if (!text) return '';
-    const s = text.toLowerCase();
-    return s.charAt(0).toUpperCase() + s.slice(1);
-};
-
 const getContactLabel = (t: any) => {
     if (t.isNO === true) return 'N.O (Abierto)';
     if (t.isNC === true) return 'N.C (Cerrado)';
@@ -101,8 +95,11 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         red:                [200, 30, 30],
     };
 
-    const addHeader = (title: string) => {
-        if (yPos + 40 > pageH - 15) { pdf.addPage(); yPos = 20; }
+    const addHeader = (title: string, customY?: number) => {
+        const targetY = customY || yPos;
+        if (targetY + 40 > pageH - 15) { pdf.addPage(); yPos = 20; }
+        else { yPos = targetY; }
+        
         pdf.setDrawColor(119, 158, 79).setLineWidth(0.8).line(marginX, yPos, pageW - marginX, yPos);
         yPos += 10;
         pdf.setFontSize(11).setFont('helvetica', 'bold').setTextColor(60).text(title.toUpperCase(), marginX, yPos);
@@ -110,6 +107,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
     };
 
     try {
+        // Logo y Titulo Principal
         try {
             const b64Logo = await getBase64ImageFromUrl(logo);
             pdf.addImage(b64Logo, 'PNG', marginX, 12, 50, 20);
@@ -119,8 +117,8 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
            .text('REPORTE DE CALIBRACIÓN', pageW / 2, 25, { align: 'center' });
         yPos = 45;
 
+        // Secciones de datos (Especificaciones, Mediciones, Observaciones)
         addHeader('Especificaciones del instrumento');
-        
         const deviceTypeSpanish = deviceTypeMap[data.deviceType] || data.deviceType;
 
         autoTable(pdf, {
@@ -143,6 +141,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         });
         yPos = (pdf as any).lastAutoTable.finalY + 12;
 
+        // Renderizado de tablas segun tipo de equipo...
         if (data.deviceType === 'transmitter' && measurements.length) {
             if (isMv) {
                 const mvRows = measurements.filter(m => !m.rowType || m.rowType === 'mv');
@@ -173,17 +172,9 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 }
             } else {
                 addHeader(`Resultados de las mediciones - ${isOhm ? 'RTD' : 'mA'}`);
-                const headers: string[] = ['Ideal UE', 'Ideal mA'];
-                if (isOhm) headers.push('Ideal Ohm');
-                headers.push('Patrón UE');
-                if (hasUE) headers.push('UE Trans.');
-                headers.push(isOhm ? 'mA Sens.' : 'mA Trans.');
-                if (isOhm) headers.push('Ohm Sens.');
-                if (hasUE) headers.push('Err UE');
-                headers.push('Err mA', 'Err %');
-                if (isOhm) headers.push('Err Ohm');
+                const headers = ['Ideal UE', 'Ideal mA', isOhm ? 'Ideal Ohm' : null, 'Patrón UE', hasUE ? 'UE Trans.' : null, isOhm ? 'mA Sens.' : 'mA Trans.', isOhm ? 'Ohm Sens.' : null, hasUE ? 'Err UE' : null, 'Err mA', 'Err %', isOhm ? 'Err Ohm' : null].filter(Boolean) as string[];
                 const body = measurements.map(m => {
-                    const row: any[] = [m.idealUE || m.idealUe, m.idealmA];
+                    const row = [m.idealUE || m.idealUe, m.idealmA];
                     if (isOhm) row.push(m.idealohm || m.idealOhm || '0');
                     row.push(m.patronUE || m.patronUe);
                     if (hasUE) row.push(m.ueTransmitter);
@@ -204,26 +195,18 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             }
         }
 
+        // Seccion de Switch/Termostato/pH...
         const isThermostat = data.deviceType === 'thermostat';
-        const switchTests  = isThermostat ? data.thermostatTests : data.pressureSwitchTests;
+        const switchTests = isThermostat ? data.thermostatTests : data.pressureSwitchTests;
         if ((data.deviceType === 'pressure_switch' || isThermostat) && switchTests?.length) {
             addHeader(isThermostat ? 'RESULTADOS TERMOSTATO' : 'RESULTADOS PRESOSTATO');
-            const unitLabel = data.unity || (isThermostat ? '°C' : 'psi');
             autoTable(pdf, {
                 startY: yPos, margin: { left: marginX, right: marginX },
-                head: [[
-                    isThermostat ? `Temp. disparo (${unitLabel})` : `Presión disparo (${unitLabel})`,
-                    isThermostat ? `Temp. repone (${unitLabel})`  : `Presión repone (${unitLabel})`,
-                    'Estado contacto',
-                ]],
-                body: switchTests.map(t => [
-                    isThermostat ? (t.temperaturadeDisparo || '0') : (t.presiondeDisparo || '0'),
-                    isThermostat ? (t.temperaturadeRepone  || '0') : (t.presiondeRepone  || '0'),
-                    getContactLabel(t),
-                ]),
+                head: [[isThermostat ? 'Temp. disparo' : 'Presión disparo', isThermostat ? 'Temp. repone' : 'Presión repone', 'Estado contacto']],
+                body: switchTests.map(t => [isThermostat ? t.temperaturadeDisparo : t.presiondeDisparo, isThermostat ? t.temperaturadeRepone : t.presiondeRepone, getContactLabel(t)]),
                 theme: 'grid',
                 headStyles: { fillColor: colors.risaraldaGreen, halign: 'center', fontSize: 8.5, fontStyle: 'bold' },
-                styles: { fontSize: 8.5, halign: 'center', cellPadding: 3, textColor: 40 },
+                styles: { fontSize: 8.5, halign: 'center', cellPadding: 3 },
             });
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }
@@ -231,55 +214,17 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
         if (data.deviceType === 'ph' && data.phTests?.length) {
             addHeader('RESULTADOS MEDICIONES DE pH');
             autoTable(pdf, {
-                startY: yPos,
-                margin: { left: marginX, right: marginX },
-                head: [[
-                    'Patrón Buffer', 'Promedio pH', 'Desviación',
-                    'Voltaje (mV)', 'Temp (°C)',
-                    'Rango Vida (mV)',
-                    'Estado Electrodo',
-                    'Error %',
-                ]],
-                body: data.phTests.map(t => {
-                    const voltaje     = parseFloat(t.voltaje);
-                    const mvGuardado = parseFloat(t.errorMv);
-                    const rangoVida  = !isNaN(mvGuardado) && t.errorMv !== ''
-                        ? mvGuardado
-                        : !isNaN(voltaje) ? calcRangoVida(voltaje) : 0;
-                    const estado = getEstadoPH(rangoVida);
-                    return [
-                        t.patron      ? `pH ${t.patron}` : '—',
-                        t.promedio    || '0',
-                        t.desviacion  || '0',
-                        t.voltaje     || '0',
-                        t.temperatura || '0',
-                        rangoVida.toFixed(2),
-                        estado,
-                        t.error       ? `${t.error}%` : '0%',
-                    ];
-                }),
+                startY: yPos, margin: { left: marginX, right: marginX },
+                head: [['Patrón Buffer', 'Promedio pH', 'Voltaje (mV)', 'Rango Vida (mV)', 'Estado Electrodo', 'Error %']],
+                body: data.phTests.map(t => [t.patron, t.promedio, t.voltaje, calcRangoVida(parseFloat(t.voltaje)).toFixed(2), getEstadoPH(calcRangoVida(parseFloat(t.voltaje))), `${t.error}%`]),
                 theme: 'grid',
                 headStyles: { fillColor: colors.tealPH, halign: 'center', fontSize: 8, fontStyle: 'bold' },
                 styles: { fontSize: 8, halign: 'center', cellPadding: 2.5 },
-                columnStyles: {
-                    5: { textColor: colors.orange, fontStyle: 'bold' },
-                    6: { fontStyle: 'bold' },
-                    7: { textColor: colors.red,    fontStyle: 'bold' },
-                },
-                didParseCell: (hookData: any) => {
-                    if (hookData.column.index === 6 && hookData.section === 'body') {
-                        const v = hookData.cell.text[0];
-                        if      (v === 'OK')        hookData.cell.styles.textColor = colors.green;
-                        else if (v === 'Verificar') hookData.cell.styles.textColor = colors.orange;
-                        else if (v === 'Agotado')   hookData.cell.styles.textColor = colors.red;
-                    }
-                },
             });
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }
 
         if (data.observations) {
-            if (yPos + 60 > pageH - 15) { pdf.addPage(); yPos = 20; }
             addHeader('OBSERVACIONES Y NOTAS TÉCNICAS');
             autoTable(pdf, {
                 startY: yPos, margin: { left: marginX, right: marginX },
@@ -290,72 +235,51 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }
 
-        // --- SECCION DE GRAFICAS ---
+        // --- 1. GRÁFICAS (Siguiente página si existen) ---
         if (chartImages?.length) {
-            const chartTitles: { [key: string]: string[] } = {
-                transmitter_mA:  ['CURVA DE RESPUESTA DEL TRANSMISOR'],
-                transmitter_ohm: ['DESVIACIÓN DE OHM (RTD)', 'CURVA DE RESPUESTA DEL TRANSMISOR (mA) — RTD'],
-                transmitter_mv:  ['DESVIACIÓN DE mV (TERMOPAR)', 'IDEAL mA vs mA TX'],
-                pressure_switch: ['CURVA DE CALIBRACIÓN Y LINEALIDAD'],
-                thermostat:      ['CURVA DE CALIBRACIÓN Y LINEALIDAD'],
-                ph: [
-                    'CURVA DE RESPUESTA DEL ELECTRODO — VOLTAJE vs pH',
-                    'ERROR DE MEDICIÓN POR BUFFER (%)',
-                    'RANGO DE VIDA DEL ELECTRODO — T = 30−(V−174)',
-                ],
-            };
-            const deviceKey = data.deviceType === 'transmitter' ? `transmitter_${unit}` : data.deviceType;
-            const titles    = chartTitles[deviceKey] || ['ANÁLISIS GRÁFICO'];
-            chartImages.forEach((img, index) => {
+            chartImages.forEach((img) => {
                 pdf.addPage();
-                yPos = 15;
                 pdf.setFontSize(11).setFont('helvetica', 'bold').setTextColor(60)
-                   .text(titles[index] ?? titles[titles.length - 1], pageW / 2, yPos, { align: 'center' });
-                yPos += 8;
-                pdf.addImage(img, 'PNG', marginX, yPos, contentW, pageH - yPos - 30); // Dejamos espacio abajo
-                yPos = pageH - 25; 
+                   .text('ANÁLISIS GRÁFICO', pageW / 2, 15, { align: 'center' });
+                pdf.addImage(img, 'PNG', marginX, 25, contentW, pageH - 60);
+                yPos = pageH - 30; // Posicionamos yPos al final de la gráfica
             });
         }
 
-        // --- SECCION DE FIRMAS AL FINAL ---
+        // --- 2. FIRMAS (Garantizado que sea lo último) ---
         if (data.signatureInstrumentista || data.signatureJefe) {
-            // Si el espacio restante en la ultima pagina es muy poco, agregamos pagina nueva
-            if (yPos + 60 > pageH - 15) { 
-                pdf.addPage(); 
-                yPos = 20; 
+            // Si después de las gráficas o tablas no hay espacio (80 unidades), saltamos de página
+            if (yPos + 80 > pageH - 20) {
+                pdf.addPage();
+                yPos = 20;
             } else {
-                yPos += 10;
+                yPos += 15;
             }
-            
-            addHeader('FIRMAS DE CONFORMIDAD');
 
-            const firmaW = (contentW / 2) - 10;
-            const firmaH = 35;
+            addHeader('FIRMAS DE CONFORMIDAD', yPos);
+            
+            const firmaW = 60; 
+            const firmaH = 25;
             const firmaY = yPos + 5;
 
-            // Firma Instrumentista
-            const xLeft = marginX;
+            // Instrumentista
             if (data.signatureInstrumentista) {
-                pdf.addImage(data.signatureInstrumentista, 'PNG', xLeft + (firmaW / 4), firmaY, firmaW / 2, firmaH);
+                pdf.addImage(data.signatureInstrumentista, 'PNG', marginX + 10, firmaY, firmaW, firmaH);
             }
-            pdf.setDrawColor(180).setLineWidth(0.5)
-               .line(xLeft, firmaY + firmaH + 2, xLeft + firmaW, firmaY + firmaH + 2);
-            pdf.setFontSize(8).setFont('helvetica', 'bold').setTextColor(80)
-               .text('INSTRUMENTISTA', xLeft + firmaW / 2, firmaY + firmaH + 8, { align: 'center' });
-            pdf.setFontSize(7.5).setFont('helvetica', 'normal').setTextColor(100)
-               .text(data.instrumentistName || '', xLeft + firmaW / 2, firmaY + firmaH + 13, { align: 'center' });
+            pdf.setDrawColor(180).setLineWidth(0.5).line(marginX, firmaY + firmaH + 2, marginX + 80, firmaY + firmaH + 2);
+            pdf.setFontSize(8).setFont('helvetica', 'bold').setTextColor(80).text('INSTRUMENTISTA', marginX + 40, firmaY + firmaH + 7, { align: 'center' });
+            pdf.setFontSize(7).setFont('helvetica', 'normal').text(data.instrumentistName || '', marginX + 40, firmaY + firmaH + 11, { align: 'center' });
 
-            // Firma Jefe (Opcional, en el mismo eje X derecho)
-            const xRight = marginX + contentW / 2 + 10;
+            // Jefe / Revisado
+            const xRight = pageW - marginX - 80;
             if (data.signatureJefe) {
-                pdf.addImage(data.signatureJefe, 'PNG', xRight + (firmaW / 4), firmaY, firmaW / 2, firmaH);
+                pdf.addImage(data.signatureJefe, 'PNG', xRight + 10, firmaY, firmaW, firmaH);
             }
-            pdf.setDrawColor(180).setLineWidth(0.5)
-               .line(xRight, firmaY + firmaH + 2, xRight + firmaW, firmaY + firmaH + 2);
-            pdf.setFontSize(8).setFont('helvetica', 'bold').setTextColor(80)
-               .text('REVISADO POR', xRight + firmaW / 2, firmaY + firmaH + 8, { align: 'center' });
+            pdf.setDrawColor(180).setLineWidth(0.5).line(xRight, firmaY + firmaH + 2, xRight + 80, firmaY + firmaH + 2);
+            pdf.setFontSize(8).setFont('helvetica', 'bold').setTextColor(80).text('REVISADO POR', xRight + 40, firmaY + firmaH + 7, { align: 'center' });
         }
 
+        // Numeración de páginas
         const pageCount = (pdf as any).internal.getNumberOfPages();
         for (let i = 1; i <= pageCount; i++) {
             pdf.setPage(i);
@@ -364,7 +288,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             pdf.text(`Página ${i} de ${pageCount}`, pageW - marginX, pageH - 5, { align: 'right' });
         }
 
-        pdf.save(`Reporte_${data.deviceType|| 'Instrumento'}.pdf`);
+        pdf.save(`Reporte_${data.deviceType || 'Instrumento'}.pdf`);
     } catch (e) {
         console.error('Error generando PDF:', e);
     }
