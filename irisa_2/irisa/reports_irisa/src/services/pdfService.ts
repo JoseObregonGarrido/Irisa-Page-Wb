@@ -67,7 +67,6 @@ const getBase64ImageFromUrl = async (url: string): Promise<string> => {
     });
 };
 
-// Mapeo de tipos de dispositivo a español
 const deviceTypeMap: { [key: string]: string } = {
     'transmitter': 'TRANSMISOR',
     'pressure_switch': 'PRESOSTATO',
@@ -122,7 +121,6 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
 
         addHeader('Especificaciones del instrumento');
         
-        // Obtener nombre en español o usar el valor original si no existe en el mapa
         const deviceTypeSpanish = deviceTypeMap[data.deviceType] || data.deviceType;
 
         autoTable(pdf, {
@@ -292,6 +290,7 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
             yPos = (pdf as any).lastAutoTable.finalY + 12;
         }
 
+        // --- SECCION DE GRAFICAS ---
         if (chartImages?.length) {
             const chartTitles: { [key: string]: string[] } = {
                 transmitter_mA:  ['CURVA DE RESPUESTA DEL TRANSMISOR'],
@@ -313,30 +312,48 @@ export const generatePDFReport = async (data: ReportData, chartImages?: string[]
                 pdf.setFontSize(11).setFont('helvetica', 'bold').setTextColor(60)
                    .text(titles[index] ?? titles[titles.length - 1], pageW / 2, yPos, { align: 'center' });
                 yPos += 8;
-                pdf.addImage(img, 'PNG', marginX, yPos, contentW, pageH - yPos - 15);
+                pdf.addImage(img, 'PNG', marginX, yPos, contentW, pageH - yPos - 30); // Dejamos espacio abajo
+                yPos = pageH - 25; 
             });
         }
 
+        // --- SECCION DE FIRMAS AL FINAL ---
         if (data.signatureInstrumentista || data.signatureJefe) {
-            if (yPos + 80 > pageH - 15) { pdf.addPage(); yPos = 20; }
+            // Si el espacio restante en la ultima pagina es muy poco, agregamos pagina nueva
+            if (yPos + 60 > pageH - 15) { 
+                pdf.addPage(); 
+                yPos = 20; 
+            } else {
+                yPos += 10;
+            }
+            
             addHeader('FIRMAS DE CONFORMIDAD');
 
             const firmaW = (contentW / 2) - 10;
-            const firmaH = 40;
+            const firmaH = 35;
             const firmaY = yPos + 5;
 
+            // Firma Instrumentista
             const xLeft = marginX;
             if (data.signatureInstrumentista) {
-                pdf.addImage(data.signatureInstrumentista, 'PNG', xLeft, firmaY, firmaW, firmaH);
+                pdf.addImage(data.signatureInstrumentista, 'PNG', xLeft + (firmaW / 4), firmaY, firmaW / 2, firmaH);
             }
             pdf.setDrawColor(180).setLineWidth(0.5)
-               .line(xLeft, firmaY + firmaH + 4, xLeft + firmaW, firmaY + firmaH + 4);
+               .line(xLeft, firmaY + firmaH + 2, xLeft + firmaW, firmaY + firmaH + 2);
             pdf.setFontSize(8).setFont('helvetica', 'bold').setTextColor(80)
-               .text('INSTRUMENTISTA', xLeft + firmaW / 2, firmaY + firmaH + 10, { align: 'center' });
+               .text('INSTRUMENTISTA', xLeft + firmaW / 2, firmaY + firmaH + 8, { align: 'center' });
             pdf.setFontSize(7.5).setFont('helvetica', 'normal').setTextColor(100)
-               .text(data.instrumentistName || '', xLeft + firmaW / 2, firmaY + firmaH + 16, { align: 'center' });
+               .text(data.instrumentistName || '', xLeft + firmaW / 2, firmaY + firmaH + 13, { align: 'center' });
 
-            yPos = firmaY + firmaH + 22;
+            // Firma Jefe (Opcional, en el mismo eje X derecho)
+            const xRight = marginX + contentW / 2 + 10;
+            if (data.signatureJefe) {
+                pdf.addImage(data.signatureJefe, 'PNG', xRight + (firmaW / 4), firmaY, firmaW / 2, firmaH);
+            }
+            pdf.setDrawColor(180).setLineWidth(0.5)
+               .line(xRight, firmaY + firmaH + 2, xRight + firmaW, firmaY + firmaH + 2);
+            pdf.setFontSize(8).setFont('helvetica', 'bold').setTextColor(80)
+               .text('REVISADO POR', xRight + firmaW / 2, firmaY + firmaH + 8, { align: 'center' });
         }
 
         const pageCount = (pdf as any).internal.getNumberOfPages();
