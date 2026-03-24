@@ -1,7 +1,11 @@
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { 
+    LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, 
+    ResponsiveContainer, ReferenceLine, ReferenceArea, Label 
+} from 'recharts';
 import { toPng } from 'html-to-image';
-import { useRef, useImperativeHandle, forwardRef } from 'react';
+import { useRef, useImperativeHandle, forwardRef, useMemo } from 'react';
 
+// --- INTERFACES ---
 export interface Measurement {
     percentage: string;
     idealUE?: string;
@@ -17,25 +21,25 @@ interface TransmitterChartProps {
     data?: Measurement[];
 }
 
-// Cajita SVG personalizada
+// --- HELPER: TOOLTIP PERSONALIZADO (PUNTOS) ---
 const makeDot = (color: string, label: string, offset: number) =>
     (props: any) => {
         const { cx, cy, value } = props;
         if (value === null || value === undefined || cx === undefined || cy === undefined) return <g />;
 
-        const text = `${label}: ${Number(value).toFixed(2)}`;
+        const text  = `${label}: ${Number(value).toFixed(2)}`;
         const fSize = 10;
-        const padX = 7;
-        const padY = 4;
+        const padX  = 7;
+        const padY  = 4;
         const charW = fSize * 0.58;
-        const boxW = text.length * charW + padX * 2;
-        const boxH = fSize + padY * 2;
+        const boxW  = text.length * charW + padX * 2;
+        const boxH  = fSize + padY * 2;
 
-        const above = offset < 0;
-        const boxY = above ? cy + offset - boxH : cy + offset;
-        const tipY = above ? boxY + boxH : boxY;
-        const tipDir = above ? 1 : -1;
-        const boxX = cx - boxW / 2;
+        const above   = offset < 0;
+        const boxY    = above ? cy + offset - boxH : cy + offset;
+        const tipY    = above ? boxY + boxH : boxY;
+        const tipDir  = above ? 1 : -1;
+        const boxX    = cx - boxW / 2;
 
         return (
             <g>
@@ -53,34 +57,36 @@ const makeDot = (color: string, label: string, offset: number) =>
         );
     };
 
-const OFF = { TOP: -45, BOTTOM: 25 };
-
+// --- COMPONENTE PRINCIPAL ---
 const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements, data }, ref) => {
     const chartData = measurements || data || [];
     const containerRef = useRef<HTMLDivElement>(null);
 
-    // Procesamiento de datos
-    const processedData = chartData.map((m) => {
-        const xEU = parseFloat(m.idealUE || m.idealUe || '0');
-        const yIdealMA = parseFloat(m.idealmA || m.idealMa || '0');
-        const yMeasmA = parseFloat(m.maTransmitter) || 0;
-        const yIdealEU = parseFloat(m.idealUE || m.idealUe || '0');
-        const yMeasEU = m.ueTransmitter ? parseFloat(m.ueTransmitter) : null;
+    // --- LÓGICA DE PROCESAMIENTO E INGENIERÍA ---
+    const { processedData, metrics } = useMemo(() => {
+        const sorted = chartData.map((m) => ({
+            xEU: parseFloat(m.idealUE || m.idealUe || '0'),
+            yIdeal: parseFloat(m.idealmA || m.idealMa || '0'),
+            yMeasmA: parseFloat(m.maTransmitter) || 0,
+        })).sort((a, b) => a.xEU - b.xEU);
 
-        return {
-            xEU: xEU,
-            yIdealMA: yIdealMA,
-            yMeasmA: yMeasmA,
-            yIdealEU: yIdealEU,
-            yMeasEU: yMeasEU,
-        };
-    }).sort((a, b) => a.xEU - b.xEU);
+        if (sorted.length === 0) return { processedData: [], metrics: { zeroErr: 0, spanErr: 0, eMax: 0, xMax: 0 } };
 
-    // Calcular rangos dinámicos para EU
-    const euValues = processedData.flatMap(d => [d.yIdealEU, d.yMeasEU].filter(v => v !== null && v !== undefined));
-    const minEU = euValues.length > 0 ? Math.min(...euValues) : 0;
-    const maxEU = euValues.length > 0 ? Math.max(...euValues) : 100;
-    const euRange = [Math.floor(minEU * 0.9), Math.ceil(maxEU * 1.1)];
+        const zeroErr = sorted[0].yMeasmA - 4;
+        const spanErr = sorted[sorted.length - 1].yMeasmA - 20;
+
+        let eMax = 0;
+        let xMax = 0;
+        sorted.forEach(p => {
+            const err = Math.abs(p.yMeasmA - p.yIdeal);
+            if (err > eMax) {
+                eMax = err;
+                xMax = p.xEU;
+            }
+        });
+
+        return { processedData: sorted, metrics: { zeroErr, spanErr, eMax, xMax } };
+    }, [chartData]);
 
     useImperativeHandle(ref, () => ({
         captureAllCharts: async () => {
@@ -92,111 +98,96 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
     }));
 
     return (
-        <div className="space-y-8 p-4" ref={containerRef}>
-            {/* GRÁFICA 1: mA vs EU Patrón */}
-            <div className="shadow-lg rounded-xl overflow-hidden border border-gray-200 bg-white">
-                <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-5 text-white">
-                    <div className="flex items-center gap-4">
-                        <span className="text-3xl">⚡</span>
-                        <div>
-                            <h3 className="text-xl font-bold">Gráfica 1: Salida en mA</h3>
-                            <p className="text-blue-100 text-sm opacity-90">EU Patrón (X) vs mA (Y) | Ideal vs Medido</p>
-                        </div>
-                    </div>
+        <div className="mt-8 shadow-2xl rounded-2xl overflow-hidden border border-slate-200 bg-slate-50 font-sans" ref={containerRef}>
+            {/* HEADER CON MÉTRICAS */}
+            <div className="bg-slate-900 px-8 py-6 text-white flex flex-col md:flex-row justify-between items-center gap-4">
+                <div>
+                    <h3 className="text-xl font-bold tracking-tight text-emerald-400">ANALIZADOR DE RESPUESTA</h3>
+                    <p className="text-slate-400 text-xs uppercase tracking-widest">Protocolo de Linealidad 4-20mA</p>
                 </div>
-
-                <div className="p-6 bg-white">
-                    <div className="h-[480px] w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={processedData} margin={{ top: 70, right: 30, left: 20, bottom: 60 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-
-                                <XAxis
-                                    dataKey="xEU"
-                                    type="number"
-                                    domain={['dataMin', 'dataMax']}
-                                    tick={{ fontSize: 11 }}
-                                    label={{ value: 'EU Patrón (Entrada)', position: 'insideBottom', offset: -40, fontSize: 12, fontWeight: 'bold' }}
-                                />
-                                <YAxis
-                                    ticks={[4, 8, 12, 16, 20]}
-                                    domain={[4, 20]}
-                                    tick={{ fontSize: 11 }}
-                                    label={{ value: 'Salida (mA)', angle: -90, position: 'insideLeft', fontWeight: 'bold', fontSize: 12 }}
-                                />
-
-                                <Tooltip
-                                    formatter={(val: any) => [`${Number(val).toFixed(2)} mA`, ""]}
-                                    labelFormatter={(label) => `EU Patrón: ${label}`}
-                                />
-                                <Legend verticalAlign="top" height={36} />
-
-                                <Line type="monotone" dataKey="yIdealMA" stroke="#3b82f6" name="mA Ideal" strokeWidth={2}
-                                    dot={makeDot('#3b82f6', 'Ideal', OFF.TOP)}
-                                    isAnimationActive={false} />
-
-                                <Line type="monotone" dataKey="yMeasmA" stroke="#10b981" name="mA Medido" strokeWidth={3}
-                                    dot={makeDot('#10b981', 'Real', OFF.BOTTOM)}
-                                    activeDot={{ r: 6 }}
-                                    isAnimationActive={false} />
-                            </LineChart>
-                        </ResponsiveContainer>
-                    </div>
+                <div className="flex gap-4">
+                    <MetricCard label="Error Zero" value={metrics.zeroErr} />
+                    <MetricCard label="Error Span" value={metrics.spanErr} />
+                    <MetricCard label="Error Máx" value={metrics.eMax} highlight />
                 </div>
             </div>
 
-            {/* GRÁFICA 2: EU vs EU Patrón */}
-            <div className="shadow-lg rounded-xl overflow-hidden border border-gray-200 bg-white">
-                <div className="bg-gradient-to-r from-amber-600 to-orange-600 px-6 py-5 text-white">
-                    <div className="flex items-center gap-4">
-                        <span className="text-3xl">📊</span>
-                        <div>
-                            <h3 className="text-xl font-bold">Gráfica 2: Entrada en EU</h3>
-                            <p className="text-amber-100 text-sm opacity-90">EU Patrón (X) vs EU (Y) | Ideal vs Medido</p>
-                        </div>
-                    </div>
-                </div>
+            <div className="p-6 bg-white">
+                <div className="h-[520px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={processedData} margin={{ top: 40, right: 30, left: 20, bottom: 60 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                            
+                            <XAxis 
+                                dataKey="xEU" 
+                                type="number" 
+                                domain={['dataMin', 'dataMax']}
+                                label={{ value: 'EU PATRÓN (ENTRADA)', position: 'insideBottom', offset: -40, fontSize: 12, fontWeight: 700, fill: '#64748b' }}
+                            />
+                            
+                            <YAxis 
+                                type="number"
+                                domain={[0, 22]} // Muestra desde 0 para dar contexto, pero marca el 4
+                                ticks={[4, 8, 12, 16, 20]} 
+                                label={{ value: 'SALIDA (mA)', angle: -90, position: 'insideLeft', fontWeight: 700, fill: '#64748b' }}
+                            />
 
-                <div className="p-6 bg-white">
-                    <div className="h-[480px] w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={processedData} margin={{ top: 70, right: 30, left: 20, bottom: 60 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                            {/* Zona gris para indicar el límite inferior (debajo de 4mA) */}
+                            <ReferenceArea y1={0} y2={4} fill="#f8fafc" />
+                            <ReferenceLine y={4} stroke="#cbd5e1" strokeDasharray="4 4" />
 
-                                <XAxis
-                                    dataKey="xEU"
-                                    type="number"
-                                    domain={['dataMin', 'dataMax']}
-                                    tick={{ fontSize: 11 }}
-                                    label={{ value: 'EU Patrón (Entrada)', position: 'insideBottom', offset: -40, fontSize: 12, fontWeight: 'bold' }}
-                                />
-                                <YAxis
-                                    domain={euRange}
-                                    tick={{ fontSize: 11 }}
-                                    label={{ value: 'EU Medido', angle: -90, position: 'insideLeft', fontWeight: 'bold', fontSize: 12 }}
-                                />
+                            {/* Marca visual del punto de máximo error (e_max) */}
+                            {metrics.eMax > 0 && (
+                                <ReferenceLine x={metrics.xMax} stroke="#ef4444" strokeDasharray="3 3">
+                                    <Label value="Punto eMax" position="top" fill="#ef4444" fontSize={10} fontWeight="bold" />
+                                </ReferenceLine>
+                            )}
 
-                                <Tooltip
-                                    formatter={(val: any) => [`${Number(val).toFixed(2)} EU`, ""]}
-                                    labelFormatter={(label) => `EU Patrón: ${label}`}
-                                />
-                                <Legend verticalAlign="top" height={36} />
+                            <Tooltip 
+                                cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }}
+                                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                            />
+                            <Legend verticalAlign="top" align="right" height={40} />
+                            
+                            {/* Línea Ideal (Azul) */}
+                            <Line 
+                                type="monotone" 
+                                dataKey="yIdeal" 
+                                stroke="#3b82f6" 
+                                name="Ideal" 
+                                strokeWidth={2} 
+                                strokeDasharray="5 5"
+                                dot={false}
+                                isAnimationActive={false} 
+                            />
 
-                                <Line type="monotone" dataKey="yIdealEU" stroke="#8b5cf6" name="EU Ideal" strokeWidth={2}
-                                    dot={makeDot('#8b5cf6', 'Ideal', OFF.TOP)}
-                                    isAnimationActive={false} />
-
-                                <Line type="monotone" dataKey="yMeasEU" stroke="#f59e0b" name="EU Medido" strokeWidth={3}
-                                    dot={makeDot('#f59e0b', 'Real', OFF.BOTTOM)}
-                                    activeDot={{ r: 6 }}
-                                    isAnimationActive={false} />
-                            </LineChart>
-                        </ResponsiveContainer>
-                    </div>
+                            {/* Línea Real (Verde) */}
+                            <Line 
+                                type="monotone" 
+                                dataKey="yMeasmA" 
+                                stroke="#10b981" 
+                                name="Transmisor" 
+                                strokeWidth={4}
+                                dot={makeDot('#10b981', 'Real', 25)}
+                                activeDot={{ r: 6 }}
+                                isAnimationActive={true} 
+                            />
+                        </LineChart>
+                    </ResponsiveContainer>
                 </div>
             </div>
         </div>
     );
 });
+
+// Componente auxiliar para el Header
+const MetricCard = ({ label, value, highlight }: any) => (
+    <div className={`px-4 py-1 rounded-lg ${highlight ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-slate-800'}`}>
+        <p className="text-[9px] uppercase font-bold text-slate-400 leading-none mb-1">{label}</p>
+        <p className={`text-lg font-mono font-bold ${highlight ? 'text-emerald-400' : 'text-white'}`}>
+            {value > 0 ? '+' : ''}{value.toFixed(3)}<span className="text-[10px] ml-0.5">mA</span>
+        </p>
+    </div>
+);
 
 export default TransmitterChart;
