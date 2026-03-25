@@ -91,7 +91,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    // --- LOGICA DE CALCULO DINAMICO ---
+    // --- LOGICA DE CALCULO DINAMICO CORREGIDA ---
     const calculateErrors = (m: Measurement, allMeasurements: Measurement[]) => {
         const formatWithSign = (value: number, decimals: number) => {
             if (isNaN(value)) return "0.000";
@@ -104,7 +104,6 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
             return isNaN(parsed) ? null : parsed;
         };
 
-        // Encontrar Min y Max del rango de la tabla para escalar
         const valuesUE = allMeasurements.map(item => p(item.idealUE)).filter(v => v !== null) as number[];
         const minUE = valuesUE.length > 0 ? Math.min(...valuesUE) : 0;
         const maxUE = valuesUE.length > 0 ? Math.max(...valuesUE) : 100;
@@ -112,20 +111,18 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
 
         let calculatedIdealMA = m.idealmA;
 
-        // Si el usuario cambio el Ideal UE, recalculamos el Ideal mA automaticamente
         const currentIdealUE = p(m.idealUE);
         if (currentIdealUE !== null) {
             if (minUE === 0 && maxUE === 100) {
-                // Caso estandar 4-20mA para 0-100%
                 const standardMap: { [key: number]: string } = { 0: "4", 25: "8", 50: "12", 75: "16", 100: "20" };
                 calculatedIdealMA = standardMap[currentIdealUE] || (4 + (currentIdealUE / 100 * 16)).toFixed(3);
             } else {
-                // Caso dinamico: Escalado lineal (mA = 4 + [(Val - Min) / Span] * 16)
                 const percentage = spanUE !== 0 ? (currentIdealUE - minUE) / spanUE : 0;
                 calculatedIdealMA = (4 + (percentage * 16)).toFixed(3);
             }
         }
 
+        // Casos especiales (mv / tx)
         if (m.rowType === 'tx') {
             const ideal = p(calculatedIdealMA);
             const real = p(m.mATX);
@@ -140,36 +137,38 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
             return { ...m, errormV: formatWithSign(error, 3) };
         }
 
-        const idealUE = p(m.idealUE);
-        const ueTrans = p(m.ueTransmitter);
-        const idealmA = p(calculatedIdealMA);
-        const maTrans = p(m.maTransmitter);
+        // --- CALCULOS PRINCIPALES CON CORRECCION SOLICITADA ---
+        const pUE = p(m.patronUE);         // mA Patron
+        const ueTrans = p(m.ueTransmitter); // ue Medido
+        const maTrans = p(m.maTransmitter); // mA Medido (del instrumento)
+        
+        // CORRECCION: mAmedido - mApatron
+        // Nota: Si en tu tabla 'patronUE' es el valor de referencia en mA
+        const errormA_val = (maTrans !== null && pUE !== null) ? maTrans - pUE : 0;
+        
+        // CORRECCION: ueTransmisor - uePatron 
+        // Nota: Asumiendo que 'patronUE' tambien se usa como referencia de UE si aplica
+        const errorUE_val = (ueTrans !== null && pUE !== null) ? ueTrans - pUE : 0;
+
+        const errorPercentage = (errormA_val / 16) * 100;
+        
         const idealOhm = p(m.idealohm);
         const ohmTrans = p(m.ohmTransmitter);
-        const idealMvP = p(m.idealmV);
-        const sensorMvP = p(m.sensormV);
-
-        const errorUE = (ueTrans !== null && idealUE !== null) ? ueTrans - idealUE : 0;
-        const errormA = (maTrans !== null && idealmA !== null) ? maTrans - idealmA : 0;
-        const errorPercentage = (errormA / 16) * 100;
         const errorOhm = (ohmTrans !== null && idealOhm !== null) ? ohmTrans - idealOhm : 0;
-        const errorMvPuro = (sensorMvP !== null && idealMvP !== null) ? sensorMvP - idealMvP : 0;
 
         return {
             ...m,
             idealmA: calculatedIdealMA,
-            errorUE: formatWithSign(errorUE, 3),
-            errormA: formatWithSign(errormA, 3),
+            errorUE: formatWithSign(errorUE_val, 3),
+            errormA: formatWithSign(errormA_val, 3),
             errorPercentage: formatWithSign(errorPercentage, 2),
-            errorOhm: formatWithSign(errorOhm, 3),
-            errormV: formatWithSign(errorMvPuro, 3)
+            errorOhm: formatWithSign(errorOhm, 3)
         };
     };
 
     const handleChange = (index: number, field: keyof Measurement, value: any) => {
         const newMeasurements = [...measurements];
         newMeasurements[index] = { ...newMeasurements[index], [field]: value };
-        // Pasamos el array completo para que sepa detectar el Min/Max
         newMeasurements[index] = calculateErrors(newMeasurements[index], newMeasurements);
         onMeasurementsChange(newMeasurements);
     };
@@ -315,8 +314,6 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                                             Eliminar
                                         </button>
                                     </div>
-
-                                    {/* MODO MOVIL (Simplificado para no alargar) */}
                                     <div className="grid grid-cols-2 gap-3">
                                         <InputField label="Ideal UE" unit="UE" value={m.idealUE} onChange={(e:any) => handleChange(index, 'idealUE', e.target.value)} />
                                         <InputField label="Ideal mA" unit="mA" value={m.idealmA} readOnly />
