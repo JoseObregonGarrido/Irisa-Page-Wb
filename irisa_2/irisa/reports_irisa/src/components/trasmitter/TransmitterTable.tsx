@@ -120,27 +120,27 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
         if (currentPatronUE !== null && spanUE !== 0) {
             const ratioPatron = (currentPatronUE - minUE) / spanUE;
             const pvPatron = ratioPatron * 100;
-            calculatedPatronMA = (4 + (pvPatron / 100 * 16)).toFixed(3);
+            calculatedPatronMA = (4 + ((pvPatron / 100) * 16)).toFixed(3);
         }
 
         // 2. Calculo de Ideal mA y % Rango
-        const currentIdealUE = p(m.idealUE);
-        let calculatedIdealMA = m.idealmA;
-        let calculatedPercentage = m.percentage;
+        // const currentIdealUE = p(m.idealUE);
+        // let calculatedIdealMA = m.idealmA;
+        // let calculatedPercentage = m.percentage;
 
-        if (currentIdealUE !== null && spanUE !== 0) {
-            const ratio = (currentIdealUE - minUE) / spanUE;
-            calculatedIdealMA = (4 + (ratio * 16)).toFixed(3);
-            calculatedPercentage = (ratio * 100).toFixed(0);
-        }
+        // if (currentIdealUE !== null && spanUE !== 0) {
+        //     const ratio = (currentIdealUE - minUE) / spanUE;
+        //     calculatedIdealMA = (4 + (ratio * 16)).toFixed(3);
+        //     calculatedPercentage = (ratio * 100).toFixed(0);
+        // }
 
-        // 3. Manejo de filas especiales (mV / TX)
-        if (m.rowType === 'tx') {
-            const ideal = p(calculatedIdealMA);
-            const real = p(m.mATX);
-            const error = (real !== null && ideal !== null) ? real - ideal : 0;
-            return { ...m, idealmA: calculatedIdealMA, percentage: calculatedPercentage, errormA: formatWithSign(error, 3) };
-        }
+        // // 3. Manejo de filas especiales (mV / TX)
+        // if (m.rowType === 'tx') {
+        //     const ideal = p(calculatedIdealMA);
+        //     const real = p(m.mATX);
+        //     const error = (real !== null && ideal !== null) ? real - ideal : 0;
+        //     return { ...m, idealmA: calculatedIdealMA, percentage: calculatedPercentage, errormA: formatWithSign(error, 3) };
+        // }
 
         // 4. Calculos estandar (mA / Ohm)
         const maTrans = p(m.maTransmitter);
@@ -158,9 +158,9 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
 
         return {
             ...m,
-            idealmA: calculatedIdealMA,
+            // idealmA: calculatedIdealMA,
             patronMA: calculatedPatronMA,
-            percentage: calculatedPercentage,
+            // percentage: calculatedPercentage,
             errorUE: formatWithSign(errorUE_val, 3),
             errormA: formatWithSign(errormA_val, 3),
             errorPercentage: formatWithSign(errorPercentage, 2),
