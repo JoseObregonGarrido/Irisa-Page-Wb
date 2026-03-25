@@ -93,78 +93,88 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
 
     // --- LOGICA DE CALCULO DINAMICO CORREGIDA ---
     const calculateErrors = (m: Measurement, allMeasurements: Measurement[]) => {
-        const formatWithSign = (value: number, decimals: number) => {
-            if (isNaN(value)) return "0.000";
-            const sign = value > 0 ? "+" : "";
-            return `${sign}${value.toFixed(decimals)}`;
-        };
-
-        const p = (val: any) => {
-            const parsed = parseFloat(val);
-            return isNaN(parsed) ? null : parsed;
-        };
-
-        const valuesUE = allMeasurements.map(item => p(item.idealUE)).filter(v => v !== null) as number[];
-        const minUE = valuesUE.length > 0 ? Math.min(...valuesUE) : 0;
-        const maxUE = valuesUE.length > 0 ? Math.max(...valuesUE) : 100;
-        const spanUE = maxUE - minUE;
-
-        let calculatedIdealMA = m.idealmA;
-
-        const currentIdealUE = p(m.idealUE);
-        if (currentIdealUE !== null) {
-            if (minUE === 0 && maxUE === 100) {
-                const standardMap: { [key: number]: string } = { 0: "4", 25: "8", 50: "12", 75: "16", 100: "20" };
-                calculatedIdealMA = standardMap[currentIdealUE] || (4 + (currentIdealUE / 100 * 16)).toFixed(3);
-            } else {
-                const percentage = spanUE !== 0 ? (currentIdealUE - minUE) / spanUE : 0;
-                calculatedIdealMA = (4 + (percentage * 16)).toFixed(3);
-            }
-        }
-
-        // Casos especiales (mv / tx)
-        if (m.rowType === 'tx') {
-            const ideal = p(calculatedIdealMA);
-            const real = p(m.mATX);
-            const error = (real !== null && ideal !== null) ? real - ideal : 0;
-            return { ...m, idealmA: calculatedIdealMA, errormA: formatWithSign(error, 3) };
-        }
-
-        if (m.rowType === 'mv') {
-            const ideal = p(m.idealmV);
-            const real = p(m.sensormV);
-            const error = (real !== null && ideal !== null) ? real - ideal : 0;
-            return { ...m, errormV: formatWithSign(error, 3) };
-        }
-
-        // --- CALCULOS PRINCIPALES CON CORRECCION SOLICITADA ---
-        const pUE = p(m.patronUE);         // mA Patron
-        const ueTrans = p(m.ueTransmitter); // ue Medido
-        const maTrans = p(m.maTransmitter); // mA Medido (del instrumento)
-        
-        // CORRECCION: mAmedido - mApatron
-        // Nota: Si en tu tabla 'patronUE' es el valor de referencia en mA
-        const errormA_val = (maTrans !== null && pUE !== null) ? maTrans - pUE : 0;
-        
-        // CORRECCION: ueTransmisor - uePatron 
-        // Nota: Asumiendo que 'patronUE' tambien se usa como referencia de UE si aplica
-        const errorUE_val = (ueTrans !== null && pUE !== null) ? ueTrans - pUE : 0;
-
-        const errorPercentage = (errormA_val / 16) * 100;
-        
-        const idealOhm = p(m.idealohm);
-        const ohmTrans = p(m.ohmTransmitter);
-        const errorOhm = (ohmTrans !== null && idealOhm !== null) ? ohmTrans - idealOhm : 0;
-
-        return {
-            ...m,
-            idealmA: calculatedIdealMA,
-            errorUE: formatWithSign(errorUE_val, 3),
-            errormA: formatWithSign(errormA_val, 3),
-            errorPercentage: formatWithSign(errorPercentage, 2),
-            errorOhm: formatWithSign(errorOhm, 3)
-        };
+    const formatWithSign = (value: number, decimals: number) => {
+        if (isNaN(value)) return "0.000";
+        const sign = value > 0 ? "+" : "";
+        return `${sign}${value.toFixed(decimals)}`;
     };
+
+    const p = (val: any) => {
+        const parsed = parseFloat(val);
+        return isNaN(parsed) ? null : parsed;
+    };
+
+    // 1. Detectar el Rango (Span) de forma mas segura
+    const valuesUE = allMeasurements
+        .map(item => p(item.idealUE))
+        .filter((v): v is number => v !== null);
+
+    // Si no hay valores, asumimos 0-100 por defecto para no romper la formula
+    const minUE = valuesUE.length > 1 ? Math.min(...valuesUE) : 0;
+    const maxUE = valuesUE.length > 1 ? Math.max(...valuesUE) : 100;
+    const spanUE = maxUE - minUE;
+
+    let calculatedIdealMA = m.idealmA;
+    const currentIdealUE = p(m.idealUE);
+
+    // 2. Logica de Calculo de mA Ideal (Auto-completado)
+    if (currentIdealUE !== null) {
+        // Caso especial: Rango estandar 0-100
+        if (minUE === 0 && maxUE === 100) {
+            const standardMap: { [key: number]: string } = { 
+                0: "4.000", 25: "8.000", 50: "12.000", 75: "16.000", 100: "20.000" 
+            };
+            calculatedIdealMA = standardMap[currentIdealUE] || (4 + (currentIdealUE / 100 * 16)).toFixed(3);
+        } else {
+            // Caso dinamico: Formula de escalamiento (Regla de 3 para instrumentacion)
+            // mA = 4 + [(Valor - MinUE) / (MaxUE - MinUE)] * 16
+            const ratio = spanUE !== 0 ? (currentIdealUE - minUE) / spanUE : 0;
+            calculatedIdealMA = (4 + (ratio * 16)).toFixed(3);
+        }
+    }
+
+    // 3. Manejo de tipos especiales (mv / tx)
+    if (m.rowType === 'tx') {
+        const ideal = p(calculatedIdealMA);
+        const real = p(m.mATX);
+        const error = (real !== null && ideal !== null) ? real - ideal : 0;
+        return { ...m, idealmA: calculatedIdealMA, errormA: formatWithSign(error, 3) };
+    }
+
+    if (m.rowType === 'mv') {
+        const ideal = p(m.idealmV);
+        const real = p(m.sensormV);
+        const error = (real !== null && ideal !== null) ? real - ideal : 0;
+        return { ...m, errormV: formatWithSign(error, 3) };
+    }
+
+    // 4. Calculos Principales (Correccion: medido - patron)
+    const pUE = p(m.patronUE);         // Valor de referencia (Patron)
+    const ueTrans = p(m.ueTransmitter); // Valor medido en UE
+    const maTrans = p(m.maTransmitter); // Valor medido en mA
+    
+    // Error en mA: mA medido - mA del patron (referencia)
+    const errormA_val = (maTrans !== null && pUE !== null) ? maTrans - pUE : 0;
+    
+    // Error en UE: UE medido - UE del patron (referencia)
+    const errorUE_val = (ueTrans !== null && pUE !== null) ? ueTrans - pUE : 0;
+
+    // % de Error basado en el Span de 16mA (Estandar industrial)
+    const errorPercentage = (errormA_val / 16) * 100;
+    
+    const idealOhm = p(m.idealohm);
+    const ohmTrans = p(m.ohmTransmitter);
+    const errorOhm = (ohmTrans !== null && idealOhm !== null) ? ohmTrans - idealOhm : 0;
+
+    return {
+        ...m,
+        idealmA: calculatedIdealMA,
+        errorUE: formatWithSign(errorUE_val, 3),
+        errormA: formatWithSign(errormA_val, 3),
+        errorPercentage: formatWithSign(errorPercentage, 2),
+        errorOhm: formatWithSign(errorOhm, 3)
+    };
+};
 
     const handleChange = (index: number, field: keyof Measurement, value: any) => {
         const newMeasurements = [...measurements];
