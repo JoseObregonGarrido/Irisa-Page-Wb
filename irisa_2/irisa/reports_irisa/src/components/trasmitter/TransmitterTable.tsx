@@ -6,6 +6,7 @@ export interface Measurement {
     percentage: string;
     idealUE: string;
     patronUE: string;
+    patronMA?: string; // NUEVO: mA calculado a partir del patron UE
     ueTransmitter: string;
     idealmA: string;
     idealohm?: string; 
@@ -24,7 +25,6 @@ export interface Measurement {
     errormV?: string;
     idealTx?: string;
     mATX?: string;
-    sensorTypeTx?: 'J' | 'K';
 }
 
 interface TransmitterTableProps {
@@ -91,7 +91,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    // --- LOGICA DE CALCULO DINAMICO CORREGIDA ---
+    // --- LOGICA DE CALCULO DINAMICO ACTUALIZADA ---
     const calculateErrors = (m: Measurement, allMeasurements: Measurement[]) => {
         const formatWithSign = (value: number, decimals: number) => {
             if (isNaN(value)) return "0.000";
@@ -104,36 +104,37 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
             return isNaN(parsed) ? null : parsed;
         };
 
+        // Determinamos el rango UE de la tabla
+        const valuesUE = allMeasurements
+            .map(item => p(item.idealUE))
+            .filter((v): v is number => v !== null);
+
+        const minUE = valuesUE.length > 0 ? Math.min(...valuesUE) : 0;
+        const maxUE = valuesUE.length > 0 ? Math.max(...valuesUE) : 100;
+        const effectiveMax = maxUE <= 100 && minUE >= 0 ? 100 : maxUE;
+        const spanUE = effectiveMax - minUE;
+
+        // 1. Calculo de mA Patron a partir de Patron UE
+        const currentPatronUE = p(m.patronUE);
+        let calculatedPatronMA = "";
+        if (currentPatronUE !== null && spanUE !== 0) {
+            const ratioPatron = (currentPatronUE - minUE) / spanUE;
+            const pvPatron = ratioPatron * 100;
+            calculatedPatronMA = (4 + (pvPatron / 100 * 16)).toFixed(3);
+        }
+
+        // 2. Calculo de Ideal mA y % Rango
         const currentIdealUE = p(m.idealUE);
         let calculatedIdealMA = m.idealmA;
         let calculatedPercentage = m.percentage;
 
-        // 1. Calculo de Ideal mA y % Rango
-        if (currentIdealUE !== null) {
-            const valuesUE = allMeasurements
-                .map(item => p(item.idealUE))
-                .filter((v): v is number => v !== null);
-
-            const minUE = valuesUE.length > 0 ? Math.min(...valuesUE) : 0;
-            const maxUE = valuesUE.length > 0 ? Math.max(...valuesUE) : 100;
-
-            // Si el maximo es <= 100, forzamos rango 0-100 para evitar el error.
-            const effectiveMax = maxUE <= 100 ? 100 : maxUE;
-            const effectiveMin = minUE;
-            const spanUE = effectiveMax - effectiveMin;
-
-            if (spanUE !== 0) {
-                const ratio = (currentIdealUE - effectiveMin) / spanUE;
-                calculatedIdealMA = (4 + (ratio * 16)).toFixed(3);
-                // Autocompletar % Rango
-                calculatedPercentage = (ratio * 100).toFixed(0);
-            } else {
-                calculatedIdealMA = currentIdealUE === 0 ? "4.000" : "20.000";
-                calculatedPercentage = currentIdealUE === 0 ? "0" : "100";
-            }
+        if (currentIdealUE !== null && spanUE !== 0) {
+            const ratio = (currentIdealUE - minUE) / spanUE;
+            calculatedIdealMA = (4 + (ratio * 16)).toFixed(3);
+            calculatedPercentage = (ratio * 100).toFixed(0);
         }
 
-        // 2. Manejo de filas especiales (mV / TX)
+        // 3. Manejo de filas especiales (mV / TX)
         if (m.rowType === 'tx') {
             const ideal = p(calculatedIdealMA);
             const real = p(m.mATX);
@@ -141,21 +142,16 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
             return { ...m, idealmA: calculatedIdealMA, percentage: calculatedPercentage, errormA: formatWithSign(error, 3) };
         }
 
-        if (m.rowType === 'mv') {
-            const ideal = p(m.idealmV);
-            const real = p(m.sensormV);
-            const error = (real !== null && ideal !== null) ? real - ideal : 0;
-            return { ...m, errormV: formatWithSign(error, 3) };
-        }
-
-        // 3. Calculos estandar (mA / Ohm)
-        const pUE = p(m.patronUE);
-        const ueTrans = p(m.ueTransmitter);
+        // 4. Calculos estandar (mA / Ohm)
         const maTrans = p(m.maTransmitter);
+        const pMA = p(calculatedPatronMA); // Usamos el mA calculado del patron para el error
+        const ueTrans = p(m.ueTransmitter);
+        const pUE = p(m.patronUE);
         const idealOhm = p(m.idealohm);
         const ohmTrans = p(m.ohmTransmitter);
 
-        const errormA_val = (maTrans !== null && pUE !== null) ? maTrans - pUE : 0;
+        // El error ahora se calcula contra el mA Patron
+        const errormA_val = (maTrans !== null && pMA !== null) ? maTrans - pMA : 0;
         const errorUE_val = (ueTrans !== null && pUE !== null) ? ueTrans - pUE : 0;
         const errorOhm_val = (ohmTrans !== null && idealOhm !== null) ? ohmTrans - idealOhm : 0;
         const errorPercentage = (errormA_val / 16) * 100;
@@ -163,6 +159,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
         return {
             ...m,
             idealmA: calculatedIdealMA,
+            patronMA: calculatedPatronMA,
             percentage: calculatedPercentage,
             errorUE: formatWithSign(errorUE_val, 3),
             errormA: formatWithSign(errormA_val, 3),
@@ -181,7 +178,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
     const addNewRow = (rowType?: 'mv' | 'tx') => {
         onMeasurementsChange([...measurements, { 
             rowType,
-            percentage: "", idealUE: "", patronUE: "", ueTransmitter: "", idealmA:"", 
+            percentage: "", idealUE: "", patronUE: "", patronMA: "", ueTransmitter: "", idealmA:"", 
             idealohm: "", idealMv: "", maTransmitter: "", ohmTransmitter: "", mvTransmitter: "", 
             errorUE: "", errormA: "", errorPercentage: "", errorOhm: "", errorMv: "", 
             sensorType: 'J', idealmV: '', sensormV: '', errormV: '', mATX: ''
@@ -207,15 +204,15 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                 };
             case 'ohm':
                 return {
-                    gridCols: hasUeTransmitter ? 'lg:grid-cols-[repeat(13,minmax(0,1fr))]' : 'lg:grid-cols-[repeat(11,minmax(0,1fr))]',
-                    minWidth: 'lg:min-w-[1400px]',
-                    headers: ['Ideal UE', 'Ideal mA', 'Ideal Ohm', 'Patrón UE', ...(hasUeTransmitter ? ['UE Trans.'] : []), 'mA Sensor', 'Ohm Sensor', '% Rango', ...(hasUeTransmitter ? ['Err UE'] : []), 'Err Ohm', 'Err mA', 'Err %', 'Acción']
+                    gridCols: hasUeTransmitter ? 'lg:grid-cols-[repeat(14,minmax(0,1fr))]' : 'lg:grid-cols-[repeat(12,minmax(0,1fr))]',
+                    minWidth: 'lg:min-w-[1500px]',
+                    headers: ['Ideal UE', 'Ideal mA', 'Ideal Ohm', 'Patrón UE', 'mA Patrón', ...(hasUeTransmitter ? ['UE Trans.'] : []), 'mA Sensor', 'Ohm Sensor', '% Rango', ...(hasUeTransmitter ? ['Err UE'] : []), 'Err Ohm', 'Err mA', 'Err %', 'Acción']
                 };
             default:
                 return {
-                    gridCols: hasUeTransmitter ? 'lg:grid-cols-[repeat(10,minmax(0,1fr))]' : 'lg:grid-cols-[repeat(8,minmax(0,1fr))]',
-                    minWidth: 'lg:min-w-[1100px]',
-                    headers: ['Ideal UE', 'Ideal mA', 'Patrón UE', ...(hasUeTransmitter ? ['UE Trans.'] : []), 'mA Trans.', '% Rango', ...(hasUeTransmitter ? ['Err UE'] : []), 'Err mA', 'Err %', 'Acción']
+                    gridCols: hasUeTransmitter ? 'lg:grid-cols-[repeat(11,minmax(0,1fr))]' : 'lg:grid-cols-[repeat(9,minmax(0,1fr))]',
+                    minWidth: 'lg:min-w-[1200px]',
+                    headers: ['Ideal UE', 'Ideal mA', 'Patrón UE', 'mA Patrón', ...(hasUeTransmitter ? ['UE Trans.'] : []), 'mA Trans.', '% Rango', ...(hasUeTransmitter ? ['Err UE'] : []), 'Err mA', 'Err %', 'Acción']
                 };
         }
     };
@@ -305,28 +302,6 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                     <div className="divide-y divide-gray-200 bg-gray-50 lg:bg-white">
                         {measurements.map((m, index) => (
                             <div key={index} className="hover:bg-teal-50/30 transition-colors">
-                                <div className="lg:hidden p-4 space-y-3">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">#{index + 1}</span>
-                                            {outputUnit === 'mv' && <RowTypeBadge type={m.rowType ?? 'mv'} />}
-                                        </div>
-                                        <button
-                                            onClick={() => onMeasurementsChange(measurements.filter((_, i) => i !== index))}
-                                            className="flex items-center gap-1 text-red-400 hover:text-red-600 text-xs font-bold px-2 py-1 rounded-lg hover:bg-red-50 transition-all"
-                                        >
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                            Eliminar
-                                        </button>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <InputField label="Ideal UE" unit="UE" value={m.idealUE} onChange={(e:any) => handleChange(index, 'idealUE', e.target.value)} />
-                                        <InputField label="Ideal mA" unit="mA" value={m.idealmA} readOnly />
-                                        <InputField label="mA Trans." unit="mA" value={m.maTransmitter} onChange={(e:any) => handleChange(index, 'maTransmitter', e.target.value)} />
-                                        <InputField label="Err mA" unit="mA" value={m.errormA} isError readOnly />
-                                    </div>
-                                </div>
-
                                 <div className={`hidden lg:grid ${config.gridCols} lg:items-center`}>
                                     {outputUnit === 'mv' ? (
                                         <>
@@ -368,6 +343,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                                             <div className="lg:px-2 lg:py-3"><InputField label="Ideal mA" unit="mA" value={m.idealmA} readOnly /></div>
                                             <div className="lg:px-2 lg:py-3"><InputField label="Ideal Ohm" unit="Ω" value={m.idealohm} onChange={(e:any) => handleChange(index, 'idealohm', e.target.value)} /></div>
                                             <div className="lg:px-2 lg:py-3"><InputField label="Patrón UE" unit="UE" value={m.patronUE} onChange={(e:any) => handleChange(index, 'patronUE', e.target.value)} /></div>
+                                            <div className="lg:px-2 lg:py-3"><InputField label="mA Patrón" unit="mA" value={m.patronMA} readOnly /></div>
                                             {hasUeTransmitter && <div className="lg:px-2 lg:py-3"><InputField label="UE Trans." unit="UE" value={m.ueTransmitter} onChange={(e:any) => handleChange(index, 'ueTransmitter', e.target.value)} /></div>}
                                             <div className="lg:px-2 lg:py-3"><InputField label="mA Sensor" unit="mA" value={m.maTransmitter} onChange={(e:any) => handleChange(index, 'maTransmitter', e.target.value)} /></div>
                                             <div className="lg:px-2 lg:py-3"><InputField label="Ohm Sensor" unit="Ω" value={m.ohmTransmitter} onChange={(e:any) => handleChange(index, 'ohmTransmitter', e.target.value)} /></div>
@@ -382,6 +358,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                                             <div className="lg:px-2 lg:py-3"><InputField label="Ideal UE" unit="UE" value={m.idealUE} onChange={(e:any) => handleChange(index, 'idealUE', e.target.value)} /></div>
                                             <div className="lg:px-2 lg:py-3"><InputField label="Ideal mA" unit="mA" value={m.idealmA} readOnly /></div>
                                             <div className="lg:px-2 lg:py-3"><InputField label="Patrón UE" unit="UE" value={m.patronUE} onChange={(e:any) => handleChange(index, 'patronUE', e.target.value)} /></div>
+                                            <div className="lg:px-2 lg:py-3"><InputField label="mA Patrón" unit="mA" value={m.patronMA} readOnly /></div>
                                             {hasUeTransmitter && <div className="lg:px-2 lg:py-3"><InputField label="UE Trans." unit="UE" value={m.ueTransmitter} onChange={(e:any) => handleChange(index, 'ueTransmitter', e.target.value)} /></div>}
                                             <div className="lg:px-2 lg:py-3"><InputField label="mA Trans." unit="mA" value={m.maTransmitter} onChange={(e:any) => handleChange(index, 'maTransmitter', e.target.value)} /></div>
                                             <div className="lg:px-2 lg:py-3"><InputField label="% Rango" unit="%" value={m.percentage} onChange={(e:any) => handleChange(index, 'percentage', e.target.value)} /></div>
