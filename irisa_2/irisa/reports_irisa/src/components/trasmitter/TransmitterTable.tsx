@@ -104,6 +104,22 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
             return isNaN(parsed) ? null : parsed;
         };
 
+        // --- Logica para modo mV (Termopares) ---
+        if (outputUnit === 'mv') {
+            if (m.rowType === 'tx') {
+                const ideal = p(m.idealmA);
+                const real = p(m.mATX);
+                const error = (real !== null && ideal !== null) ? real - ideal : 0;
+                return { ...m, errormA: formatWithSign(error, 3) };
+            } else {
+                const ideal = p(m.idealmV);
+                const real = p(m.sensormV);
+                const error = (real !== null && ideal !== null) ? real - ideal : 0;
+                return { ...m, errormV: formatWithSign(error, 3) };
+            }
+        }
+
+        // --- Logica para modo mA y OHM (Transmisores) ---
         const valuesUE = allMeasurements
             .map(item => p(item.idealUE))
             .filter((v): v is number => v !== null);
@@ -111,31 +127,23 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
         const minUE = valuesUE.length > 0 ? Math.min(...valuesUE) : 0;
         const maxUE = valuesUE.length > 0 ? Math.max(...valuesUE) : 100;
         const effectiveMax = maxUE <= 100 && minUE >= 0 ? 100 : maxUE;  
-        const spanUE = effectiveMax - minUE;
+        const spanUE = (effectiveMax - minUE) || 1; // Evitar division por cero total
 
         const currentPatronUE = p(m.patronUE);
         let calculatedPatronMA = "";
-        if (currentPatronUE !== null && spanUE !== 0) {
+        if (currentPatronUE !== null) {
             const ratioPatron = (currentPatronUE - minUE) / spanUE;
-            const pvPatron = ratioPatron * 100;
-            calculatedPatronMA = (4 + ((pvPatron / 100) * 16)).toFixed(3);
+            calculatedPatronMA = (4 + (ratioPatron * 16)).toFixed(3);
         }
 
         const currentIdealUE = p(m.idealUE);
         let calculatedIdealMA = m.idealmA;
         let calculatedPercentage = m.percentage;
 
-        if (currentIdealUE !== null && spanUE !== 0) {
+        if (currentIdealUE !== null) {
             const ratio = (currentIdealUE - minUE) / spanUE;
             calculatedIdealMA = (4 + (ratio * 16)).toFixed(3);
             calculatedPercentage = (ratio * 100).toFixed(0);
-        }
-
-        if (m.rowType === 'tx') {
-            const ideal = p(calculatedIdealMA);
-            const real = p(m.mATX);
-            const error = (real !== null && ideal !== null) ? real - ideal : 0;
-            return { ...m, idealmA: calculatedIdealMA, percentage: calculatedPercentage, errormA: formatWithSign(error, 3) };
         }
 
         const maTrans = p(m.maTransmitter);
@@ -170,13 +178,14 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
     };
 
     const addNewRow = (rowType?: 'mv' | 'tx') => {
-        onMeasurementsChange([...measurements, {
+        const newRow: Measurement = {
             rowType,
             percentage: "", idealUE: "", patronUE: "", patronMA: "", ueTransmitter: "", idealmA:"",
             idealohm: "", idealMv: "", maTransmitter: "", ohmTransmitter: "", mvTransmitter: "",
             errorUE: "", errormA: "", errorPercentage: "", errorOhm: "", errorMv: "",
             sensorType: 'J', idealmV: '', sensormV: '', errormV: '', mATX: ''
-        }]);
+        };
+        onMeasurementsChange([...measurements, newRow]);
         setShowDropdown(false);
     };
 
