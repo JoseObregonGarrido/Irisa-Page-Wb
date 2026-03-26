@@ -173,7 +173,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
 
     const addNewRow = (rowType?: 'mv' | 'tx') => {
         const newRow: Measurement = {
-            rowType,
+            rowType: rowType || (outputUnit === 'mv' ? 'mv' : undefined),
             percentage: "", idealUE: "", patronUE: "", patronMA: "", ueTransmitter: "", idealmA: rowType === 'tx' ? "4.000" : "",
             idealohm: "", idealMv: "", maTransmitter: "", ohmTransmitter: "", mvTransmitter: "",
             errorUE: "", errormA: "", errorPercentage: "", errorOhm: "", errorMv: "",
@@ -194,8 +194,9 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
     const config = getLayoutConfig();
 
     return (
-        <div className="mt-8 w-full bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
-            <div className="bg-gradient-to-r from-teal-600 to-emerald-600 px-4 py-4 sm:px-6">
+        /* Quitamos overflow-hidden para que el dropdown no se corte */
+        <div className="mt-8 w-full bg-white rounded-xl shadow-lg border border-gray-200">
+            <div className="bg-gradient-to-r from-teal-600 to-emerald-600 px-4 py-4 sm:px-6 rounded-t-xl">
                 <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                     <div className="flex flex-wrap items-center gap-3">
                         <h3 className="text-lg font-bold text-white tracking-tight">Mediciones</h3>
@@ -212,21 +213,30 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                             </button>
                         )}
                     </div>
-                    <div className="relative" ref={dropdownRef}>
-                        <button onClick={() => outputUnit === 'mv' ? setShowDropdown(!showDropdown) : addNewRow()} className="px-4 py-2 bg-white text-teal-700 font-bold rounded-lg shadow-md hover:bg-teal-50 flex items-center gap-2 transition-transform active:scale-95 text-sm">
+
+                    <div className="relative z-[100]" ref={dropdownRef}>
+                        <button 
+                            onClick={() => outputUnit === 'mv' ? setShowDropdown(!showDropdown) : addNewRow()} 
+                            className="px-4 py-2 bg-white text-teal-700 font-bold rounded-lg shadow-md hover:bg-teal-50 flex items-center gap-2 transition-transform active:scale-95 text-sm"
+                        >
                             Nueva fila {outputUnit === 'mv' && <svg className={`w-3.5 h-3.5 transition-transform ${showDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>}
                         </button>
+                        
                         {showDropdown && outputUnit === 'mv' && (
-                            <div className="absolute right-0 mt-2 w-24 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50">
-                                <button onClick={() => addNewRow('mv')} className="w-full py-3 hover:bg-orange-50 text-sm font-black text-orange-700">mV</button>
-                                <button onClick={() => addNewRow('tx')} className="w-full py-3 hover:bg-blue-50 text-sm font-black text-blue-700 border-t border-gray-100">TX</button>
+                            <div className="absolute left-0 md:right-0 md:left-auto mt-2 w-32 bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden z-[110]">
+                                <button onClick={() => addNewRow('mv')} className="w-full py-3 hover:bg-orange-50 text-sm font-black text-orange-700 flex items-center justify-center gap-2">
+                                    <span className="w-2 h-2 rounded-full bg-orange-500"></span> mV
+                                </button>
+                                <button onClick={() => addNewRow('tx')} className="w-full py-3 hover:bg-blue-50 text-sm font-black text-blue-700 border-t border-gray-100 flex items-center justify-center gap-2">
+                                    <span className="w-2 h-2 rounded-full bg-blue-500"></span> TX
+                                </button>
                             </div>
                         )}
                     </div>
                 </div>
             </div>
 
-            <div className="bg-gray-50 overflow-x-auto">
+            <div className="bg-gray-50 overflow-x-auto rounded-b-xl">
                 <div style={{ minWidth: config.minWidth }}>
                     <div className={`hidden lg:grid ${config.gridCols} bg-gray-100 border-b border-gray-200 text-[10px] font-bold text-gray-500 tracking-wider`}>
                         {config.headers.map((h, i) => (

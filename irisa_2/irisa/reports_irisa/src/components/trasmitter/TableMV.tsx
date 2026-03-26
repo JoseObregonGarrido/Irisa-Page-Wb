@@ -1,7 +1,8 @@
 import { InputField } from './InputField';
 
 export const TableMV = ({ measurements, onMeasurementsChange }: any) => {
-    const gridCols = 'lg:grid-cols-[56px_1fr_1fr_140px_1fr_80px]';
+    // Se ajusto el grid para dar mas espacio al sensor y al error
+    const gridCols = 'lg:grid-cols-[80px_1fr_1fr_140px_1fr_80px]';
 
     const handleChange = (index: number, field: string, value: any) => {
         const newM = [...measurements];
@@ -33,22 +34,22 @@ export const TableMV = ({ measurements, onMeasurementsChange }: any) => {
     );
 
     return (
-        <div className="w-full overflow-hidden">
+        <div className="w-full min-w-[800px] lg:min-w-full">
             <div className="w-full">
                 {/* Header Desktop */}
-                <div className={`hidden lg:grid ${gridCols} bg-gray-50 border-b border-gray-200 text-[10px] font-bold text-gray-500 uppercase tracking-wider w-full`}>
+                <div className={`hidden lg:grid ${gridCols} bg-gray-100 border-b border-gray-200 text-[10px] font-bold text-gray-500 uppercase tracking-wider w-full`}>
                     <div className="px-2 py-4 text-center">Tipo</div>
-                    <div className="px-4 py-4 text-center">mV / mA ideal</div>
-                    <div className="px-4 py-4 text-center">mV / mA medido</div>
-                    <div className="px-4 py-4 text-center">Sensor</div>
-                    <div className="px-4 py-4 text-center bg-red-50 text-red-700">Error</div>
-                    <div className="px-4 py-4 text-center">Acción</div>
+                    <div className="px-4 py-4 text-center border-l border-gray-200">Ideal</div>
+                    <div className="px-4 py-4 text-center border-l border-gray-200">Medido</div>
+                    <div className="px-4 py-4 text-center border-l border-gray-200">Sensor</div>
+                    <div className="px-4 py-4 text-center bg-red-50 text-red-700 border-l border-red-100">Error</div>
+                    <div className="px-4 py-4 text-center border-l border-gray-200">Accion</div>
                 </div>
 
                 {/* Filas */}
                 <div className="divide-y divide-gray-200 bg-white w-full">
                     {measurements.map((m: any, i: number) => (
-                        <div key={i} className="group hover:bg-teal-50/30 transition-colors w-full">
+                        <div key={i} className="group hover:bg-teal-50/30 transition-colors w-full border-b border-gray-100">
                             <div className={`flex flex-col lg:grid ${gridCols} lg:items-center w-full`}>
 
                                 {/* BADGE TIPO */}
@@ -56,16 +57,16 @@ export const TableMV = ({ measurements, onMeasurementsChange }: any) => {
                                     <RowTypeBadge type={m.rowType ?? 'mv'} />
                                 </div>
 
-                                {/* CAMPO 1 */}
-                                <div className="p-4 lg:px-6 lg:py-3">
+                                {/* CAMPO 1: IDEAL */}
+                                <div className="p-4 lg:px-6 lg:py-3 border-l border-gray-50">
                                     {m.rowType === 'tx'
                                         ? <InputField label="Ideal mA" unit="mA" value={m.idealmA} onChange={(e: any) => handleChange(i, 'idealmA', e.target.value)} />
                                         : <InputField label="mV ideal"  unit="mV" value={m.idealmV} onChange={(e: any) => handleChange(i, 'idealmV', e.target.value)} />
                                     }
                                 </div>
 
-                                {/* CAMPO 2 */}
-                                <div className="p-4 lg:px-6 lg:py-3">
+                                {/* CAMPO 2: MEDIDO */}
+                                <div className="p-4 lg:px-6 lg:py-3 border-l border-gray-50">
                                     {m.rowType === 'tx'
                                         ? <InputField label="mA TX"     unit="mA" value={m.mATX}    onChange={(e: any) => handleChange(i, 'mATX',    e.target.value)} />
                                         : <InputField label="mV sensor" unit="mV" value={m.sensormV} onChange={(e: any) => handleChange(i, 'sensormV', e.target.value)} />
@@ -73,12 +74,13 @@ export const TableMV = ({ measurements, onMeasurementsChange }: any) => {
                                 </div>
 
                                 {/* TIPO SENSOR J/K */}
-                                <div className="p-4 lg:px-2 lg:py-3 flex flex-col items-center justify-center">
+                                <div className="p-4 lg:px-2 lg:py-3 flex flex-col items-center justify-center border-l border-gray-50">
                                     <div className="flex gap-3 bg-gray-100 p-1.5 rounded-lg border border-gray-200 shadow-sm w-fit">
                                         {['J', 'K'].map((type) => (
                                             <label key={type} className="flex items-center gap-1.5 cursor-pointer">
                                                 <input
                                                     type="radio"
+                                                    name={`sensor-${i}`}
                                                     checked={m.sensorType === type}
                                                     onChange={() => handleChange(i, 'sensorType', type)}
                                                     className="w-3.5 h-3.5 accent-orange-600"
@@ -91,8 +93,8 @@ export const TableMV = ({ measurements, onMeasurementsChange }: any) => {
                                     </div>
                                 </div>
 
-                                {/* ERROR — solo lectura, calculado automáticamente */}
-                                <div className="p-4 lg:px-6 lg:py-3 lg:bg-red-50/20 h-full flex items-center">
+                                {/* ERROR */}
+                                <div className="p-4 lg:px-6 lg:py-3 lg:bg-red-50/20 h-full flex items-center border-l border-red-50">
                                     {m.rowType === 'tx'
                                         ? <InputField label="Err mA" unit="mA" value={m.errormA} isError readOnly />
                                         : <InputField label="Error mV" unit="mV" value={m.errormV} isError readOnly />
@@ -100,7 +102,7 @@ export const TableMV = ({ measurements, onMeasurementsChange }: any) => {
                                 </div>
 
                                 {/* ACCIÓN */}
-                                <div className="p-4 lg:py-3 flex justify-center items-center">
+                                <div className="p-4 lg:py-3 flex justify-center items-center border-l border-gray-50">
                                     <button
                                         onClick={() => onMeasurementsChange(measurements.filter((_: any, idx: any) => idx !== i))}
                                         className="text-red-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-full transition-all"
