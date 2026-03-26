@@ -261,7 +261,170 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                 </div>
             </div>
 
-            <div className="overflow-x-auto">
+            {/* ========== VERSIÓN MOBILE (sm y md) ========== */}
+            <div className="lg:hidden space-y-4 p-4">
+                {measurements.map((m, index) => (
+                    <div key={index} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                        {/* Card Header */}
+                        <div className="bg-gradient-to-r from-teal-50 to-emerald-50 px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+                            <span className="text-xs font-bold text-teal-700 uppercase tracking-wider">
+                                Medición #{index + 1}
+                            </span>
+                            <button
+                                onClick={() => onMeasurementsChange(measurements.filter((_, i) => i !== index))}
+                                className="text-red-500 hover:bg-red-50 p-1.5 rounded-full transition-colors"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        {/* Card Body */}
+                        <div className="p-4 space-y-4">
+                            {outputUnit === 'mA' && (
+                                <>
+                                    {/* Grid 2 columnas en mobile */}
+                                    <div className="grid grid-cols-2 gap-3">
+                                        {/* Ideal UE */}
+                                        <div className="flex flex-col">
+                                            <label className="text-[10px] font-bold text-gray-600 mb-1.5 uppercase tracking-wider">
+                                                Ideal UE
+                                            </label>
+                                            <InputField
+                                                unit="UE"
+                                                value={m.idealUE}
+                                                onChange={(e: any) => handleChange(index, 'idealUE', e.target.value)}
+                                            />
+                                        </div>
+
+                                        {/* Ideal mA (ReadOnly) */}
+                                        <div className="flex flex-col">
+                                            <label className="text-[10px] font-bold text-gray-600 mb-1.5 uppercase tracking-wider">
+                                                Ideal mA
+                                            </label>
+                                            <InputField
+                                                unit="mA"
+                                                value={m.idealmA}
+                                                readOnly
+                                            />
+                                        </div>
+
+                                        {/* Patrón UE */}
+                                        <div className="flex flex-col">
+                                            <label className="text-[10px] font-bold text-gray-600 mb-1.5 uppercase tracking-wider">
+                                                Patrón UE
+                                            </label>
+                                            <InputField
+                                                unit="UE"
+                                                value={m.patronUE}
+                                                onChange={(e: any) => handleChange(index, 'patronUE', e.target.value)}
+                                            />
+                                        </div>
+
+                                        {/* mA Patrón (ReadOnly) */}
+                                        <div className="flex flex-col">
+                                            <label className="text-[10px] font-bold text-gray-600 mb-1.5 uppercase tracking-wider">
+                                                mA Patrón
+                                            </label>
+                                            <InputField
+                                                unit="mA"
+                                                value={m.patronMA}
+                                                readOnly
+                                            />
+                                        </div>
+
+                                        {/* UE Transmitter (si está habilitado) */}
+                                        {hasUeTransmitter && (
+                                            <div className="flex flex-col">
+                                                <label className="text-[10px] font-bold text-gray-600 mb-1.5 uppercase tracking-wider">
+                                                    UE Trans.
+                                                </label>
+                                                <InputField
+                                                    unit="UE"
+                                                    value={m.ueTransmitter}
+                                                    onChange={(e: any) => handleChange(index, 'ueTransmitter', e.target.value)}
+                                                />
+                                            </div>
+                                        )}
+
+                                        {/* mA Transmitter */}
+                                        <div className="flex flex-col">
+                                            <label className="text-[10px] font-bold text-gray-600 mb-1.5 uppercase tracking-wider">
+                                                mA Trans.
+                                            </label>
+                                            <InputField
+                                                unit="mA"
+                                                value={m.maTransmitter}
+                                                onChange={(e: any) => handleChange(index, 'maTransmitter', e.target.value)}
+                                            />
+                                        </div>
+
+                                        {/* % Rango (ReadOnly) */}
+                                        <div className="flex flex-col">
+                                            <label className="text-[10px] font-bold text-gray-600 mb-1.5 uppercase tracking-wider">
+                                                % Rango
+                                            </label>
+                                            <InputField
+                                                unit="%"
+                                                value={m.percentage}
+                                                readOnly
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Sección de Errores - Fondo rojo */}
+                                    <div className="bg-red-50 rounded-lg p-3 border border-red-100">
+                                        <p className="text-[9px] font-bold text-red-700 uppercase tracking-wider mb-3">
+                                            Errores Calculados
+                                        </p>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            {hasUeTransmitter && (
+                                                <div className="flex flex-col">
+                                                    <label className="text-[10px] font-bold text-red-700 mb-1.5 uppercase tracking-wider">
+                                                        Err UE
+                                                    </label>
+                                                    <InputField
+                                                        unit="UE"
+                                                        value={m.errorUE}
+                                                        isError
+                                                        readOnly
+                                                    />
+                                                </div>
+                                            )}
+                                            <div className="flex flex-col">
+                                                <label className="text-[10px] font-bold text-red-700 mb-1.5 uppercase tracking-wider">
+                                                    Err mA
+                                                </label>
+                                                <InputField
+                                                    unit="mA"
+                                                    value={m.errormA}
+                                                    isError
+                                                    readOnly
+                                                />
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <label className="text-[10px] font-bold text-red-700 mb-1.5 uppercase tracking-wider">
+                                                    Err %
+                                                </label>
+                                                <InputField
+                                                    unit="%"
+                                                    value={m.errorPercentage}
+                                                    isError
+                                                    readOnly
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            {/* ========== VERSIÓN DESKTOP (lg+) ========== */}
+            <div className="hidden lg:block overflow-x-auto">
                 <div className={`w-full ${config.minWidth}`}>
                     <div className={`hidden lg:grid ${config.gridCols} bg-gray-50 border-b border-gray-200 text-[10px] font-bold text-gray-500 tracking-wider`}>
                         {config.headers.map((h, i) => (
