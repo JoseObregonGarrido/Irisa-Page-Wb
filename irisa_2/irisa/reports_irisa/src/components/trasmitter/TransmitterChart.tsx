@@ -158,7 +158,7 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
                                 contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                                 formatter={(value: any, name: string) => {
                                     if (name === 'yPatron') return [value.toFixed(3) + ' mA', 'mA Patron'];
-                                    return [value.toFixed(3) + ' mA', 'mA Transmisor'];
+                                    return [value.toFixed(3) + ' Transmisor', ' Transmisor'];
                                 }}
                             />
                             <Legend verticalAlign="top" align="right" height={40} />
