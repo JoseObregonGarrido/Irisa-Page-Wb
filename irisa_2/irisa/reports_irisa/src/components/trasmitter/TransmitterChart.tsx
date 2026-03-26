@@ -14,6 +14,7 @@ export interface Measurement {
     idealmA?: string;
     idealMa?: string;
     maTransmitter: string;
+    idealmV?: string; // Soporte para valor patron en mV
 }
 
 interface TransmitterChartProps {
@@ -62,10 +63,12 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
     const chartData = measurements || data || [];
     const containerRef = useRef<HTMLDivElement>(null);
 
-    // --- LÓGICA DE PROCESAMIENTO E INGENIERÍA ---
+    // --- LOGICA DE PROCESAMIENTO E INGENIERIA ---
     const { processedData, metrics } = useMemo(() => {
-        const sorted = chartData.map((m) => ({
-            xEU: parseFloat(m.idealUE || m.idealUe || '0'),
+        const sorted = chartData.map((m: any) => ({
+            // Grafica UE Patron / mV Patron segun la tabla
+            xEU: parseFloat(m.idealUE || m.idealUe || m.idealmV || '0'),
+            // Grafica mA Patron
             yIdeal: parseFloat(m.idealmA || m.idealMa || '0'),
             yMeasmA: parseFloat(m.maTransmitter) || 0,
         })).sort((a, b) => a.xEU - b.xEU);
@@ -99,7 +102,7 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
 
     return (
         <div className="mt-8 shadow-2xl rounded-2xl overflow-hidden border border-slate-200 bg-slate-50 font-sans" ref={containerRef}>
-            {/* HEADER CON MÉTRICAS */}
+            {/* HEADER CON METRICAS */}
             <div className="bg-slate-900 px-8 py-6 text-white flex flex-col md:flex-row justify-between items-center gap-4">
                 <div>
                     <h3 className="text-xl font-bold tracking-tight text-emerald-400">ANALIZADOR DE RESPUESTA</h3>
@@ -108,7 +111,7 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
                 <div className="flex gap-4">
                     <MetricCard label="Error Zero" value={metrics.zeroErr} />
                     <MetricCard label="Error Span" value={metrics.spanErr} />
-                    <MetricCard label="Error Máx" value={metrics.eMax} highlight />
+                    <MetricCard label="Error Max" value={metrics.eMax} highlight />
                 </div>
             </div>
 
@@ -122,21 +125,19 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
                                 dataKey="xEU" 
                                 type="number" 
                                 domain={['dataMin', 'dataMax']}
-                                label={{ value: 'EU PATRÓN (ENTRADA)', position: 'insideBottom', offset: -40, fontSize: 12, fontWeight: 700, fill: '#64748b' }}
+                                label={{ value: 'VALOR PATRON (ENTRADA)', position: 'insideBottom', offset: -40, fontSize: 12, fontWeight: 700, fill: '#64748b' }}
                             />
                             
                             <YAxis 
                                 type="number"
-                                domain={[0, 22]} // Muestra desde 0 para dar contexto, pero marca el 4
+                                domain={[0, 22]} 
                                 ticks={[4, 8, 12, 16, 20]} 
                                 label={{ value: 'SALIDA (mA)', angle: -90, position: 'insideLeft', fontWeight: 700, fill: '#64748b' }}
                             />
 
-                            {/* Zona gris para indicar el límite inferior (debajo de 4mA) */}
                             <ReferenceArea y1={0} y2={4} fill="#f8fafc" />
                             <ReferenceLine y={4} stroke="#cbd5e1" strokeDasharray="4 4" />
 
-                            {/* Marca visual del punto de máximo error (e_max) */}
                             {metrics.eMax > 0 && (
                                 <ReferenceLine x={metrics.xMax} stroke="#ef4444" strokeDasharray="3 3">
                                     <Label value="Punto eMax" position="top" fill="#ef4444" fontSize={10} fontWeight="bold" />
@@ -146,22 +147,23 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
                             <Tooltip 
                                 cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }}
                                 contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                                formatter={(value: any, name: string) => [value, name === 'yIdeal' ? 'mA Patron' : 'mA Transmisor']}
                             />
                             <Legend verticalAlign="top" align="right" height={40} />
                             
-                            {/* Línea Ideal (Azul) */}
+                            {/* Linea Patron (Azul) */}
                             <Line 
                                 type="monotone" 
                                 dataKey="yIdeal" 
                                 stroke="#3b82f6" 
-                                name="Ideal" 
+                                name="mA Patron" 
                                 strokeWidth={2} 
                                 strokeDasharray="5 5"
                                 dot={false}
                                 isAnimationActive={false} 
                             />
 
-                            {/* Línea Real (Verde) */}
+                            {/* Linea Real (Verde) */}
                             <Line 
                                 type="monotone" 
                                 dataKey="yMeasmA" 
@@ -180,7 +182,6 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
     );
 });
 
-// Componente auxiliar para el Header
 const MetricCard = ({ label, value, highlight }: any) => (
     <div className={`px-4 py-1 rounded-lg ${highlight ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-slate-800'}`}>
         <p className="text-[9px] uppercase font-bold text-slate-400 leading-none mb-1">{label}</p>
