@@ -1,20 +1,22 @@
+import React, { useMemo, useRef, useImperativeHandle, forwardRef } from 'react';
 import { 
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, 
     ResponsiveContainer, ReferenceLine, ReferenceArea, Label 
 } from 'recharts';
 import { toPng } from 'html-to-image';
-import { useRef, useImperativeHandle, forwardRef, useMemo } from 'react';
 
 // --- INTERFACES ---
 export interface Measurement {
     percentage: string;
     idealUE?: string;
     idealUe?: string;
-    ueTransmitter: string;
+    ueTransmitter: string; // Este seria el UE T
     idealmA?: string;
     idealMa?: string;
-    maTransmitter: string;
-    idealmV?: string; // Soporte para valor patron en mV
+    maTransmitter: string; // Este es el mA Tr.
+    idealmV?: string;      // Soporte para valor patron en mV si aplica
+    maPatron?: string;     // mA Pat.
+    patronUE?: string;     // Patron UE
 }
 
 interface TransmitterChartProps {
@@ -43,7 +45,7 @@ const makeDot = (color: string, label: string, offset: number) =>
         const boxX    = cx - boxW / 2;
 
         return (
-            <g>
+            <g key={`dot-${label}-${cx}`}>
                 <circle cx={cx} cy={cy} r={4} fill={color} stroke="#fff" strokeWidth={2} />
                 <line x1={cx} y1={above ? cy - 4 : cy + 4} x2={cx} y2={tipY}
                     stroke={color} strokeWidth={1} strokeDasharray="3 2" opacity={0.6} />
@@ -65,23 +67,30 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
 
     // --- LOGICA DE PROCESAMIENTO E INGENIERIA ---
     const { processedData, metrics } = useMemo(() => {
-        const sorted = chartData.map((m: any) => ({
-            // Grafica UE Patron / mV Patron segun la tabla
-            xEU: parseFloat(m.idealUE || m.idealUe || m.idealmV || '0'),
-            // Grafica mA Patron
-            yIdeal: parseFloat(m.idealmA || m.idealMa || '0'),
-            yMeasmA: parseFloat(m.maTransmitter) || 0,
-        })).sort((a, b) => a.xEU - b.xEU);
+        const sorted = chartData.map((m: any) => {
+            const maPat = parseFloat(m.maPatron || m.idealmA || m.idealMa || '0');
+            const patUE = parseFloat(m.patronUE || m.idealUE || m.idealUe || m.idealmV || '0');
+            const maTr = parseFloat(m.maTransmitter || '0');
+            const ueT = parseFloat(m.ueTransmitter || '0');
+
+            return {
+                xEU: patUE,        // Eje X: Patron UE
+                yPatron: maPat,    // Linea 1: mA Pat.
+                yTransmitter: maTr,// Linea 2: mA Tr.
+                ueT: ueT           // Dato extra para el tooltip
+            };
+        }).sort((a, b) => a.xEU - b.xEU);
 
         if (sorted.length === 0) return { processedData: [], metrics: { zeroErr: 0, spanErr: 0, eMax: 0, xMax: 0 } };
 
-        const zeroErr = sorted[0].yMeasmA - 4;
-        const spanErr = sorted[sorted.length - 1].yMeasmA - 20;
+        // Calculos de error basados en los 4-20mA ideales
+        const zeroErr = sorted[0].yTransmitter - 4;
+        const spanErr = sorted[sorted.length - 1].yTransmitter - 20;
 
         let eMax = 0;
         let xMax = 0;
         sorted.forEach(p => {
-            const err = Math.abs(p.yMeasmA - p.yIdeal);
+            const err = Math.abs(p.yTransmitter - p.yPatron);
             if (err > eMax) {
                 eMax = err;
                 xMax = p.xEU;
@@ -106,7 +115,7 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
             <div className="bg-slate-900 px-8 py-6 text-white flex flex-col md:flex-row justify-between items-center gap-4">
                 <div>
                     <h3 className="text-xl font-bold tracking-tight text-emerald-400">ANALIZADOR DE RESPUESTA</h3>
-                    <p className="text-slate-400 text-xs uppercase tracking-widest">Protocolo de Linealidad 4-20mA</p>
+                    <p className="text-slate-400 text-xs uppercase tracking-widest">mA Pat vs Patron UE | UE T vs mA Tr</p>
                 </div>
                 <div className="flex gap-4">
                     <MetricCard label="Error Zero" value={metrics.zeroErr} />
@@ -125,14 +134,14 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
                                 dataKey="xEU" 
                                 type="number" 
                                 domain={['dataMin', 'dataMax']}
-                                label={{ value: 'VALOR PATRON (ENTRADA)', position: 'insideBottom', offset: -40, fontSize: 12, fontWeight: 700, fill: '#64748b' }}
+                                label={{ value: 'PATRON UE (REFERENCIA)', position: 'insideBottom', offset: -40, fontSize: 12, fontWeight: 700, fill: '#64748b' }}
                             />
                             
                             <YAxis 
                                 type="number"
                                 domain={[0, 22]} 
                                 ticks={[4, 8, 12, 16, 20]} 
-                                label={{ value: 'SALIDA (mA)', angle: -90, position: 'insideLeft', fontWeight: 700, fill: '#64748b' }}
+                                label={{ value: 'CORRIENTE (mA)', angle: -90, position: 'insideLeft', fontWeight: 700, fill: '#64748b' }}
                             />
 
                             <ReferenceArea y1={0} y2={4} fill="#f8fafc" />
@@ -147,14 +156,17 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
                             <Tooltip 
                                 cursor={{ stroke: '#e2e8f0', strokeWidth: 1 }}
                                 contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                                formatter={(value: any, name: string) => [value, name === 'yIdeal' ? 'mA Patron' : 'mA Transmisor']}
+                                formatter={(value: any, name: string) => {
+                                    if (name === 'yPatron') return [value.toFixed(3) + ' mA', 'mA Patron'];
+                                    return [value.toFixed(3) + ' mA', 'mA Transmisor'];
+                                }}
                             />
                             <Legend verticalAlign="top" align="right" height={40} />
                             
-                            {/* Linea Patron (Azul) */}
+                            {/* Linea mA Pat vs Patron UE (Azul) */}
                             <Line 
                                 type="monotone" 
-                                dataKey="yIdeal" 
+                                dataKey="yPatron" 
                                 stroke="#3b82f6" 
                                 name="mA Patron" 
                                 strokeWidth={2} 
@@ -163,14 +175,14 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
                                 isAnimationActive={false} 
                             />
 
-                            {/* Linea Real (Verde) */}
+                            {/* Linea mA Tr vs Patron UE (Verde) */}
                             <Line 
                                 type="monotone" 
-                                dataKey="yMeasmA" 
+                                dataKey="yTransmitter" 
                                 stroke="#10b981" 
                                 name="Transmisor" 
                                 strokeWidth={4}
-                                dot={makeDot('#10b981', 'Real', 25)}
+                                dot={makeDot('#10b981', 'mA Tr', 25)}
                                 activeDot={{ r: 6 }}
                                 isAnimationActive={true} 
                             />
@@ -190,5 +202,7 @@ const MetricCard = ({ label, value, highlight }: any) => (
         </p>
     </div>
 );
+
+TransmitterChart.displayName = 'TransmitterChart';
 
 export default TransmitterChart;
