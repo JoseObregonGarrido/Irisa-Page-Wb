@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 
 // --- INTERFACES ---
-
 export interface Measurement {
     rowType?: 'mv' | 'tx';
     percentage: string;
@@ -43,21 +42,21 @@ interface TransmitterTableProps {
 
 const InputField = ({ label, value, onChange, unit, isError = false, readOnly = false }: any) => (
     <div className="flex flex-col w-full">
-        <label className="block text-[10px] font-bold text-gray-500 mb-1 lg:hidden">{label}</label>
+        <label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase tracking-wider">{label}</label>
         <div className="relative w-full">
             <input
                 type="text"
                 value={value}
                 onChange={onChange}
                 readOnly={readOnly}
-                className={`w-full px-2 py-2 pr-7 text-xs border rounded-lg focus:outline-none focus:ring-2
+                className={`w-full px-2 py-2 pr-8 text-xs border rounded-lg focus:outline-none focus:ring-2
                     ${isError
                         ? 'border-red-200 bg-red-50 focus:ring-red-500 font-bold text-red-700'
                         : 'border-gray-300 bg-white focus:ring-teal-500 text-gray-700'
-                    } ${readOnly ? 'bg-gray-50 cursor-not-allowed' : ''}`}
+                    } ${readOnly && !isError ? 'bg-gray-50 cursor-not-allowed' : ''}`}
                 placeholder="0.00"
             />
-            <span className={`absolute right-1.5 top-2.5 text-[9px] font-bold ${isError ? 'text-red-400' : 'text-gray-400'}`}>{unit}</span>
+            <span className={`absolute right-2 top-2.5 text-[9px] font-bold ${isError ? 'text-red-400' : 'text-gray-400'}`}>{unit}</span>
         </div>
     </div>
 );
@@ -104,7 +103,6 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
             return isNaN(parsed) ? null : parsed;
         };
 
-        // --- Logica para modo mV (Termopares) ---
         if (outputUnit === 'mv') {
             if (m.rowType === 'tx') {
                 const ideal = p(m.idealmA);
@@ -119,15 +117,11 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
             }
         }
 
-        // --- Logica para modo mA y OHM (Transmisores) ---
-        const valuesUE = allMeasurements
-            .map(item => p(item.idealUE))
-            .filter((v): v is number => v !== null);
-
+        const valuesUE = allMeasurements.map(item => p(item.idealUE)).filter((v): v is number => v !== null);
         const minUE = valuesUE.length > 0 ? Math.min(...valuesUE) : 0;
         const maxUE = valuesUE.length > 0 ? Math.max(...valuesUE) : 100;
         const effectiveMax = maxUE <= 100 && minUE >= 0 ? 100 : maxUE;  
-        const spanUE = (effectiveMax - minUE) || 1; // Evitar division por cero total
+        const spanUE = (effectiveMax - minUE) || 1;
 
         const currentPatronUE = p(m.patronUE);
         let calculatedPatronMA = "";
@@ -189,194 +183,153 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
         setShowDropdown(false);
     };
 
-    const handleNuevaFila = () => {
-        if (outputUnit === 'mv') {
-            setShowDropdown(!showDropdown);
-        } else {
-            addNewRow();
-        }
-    };
-
     const getLayoutConfig = () => {
         switch (outputUnit) {
-            case 'mv':
-                return {
-                    gridCols: 'lg:grid-cols-[56px_1fr_1fr_140px_1fr_80px]',
-                    minWidth: 'lg:min-w-[950px]',
-                    headers: ['Tipo', 'mV / mA ideal', 'mV / mA medido', 'Sensor', 'Error', 'Accion']
-                };
-            case 'ohm':
-                return {
-                    gridCols: hasUeTransmitter ? 'lg:grid-cols-[repeat(14,minmax(0,1fr))]' : 'lg:grid-cols-[repeat(12,minmax(0,1fr))]',
-                    minWidth: 'lg:min-w-[1500px]',
-                    headers: ['Ideal UE', 'Ideal mA', 'Ideal Ohm', 'Patron UE', 'mA Patron', ...(hasUeTransmitter ? ['UE Trans.'] : []), 'mA Sensor', 'Ohm Sensor', '% Rango', ...(hasUeTransmitter ? ['Err UE'] : []), 'Err Ohm', 'Err mA', 'Err %', 'Accion']
-                };
-            default:
-                return {
-                    gridCols: hasUeTransmitter ? 'lg:grid-cols-[repeat(11,minmax(0,1fr))]' : 'lg:grid-cols-[repeat(9,minmax(0,1fr))]',
-                    minWidth: 'lg:min-w-[1200px]',
-                    headers: ['Ideal UE', 'Ideal mA', 'Patron UE', 'mA Patron', ...(hasUeTransmitter ? ['UE Trans.'] : []), 'mA Trans.', '% Rango', ...(hasUeTransmitter ? ['Err UE'] : []), 'Err mA', 'Err %', 'Accion']
-                };
+            case 'mv': return { gridCols: 'lg:grid-cols-[60px_1fr_1fr_140px_1fr_80px]', minWidth: 'lg:min-w-[900px]', headers: ['Tipo', 'Ideal', 'Medido', 'Sensor', 'Error', 'Accion'] };
+            case 'ohm': return { gridCols: hasUeTransmitter ? 'lg:grid-cols-[repeat(14,minmax(0,1fr))]' : 'lg:grid-cols-[repeat(12,minmax(0,1fr))]', minWidth: 'lg:min-w-[1400px]', headers: ['Ideal UE', 'Ideal mA', 'Ideal Ω', 'Patron UE', 'mA Pat.', ...(hasUeTransmitter ? ['UE Tr.'] : []), 'mA Sens.', 'Ω Sens.', '% Rango', ...(hasUeTransmitter ? ['Err UE'] : []), 'Err Ω', 'Err mA', 'Err %', 'Accion'] };
+            default: return { gridCols: hasUeTransmitter ? 'lg:grid-cols-[repeat(11,minmax(0,1fr))]' : 'lg:grid-cols-[repeat(9,minmax(0,1fr))]', minWidth: 'lg:min-w-[1100px]', headers: ['Ideal UE', 'Ideal mA', 'Patron UE', 'mA Pat.', ...(hasUeTransmitter ? ['UE Tr.'] : []), 'mA Tr.', '% Rango', ...(hasUeTransmitter ? ['Err UE'] : []), 'Err mA', 'Err %', 'Accion'] };
         }
     };
 
     const config = getLayoutConfig();
 
-    const RowTypeBadge = ({ type }: { type: 'mv' | 'tx' }) => (
-        <span className={`text-[9px] font-black uppercase px-2 py-1 rounded-full tracking-wider
-            ${type === 'mv'
-                ? 'bg-orange-100 text-orange-700 border border-orange-200'
-                : 'bg-blue-100 text-blue-700 border border-blue-200'}`}>
-            {type}
-        </span>
-    );
-
-    const DeleteBtn = ({ index }: { index: number }) => (
-        <button onClick={() => onMeasurementsChange(measurements.filter((_, i) => i !== index))} className="text-red-500 hover:bg-red-50 p-2 rounded-full transition-colors">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-        </button>
-    );
-
     return (
-        <div className="mt-8 w-full bg-white rounded-xl shadow-lg border border-gray-200">
+        <div className="mt-8 w-full bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+            {/* Cabecera del Componente */}
             <div className="bg-gradient-to-r from-teal-600 to-emerald-600 px-4 py-4 sm:px-6">
                 <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                     <div className="flex flex-wrap items-center gap-3">
-                        <h3 className="text-lg font-bold text-white tracking-tight">Mediciones de transmisor</h3>
+                        <h3 className="text-lg font-bold text-white tracking-tight">Mediciones</h3>
                         <div className="flex bg-black/20 p-1 rounded-lg border border-white/10">
                             {(['mA', 'ohm', 'mv'] as const).map((unit) => (
-                                <button
-                                    key={unit}
-                                    type="button"
-                                    onClick={() => setOutputUnit(unit)}
-                                    className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${outputUnit === unit ? 'bg-white text-teal-700 shadow' : 'text-white hover:bg-white/10'}`}
-                                >
+                                <button key={unit} type="button" onClick={() => setOutputUnit(unit)} className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${outputUnit === unit ? 'bg-white text-teal-700 shadow' : 'text-white hover:bg-white/10'}`}>
                                     {unit === 'ohm' ? 'RTD' : unit === 'mv' ? 'mV' : 'TX'}
                                 </button>
                             ))}
                         </div>
                         {outputUnit !== 'mv' && (
-                            <button
-                                type="button"
-                                onClick={() => setHasUeTransmitter(!hasUeTransmitter)}
-                                className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition-all ${hasUeTransmitter ? 'bg-white text-teal-700 shadow' : 'bg-white/10 border-white/20 text-white hover:bg-white/20'}`}
-                            >
+                            <button type="button" onClick={() => setHasUeTransmitter(!hasUeTransmitter)} className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition-all ${hasUeTransmitter ? 'bg-white text-teal-700 shadow' : 'bg-white/10 border-white/20 text-white hover:bg-white/20'}`}>
                                 {hasUeTransmitter ? 'Ocultar UE' : 'Mostrar UE'}
                             </button>
                         )}
                     </div>
-
                     <div className="relative" ref={dropdownRef}>
-                        <button
-                            onClick={handleNuevaFila}
-                            className="px-4 py-2 bg-white text-teal-700 font-bold rounded-lg shadow-md hover:bg-teal-50 flex items-center gap-2 transition-transform active:scale-95"
-                        >
-                            Nueva fila
-                            {outputUnit === 'mv' && (
-                                <svg className={`w-3.5 h-3.5 transition-transform ${showDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
-                                </svg>
-                            )}
+                        <button onClick={() => outputUnit === 'mv' ? setShowDropdown(!showDropdown) : addNewRow()} className="px-4 py-2 bg-white text-teal-700 font-bold rounded-lg shadow-md hover:bg-teal-50 flex items-center gap-2 transition-transform active:scale-95 text-sm">
+                            Nueva fila {outputUnit === 'mv' && <svg className={`w-3.5 h-3.5 transition-transform ${showDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>}
                         </button>
                         {showDropdown && outputUnit === 'mv' && (
                             <div className="absolute right-0 mt-2 w-24 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50">
-                                <button onClick={() => addNewRow('mv')} className="w-full flex items-center justify-center px-4 py-3 hover:bg-orange-50 transition-colors group">
-                                    <span className="text-sm font-black text-orange-700 group-hover:text-orange-900">mV</span>
-                                </button>
-                                <button onClick={() => addNewRow('tx')} className="w-full flex items-center justify-center px-4 py-3 hover:bg-blue-50 transition-colors group border-t border-gray-100">
-                                    <span className="text-sm font-black text-blue-700 group-hover:text-blue-900">TX</span>
-                                </button>
+                                <button onClick={() => addNewRow('mv')} className="w-full py-3 hover:bg-orange-50 text-sm font-black text-orange-700">mV</button>
+                                <button onClick={() => addNewRow('tx')} className="w-full py-3 hover:bg-blue-50 text-sm font-black text-blue-700 border-t border-gray-100">TX</button>
                             </div>
                         )}
                     </div>
                 </div>
             </div>
 
-            <div className="overflow-x-auto">
-                <div className={`w-full ${config.minWidth}`}>
-                    <div className={`hidden lg:grid ${config.gridCols} bg-gray-50 border-b border-gray-200 text-[10px] font-bold text-gray-500 tracking-wider`}>
-                        {config.headers.map((h, i) => (
-                            <div key={i} className={`px-2 py-4 text-center ${h.includes('Err') || h.includes('Error') ? 'bg-red-50 text-red-700 border-x border-red-100/30' : ''}`}>
-                                {h}
-                            </div>
-                        ))}
-                    </div>
+            {/* Contenido: Mobile (Cards) y Desktop (Table) */}
+            <div className="bg-gray-50">
+                {/* Desktop Header */}
+                <div className={`hidden lg:grid ${config.gridCols} bg-gray-100 border-b border-gray-200 text-[10px] font-bold text-gray-500 tracking-wider`}>
+                    {config.headers.map((h, i) => (
+                        <div key={i} className={`px-2 py-4 text-center ${h.includes('Err') ? 'bg-red-50 text-red-700 border-x border-red-100/30' : ''}`}>{h}</div>
+                    ))}
+                </div>
 
-                    <div className="divide-y divide-gray-200 bg-gray-50 lg:bg-white">
-                        {measurements.map((m, index) => (
-                            <div key={index} className="hover:bg-teal-50/30 transition-colors">
-                                <div className={`hidden lg:grid ${config.gridCols} lg:items-center`}>
+                <div className="divide-y divide-gray-200">
+                    {measurements.map((m, index) => (
+                        <div key={index} className="p-4 lg:p-0 bg-white lg:bg-transparent">
+                            
+                            {/* --- MOBILE CARD VIEW --- */}
+                            <div className="lg:hidden flex flex-col gap-4 bg-white p-4 rounded-xl border border-gray-200 shadow-sm relative">
+                                <button onClick={() => onMeasurementsChange(measurements.filter((_, i) => i !== index))} className="absolute top-2 right-2 p-2 text-red-400 hover:text-red-600">
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                </button>
+
+                                {outputUnit === 'mv' && (
+                                    <div className="mb-2"><span className={`text-[10px] font-black uppercase px-2 py-1 rounded-md ${m.rowType === 'tx' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>{m.rowType ?? 'mv'}</span></div>
+                                )}
+
+                                <div className="grid grid-cols-2 gap-4">
                                     {outputUnit === 'mv' ? (
                                         <>
-                                            <div className="lg:px-2 lg:py-3 flex justify-center items-center">
-                                                <RowTypeBadge type={m.rowType ?? 'mv'} />
+                                            <InputField label={m.rowType === 'tx' ? "Ideal mA" : "mV Ideal"} unit={m.rowType === 'tx' ? "mA" : "mV"} value={m.rowType === 'tx' ? m.idealmA : m.idealmV} onChange={(e:any) => handleChange(index, 'idealmV', e.target.value)} readOnly={m.rowType === 'tx'} />
+                                            <InputField label={m.rowType === 'tx' ? "mA TX" : "mV Sensor"} unit={m.rowType === 'tx' ? "mA" : "mV"} value={m.rowType === 'tx' ? m.mATX : m.sensormV} onChange={(e:any) => handleChange(index, m.rowType === 'tx' ? 'mATX' : 'sensormV', e.target.value)} />
+                                            <div className="col-span-2 flex items-center gap-4 bg-gray-50 p-2 rounded-lg justify-center">
+                                                <span className="text-[10px] font-bold text-gray-400 uppercase">Sensor:</span>
+                                                {['J', 'K'].map((type) => (
+                                                    <label key={type} className="flex items-center gap-2 cursor-pointer">
+                                                        <input type="radio" checked={m.sensorType === type} onChange={() => handleChange(index, 'sensorType', type as any)} className="w-4 h-4 accent-orange-600" />
+                                                        <span className={`text-xs font-bold ${m.sensorType === type ? 'text-orange-700' : 'text-gray-400'}`}>{type}</span>
+                                                    </label>
+                                                ))}
                                             </div>
-                                            <div className="lg:px-4 lg:py-3">
-                                                {m.rowType === 'tx'
-                                                    ? <InputField label="Ideal mA" unit="mA" value={m.idealmA} readOnly />
-                                                    : <InputField label="mV ideal" unit="mV" value={m.idealmV} onChange={(e:any) => handleChange(index, 'idealmV', e.target.value)} />
-                                                }
-                                            </div>
-                                            <div className="lg:px-4 lg:py-3">
-                                                {m.rowType === 'tx'
-                                                    ? <InputField label="mA TX" unit="mA" value={m.mATX} onChange={(e:any) => handleChange(index, 'mATX', e.target.value)} />
-                                                    : <InputField label="mV sensor" unit="mV" value={m.sensormV} onChange={(e:any) => handleChange(index, 'sensormV', e.target.value)} />
-                                                }
-                                            </div>
-                                            <div className="lg:px-4 lg:py-3 flex justify-center">
-                                                <div className="flex gap-3 bg-gray-100 p-1.5 rounded-lg border border-gray-200 shadow-sm">
-                                                    {['J', 'K'].map((type) => (
-                                                        <label key={type} className="flex items-center gap-1 cursor-pointer">
-                                                            <input type="radio" checked={m.sensorType === type} onChange={() => handleChange(index, 'sensorType', type as any)} className="w-3.5 h-3.5 accent-orange-600" />
-                                                            <span className={`text-xs font-bold ${m.sensorType === type ? 'text-orange-700' : 'text-gray-400'}`}>{type}</span>
-                                                        </label>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                            <div className="lg:px-4 lg:py-3 lg:bg-red-50/20">
-                                                {m.rowType === 'tx'
-                                                    ? <InputField label="Err mA" unit="mA" value={m.errormA} isError readOnly />
-                                                    : <InputField label="Error mV" unit="mV" value={m.errormV} isError readOnly />
-                                                }
-                                            </div>
-                                        </>
-                                    ) : outputUnit === 'ohm' ? (
-                                        <>
-                                            <div className="lg:px-2 lg:py-3"><InputField label="Ideal UE" unit="UE" value={m.idealUE} onChange={(e:any) => handleChange(index, 'idealUE', e.target.value)} /></div>
-                                            <div className="lg:px-2 lg:py-3"><InputField label="Ideal mA" unit="mA" value={m.idealmA} readOnly /></div>
-                                            <div className="lg:px-2 lg:py-3"><InputField label="Ideal Ohm" unit="Ω" value={m.idealohm} onChange={(e:any) => handleChange(index, 'idealohm', e.target.value)} /></div>
-                                            <div className="lg:px-2 lg:py-3"><InputField label="Patron UE" unit="UE" value={m.patronUE} onChange={(e:any) => handleChange(index, 'patronUE', e.target.value)} /></div>
-                                            <div className="lg:px-2 lg:py-3"><InputField label="mA Patron" unit="mA" value={m.patronMA} readOnly /></div>
-                                            {hasUeTransmitter && <div className="lg:px-2 lg:py-3"><InputField label="UE Trans." unit="UE" value={m.ueTransmitter} onChange={(e:any) => handleChange(index, 'ueTransmitter', e.target.value)} /></div>}
-                                            <div className="lg:px-2 lg:py-3"><InputField label="mA Sensor" unit="mA" value={m.maTransmitter} onChange={(e:any) => handleChange(index, 'maTransmitter', e.target.value)} /></div>
-                                            <div className="lg:px-2 lg:py-3"><InputField label="Ohm Sensor" unit="Ω" value={m.ohmTransmitter} onChange={(e:any) => handleChange(index, 'ohmTransmitter', e.target.value)} /></div>
-                                            <div className="lg:px-2 lg:py-3"><InputField label="% Rango" unit="%" value={m.percentage} onChange={(e:any) => handleChange(index, 'percentage', e.target.value)} /></div>
-                                            {hasUeTransmitter && <div className="lg:px-2 lg:py-3 lg:bg-red-50/20"><InputField label="Err UE" unit="UE" value={m.errorUE} isError readOnly /></div>}
-                                            <div className="lg:px-2 lg:py-3 lg:bg-red-50/20"><InputField label="Err Ohm" unit="Ω" value={m.errorOhm} isError readOnly /></div>
-                                            <div className="lg:px-2 lg:py-3 lg:bg-red-50/20"><InputField label="Err mA" unit="mA" value={m.errormA} isError readOnly /></div>
-                                            <div className="lg:px-2 lg:py-3 lg:bg-red-50/20"><InputField label="Err %" unit="%" value={m.errorPercentage} isError readOnly /></div>
                                         </>
                                     ) : (
                                         <>
-                                            <div className="lg:px-2 lg:py-3"><InputField label="Ideal UE" unit="UE" value={m.idealUE} onChange={(e:any) => handleChange(index, 'idealUE', e.target.value)} /></div>
-                                            <div className="lg:px-2 lg:py-3"><InputField label="Ideal mA" unit="mA" value={m.idealmA} readOnly /></div>
-                                            <div className="lg:px-2 lg:py-3"><InputField label="Patron UE" unit="UE" value={m.patronUE} onChange={(e:any) => handleChange(index, 'patronUE', e.target.value)} /></div>
-                                            <div className="lg:px-2 lg:py-3"><InputField label="mA Patron" unit="mA" value={m.patronMA} readOnly /></div>
-                                            {hasUeTransmitter && <div className="lg:px-2 lg:py-3"><InputField label="UE Trans." unit="UE" value={m.ueTransmitter} onChange={(e:any) => handleChange(index, 'ueTransmitter', e.target.value)} /></div>}
-                                            <div className="lg:px-2 lg:py-3"><InputField label="mA Trans." unit="mA" value={m.maTransmitter} onChange={(e:any) => handleChange(index, 'maTransmitter', e.target.value)} /></div>
-                                            <div className="lg:px-2 lg:py-3"><InputField label="% Rango" unit="%" value={m.percentage} onChange={(e:any) => handleChange(index, 'percentage', e.target.value)} /></div>
-                                            {hasUeTransmitter && <div className="lg:px-2 lg:py-3 lg:bg-red-50/20 border-l border-red-100/50"><InputField label="Err UE" unit="UE" value={m.errorUE} isError readOnly /></div>}
-                                            <div className="lg:px-2 lg:py-3 lg:bg-red-50/20"><InputField label="Err mA" unit="mA" value={m.errormA} isError readOnly /></div>
-                                            <div className="lg:px-2 lg:py-3 lg:bg-red-50/20"><InputField label="Err %" unit="%" value={m.errorPercentage} isError readOnly /></div>
+                                            <InputField label="Ideal UE" unit="UE" value={m.idealUE} onChange={(e:any) => handleChange(index, 'idealUE', e.target.value)} />
+                                            <InputField label="Ideal mA" unit="mA" value={m.idealmA} readOnly />
+                                            {outputUnit === 'ohm' && <InputField label="Ideal Ohm" unit="Ω" value={m.idealohm} onChange={(e:any) => handleChange(index, 'idealohm', e.target.value)} />}
+                                            <InputField label="Patron UE" unit="UE" value={m.patronUE} onChange={(e:any) => handleChange(index, 'patronUE', e.target.value)} />
+                                            <InputField label="mA Patron" unit="mA" value={m.patronMA} readOnly />
+                                            {hasUeTransmitter && <InputField label="UE Trans." unit="UE" value={m.ueTransmitter} onChange={(e:any) => handleChange(index, 'ueTransmitter', e.target.value)} />}
+                                            <InputField label={outputUnit === 'ohm' ? "mA Sensor" : "mA Trans."} unit="mA" value={m.maTransmitter} onChange={(e:any) => handleChange(index, 'maTransmitter', e.target.value)} />
+                                            {outputUnit === 'ohm' && <InputField label="Ohm Sensor" unit="Ω" value={m.ohmTransmitter} onChange={(e:any) => handleChange(index, 'ohmTransmitter', e.target.value)} />}
+                                            <InputField label="% Rango" unit="%" value={m.percentage} onChange={(e:any) => handleChange(index, 'percentage', e.target.value)} />
                                         </>
                                     )}
-                                    <div className="flex justify-center items-center py-2 lg:py-0">
-                                        <DeleteBtn index={index} />
-                                    </div>
+                                </div>
+
+                                {/* Sección de Errores Mobile */}
+                                <div className="mt-2 pt-4 border-t border-dashed border-gray-200 grid grid-cols-2 gap-4">
+                                    {outputUnit === 'mv' ? (
+                                        <div className="col-span-2"><InputField label="Error Calculado" unit={m.rowType === 'tx' ? "mA" : "mV"} value={m.rowType === 'tx' ? m.errormA : m.errormV} isError readOnly /></div>
+                                    ) : (
+                                        <>
+                                            {hasUeTransmitter && <InputField label="Err UE" unit="UE" value={m.errorUE} isError readOnly />}
+                                            {outputUnit === 'ohm' && <InputField label="Err Ohm" unit="Ω" value={m.errorOhm} isError readOnly />}
+                                            <InputField label="Err mA" unit="mA" value={m.errormA} isError readOnly />
+                                            <InputField label="Err %" unit="%" value={m.errorPercentage} isError readOnly />
+                                        </>
+                                    )}
                                 </div>
                             </div>
-                        ))}
-                    </div>
+
+                            {/* --- DESKTOP TABLE VIEW --- */}
+                            <div className={`hidden lg:grid ${config.gridCols} items-center hover:bg-teal-50/30 transition-colors`}>
+                                {outputUnit === 'mv' ? (
+                                    <>
+                                        <div className="px-2 py-3 flex justify-center"><span className={`text-[9px] font-black uppercase px-2 py-1 rounded-full ${m.rowType === 'tx' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>{m.rowType ?? 'mv'}</span></div>
+                                        <div className="px-3 py-2">{m.rowType === 'tx' ? <InputField value={m.idealmA} unit="mA" readOnly /> : <InputField value={m.idealmV} unit="mV" onChange={(e:any) => handleChange(index, 'idealmV', e.target.value)} />}</div>
+                                        <div className="px-3 py-2">{m.rowType === 'tx' ? <InputField value={m.mATX} unit="mA" onChange={(e:any) => handleChange(index, 'mATX', e.target.value)} /> : <InputField value={m.sensormV} unit="mV" onChange={(e:any) => handleChange(index, 'sensormV', e.target.value)} />}</div>
+                                        <div className="px-3 py-2 flex justify-center gap-3 bg-gray-50/50 h-full items-center">
+                                            {['J', 'K'].map((t) => (
+                                                <label key={t} className="flex items-center gap-1 cursor-pointer"><input type="radio" checked={m.sensorType === t} onChange={() => handleChange(index, 'sensorType', t as any)} className="w-3 h-3 accent-orange-600" /><span className="text-[10px] font-bold">{t}</span></label>
+                                            ))}
+                                        </div>
+                                        <div className="px-3 py-2 bg-red-50/30">{m.rowType === 'tx' ? <InputField value={m.errormA} unit="mA" isError readOnly /> : <InputField value={m.errormV} unit="mV" isError readOnly />}</div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="px-1.5 py-2"><InputField value={m.idealUE} unit="UE" onChange={(e:any) => handleChange(index, 'idealUE', e.target.value)} /></div>
+                                        <div className="px-1.5 py-2"><InputField value={m.idealmA} unit="mA" readOnly /></div>
+                                        {outputUnit === 'ohm' && <div className="px-1.5 py-2"><InputField value={m.idealohm} unit="Ω" onChange={(e:any) => handleChange(index, 'idealohm', e.target.value)} /></div>}
+                                        <div className="px-1.5 py-2"><InputField value={m.patronUE} unit="UE" onChange={(e:any) => handleChange(index, 'patronUE', e.target.value)} /></div>
+                                        <div className="px-1.5 py-2"><InputField value={m.patronMA} unit="mA" readOnly /></div>
+                                        {hasUeTransmitter && <div className="px-1.5 py-2"><InputField value={m.ueTransmitter} unit="UE" onChange={(e:any) => handleChange(index, 'ueTransmitter', e.target.value)} /></div>}
+                                        <div className="px-1.5 py-2"><InputField value={m.maTransmitter} unit="mA" onChange={(e:any) => handleChange(index, 'maTransmitter', e.target.value)} /></div>
+                                        {outputUnit === 'ohm' && <div className="px-1.5 py-2"><InputField value={m.ohmTransmitter} unit="Ω" onChange={(e:any) => handleChange(index, 'ohmTransmitter', e.target.value)} /></div>}
+                                        <div className="px-1.5 py-2"><InputField value={m.percentage} unit="%" onChange={(e:any) => handleChange(index, 'percentage', e.target.value)} /></div>
+                                        {hasUeTransmitter && <div className="px-1.5 py-2 bg-red-50/20"><InputField value={m.errorUE} unit="UE" isError readOnly /></div>}
+                                        {outputUnit === 'ohm' && <div className="px-1.5 py-2 bg-red-50/20"><InputField value={m.errorOhm} unit="Ω" isError readOnly /></div>}
+                                        <div className="px-1.5 py-2 bg-red-50/20"><InputField value={m.errormA} unit="mA" isError readOnly /></div>
+                                        <div className="px-1.5 py-2 bg-red-50/20"><InputField value={m.errorPercentage} unit="%" isError readOnly /></div>
+                                    </>
+                                )}
+                                <div className="flex justify-center"><button onClick={() => onMeasurementsChange(measurements.filter((_, i) => i !== index))} className="text-red-400 hover:text-red-600 p-2"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button></div>
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </div>
         </div>
