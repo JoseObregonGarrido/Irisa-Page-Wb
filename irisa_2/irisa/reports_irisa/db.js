@@ -8,11 +8,26 @@ const pool = mysql.createPool({
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
-    port: process.env.DB_PORT || 3306,
+    // CAMBIO CLAVE: TiDB usa el 4000. Forzamos a que use el del .env 
+    // y si no existe, que falle o use el 4000, no el 3306.
+    port: parseInt(process.env.DB_PORT) || 4000, 
     waitForConnections: true,
     connectionLimit: 20,
-    // Aiven requiere SSL por defecto, así que lo forzamos para producción
-    ssl: { rejectUnauthorized: false }
+    // TiDB Cloud EXIGE TLS/SSL igual que Aiven, esto queda melo:
+    ssl: { 
+        rejectUnauthorized: false,
+        minVersion: 'TLSv1.2' 
+    }
 });
+
+// Prueba de conexion inicial para ver en los logs de Render si corono
+pool.getConnection()
+    .then(conn => {
+        console.log("✅ Conectado a TiDB Cloud con exito, mano.");
+        conn.release();
+    })
+    .catch(err => {
+        console.error("❌ Error conectando a la base de datos:", err.message);
+    });
 
 export default pool;
