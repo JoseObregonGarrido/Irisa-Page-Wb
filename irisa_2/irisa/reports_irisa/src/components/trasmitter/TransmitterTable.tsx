@@ -222,7 +222,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
     const config = getLayoutConfig();
 
     return (
-        <div className="mt-8 w-full bg-white rounded-xl shadow-lg border border-gray-200">
+       <div className="mt-8 w-full bg-white rounded-xl shadow-lg border border-gray-200">
             <div className="bg-gradient-to-r from-teal-600 to-emerald-600 px-4 py-4 sm:px-6">
                 <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                     <div className="flex flex-wrap items-center gap-3">
