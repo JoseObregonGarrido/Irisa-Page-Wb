@@ -117,12 +117,15 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
             }
         }
 
+        // --- LOGICA DE RANGO GLOBAL (ESTABILIDAD) ---
+        // Obtenemos todos los valores de IdealUE validos en la tabla para fijar el span
         const valuesUE = allMeasurements.map(item => p(item.idealUE)).filter((v): v is number => v !== null);
         const minUE = valuesUE.length > 0 ? Math.min(...valuesUE) : 0;
         const maxUE = valuesUE.length > 0 ? Math.max(...valuesUE) : 100;
-        const effectiveMax = maxUE <= 100 && minUE >= 0 ? 100 : maxUE;  
-        const spanUE = (effectiveMax - minUE) || 1;
+        const spanUE = (maxUE - minUE) || 1;
 
+        // --- INDEPENDENCIA Y CONSISTENCIA ---
+        // El Patron MA ahora depende exclusivamente del Patron UE y del rango global
         const currentPatronUE = p(m.patronUE);
         let calculatedPatronMA = "";
         if (currentPatronUE !== null) {
@@ -130,6 +133,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
             calculatedPatronMA = (4 + (ratioPatron * 16)).toFixed(3);
         }
 
+        // Calculo de Ideal mA y % basado en el Ideal UE de la fila
         const currentIdealUE = p(m.idealUE);
         let calculatedIdealMA = m.idealmA;
         let calculatedPercentage = m.percentage;
@@ -143,7 +147,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
         const maTrans = p(m.maTransmitter);
         const pMA = p(calculatedPatronMA);
         const ueTrans = p(m.ueTransmitter);
-        const pUE = p(m.patronUE);
+        const pUE = currentPatronUE; // Usamos el valor parseado arriba
         const idealOhm = p(m.idealohm);
         const ohmTrans = p(m.ohmTransmitter);
 
@@ -167,8 +171,12 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
     const handleChange = (index: number, field: keyof Measurement, value: any) => {
         const newMeasurements = [...measurements];
         newMeasurements[index] = { ...newMeasurements[index], [field]: value };
-        newMeasurements[index] = calculateErrors(newMeasurements[index], newMeasurements);
-        onMeasurementsChange(newMeasurements);
+        
+        // Al cambiar cualquier valor, recalculamos toda la tabla para mantener la ESTABILIDAD
+        // ya que el min/max global puede haber cambiado.
+        const updatedMeasurements = newMeasurements.map(item => calculateErrors(item, newMeasurements));
+        
+        onMeasurementsChange(updatedMeasurements);
     };
 
     const addNewRow = (rowType?: 'mv' | 'tx') => {
@@ -194,7 +202,6 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
     const config = getLayoutConfig();
 
     return (
-        /* Quitamos overflow-hidden para que el dropdown no se corte */
         <div className="mt-8 w-full bg-white rounded-xl shadow-lg border border-gray-200">
             <div className="bg-gradient-to-r from-teal-600 to-emerald-600 px-4 py-4 sm:px-6 rounded-t-xl">
                 <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -283,7 +290,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                                                 {hasUeTransmitter && <InputField label="UE Trans." unit="UE" value={m.ueTransmitter} onChange={(e:any) => handleChange(index, 'ueTransmitter', e.target.value)} />}
                                                 <InputField label={outputUnit === 'ohm' ? "mA Sensor" : "mA Trans."} unit="mA" value={m.maTransmitter} onChange={(e:any) => handleChange(index, 'maTransmitter', e.target.value)} />
                                                 {outputUnit === 'ohm' && <InputField label="Ohm Sensor" unit="Ω" value={m.ohmTransmitter} onChange={(e:any) => handleChange(index, 'ohmTransmitter', e.target.value)} />}
-                                                <InputField label="% Rango" unit="%" value={m.percentage} onChange={(e:any) => handleChange(index, 'percentage', e.target.value)} />
+                                                <InputField label="% Rango" unit="%" value={m.percentage} readOnly />
                                             </>
                                         )}
                                     </div>
@@ -327,7 +334,7 @@ const TransmitterTable: React.FC<TransmitterTableProps> = ({
                                             {hasUeTransmitter && <div className="px-1.5 py-2"><InputField value={m.ueTransmitter} unit="UE" onChange={(e:any) => handleChange(index, 'ueTransmitter', e.target.value)} /></div>}
                                             <div className="px-1.5 py-2"><InputField value={m.maTransmitter} unit="mA" onChange={(e:any) => handleChange(index, 'maTransmitter', e.target.value)} /></div>
                                             {outputUnit === 'ohm' && <div className="px-1.5 py-2"><InputField value={m.ohmTransmitter} unit="Ω" onChange={(e:any) => handleChange(index, 'ohmTransmitter', e.target.value)} /></div>}
-                                            <div className="px-1.5 py-2"><InputField value={m.percentage} unit="%" onChange={(e:any) => handleChange(index, 'percentage', e.target.value)} /></div>
+                                            <div className="px-1.5 py-2"><InputField value={m.percentage} unit="%" readOnly /></div>
                                             {hasUeTransmitter && <div className="px-1.5 py-2 bg-red-50/20"><InputField value={m.errorUE} unit="UE" isError readOnly /></div>}
                                             {outputUnit === 'ohm' && <div className="px-1.5 py-2 bg-red-50/20"><InputField value={m.errorOhm} unit="Ω" isError readOnly /></div>}
                                             <div className="px-1.5 py-2 bg-red-50/20"><InputField value={m.errormA} unit="mA" isError readOnly /></div>
