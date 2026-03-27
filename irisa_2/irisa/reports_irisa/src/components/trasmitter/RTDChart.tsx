@@ -66,14 +66,18 @@ const RTDChart = forwardRef<any, RTDChartProps>(({
     const chart1Ref = useRef<HTMLDivElement>(null);
     const chart2Ref = useRef<HTMLDivElement>(null);
 
-    const processedData = measurements.map((m) => ({
-        percentage:    parseFloat(m.percentage) || 0,
-        temperatura:   m.idealUE ? parseFloat(m.idealUE) : 0,
-        idealOhm:      m.idealohm ? parseFloat(m.idealohm) : null,
-        sensorOhm:     m.ohmTransmitter ? parseFloat(m.ohmTransmitter) : null,
-        idealmA:       m.idealmA ? parseFloat(m.idealmA) : null,
-        maTransmitter: m.maTransmitter ? parseFloat(m.maTransmitter) : null,
-    })).sort((a, b) => a.temperatura - b.temperatura);
+    // FILTRADO Y PROCESAMIENTO: Evita que la linea caiga a 0 si no hay datos
+    const processedData = measurements
+        .map((m) => ({
+            temperatura:   m.idealUE ? parseFloat(m.idealUE) : null,
+            idealOhm:      m.idealohm ? parseFloat(m.idealohm) : null,
+            sensorOhm:     m.ohmTransmitter ? parseFloat(m.ohmTransmitter) : null,
+            idealmA:       m.idealmA ? parseFloat(m.idealmA) : null,
+            maTransmitter: m.maTransmitter ? parseFloat(m.maTransmitter) : null,
+        }))
+        // Solo incluimos puntos donde la temperatura sea un numero valido y no cero (a menos que sea intencional)
+        .filter(d => d.temperatura !== null && !isNaN(d.temperatura))
+        .sort((a, b) => (a.temperatura || 0) - (b.temperatura || 0));
 
     useImperativeHandle(ref, () => ({
         captureAllCharts: async () => {
@@ -104,7 +108,13 @@ const RTDChart = forwardRef<any, RTDChartProps>(({
                             <ResponsiveContainer width="100%" height="100%">
                                 <LineChart data={processedData} margin={{ top: 60, right: 30, left: 10, bottom: 40 }}>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                                    <XAxis dataKey="temperatura" tick={{fontSize: 11}} label={{ value: 'Temperatura (UE)', position: 'bottom', offset: 20 }} />
+                                    <XAxis 
+                                        dataKey="temperatura" 
+                                        type="number"
+                                        domain={['dataMin', 'dataMax']} // Ajusta el inicio al primer valor real (ej. 100)
+                                        tick={{fontSize: 11}} 
+                                        label={{ value: 'Temperatura (UE)', position: 'bottom', offset: 20 }} 
+                                    />
                                     <YAxis 
                                         domain={['auto', 'auto']} 
                                         tick={{fontSize: 11}} 
@@ -113,9 +123,9 @@ const RTDChart = forwardRef<any, RTDChartProps>(({
                                     <Tooltip />
                                     <Legend verticalAlign="top" align="right" />
                                     <Line type="monotone" dataKey="idealOhm" name="Patron (Ideal)" stroke="#10b981" strokeWidth={3} 
-                                        dot={makeDot('#10b981', 'Patron', OFF.PATRON)} isAnimationActive={false} />
+                                        dot={makeDot('#10b981', 'Patron', OFF.PATRON)} isAnimationActive={false} connectNulls />
                                     <Line type="monotone" dataKey="sensorOhm" name="Medido (Sensor)" stroke="#f59e0b" strokeWidth={2} strokeDasharray="5 5"
-                                        dot={makeDot('#f59e0b', 'Sensor', OFF.MEDIDO)} isAnimationActive={false} />
+                                        dot={makeDot('#f59e0b', 'Sensor', OFF.MEDIDO)} isAnimationActive={false} connectNulls />
                                 </LineChart>
                             </ResponsiveContainer>
                         </div>
@@ -123,7 +133,7 @@ const RTDChart = forwardRef<any, RTDChartProps>(({
                 </div>
             </div>
 
-            {/* CHART 2: TRANSMISION (mA) - AJUSTADO PARA NO EMPEZAR EN CERO */}
+            {/* CHART 2: TRANSMISION (mA) */}
             <div className="shadow-lg rounded-xl overflow-hidden border border-gray-200 bg-white" ref={chart2Ref}>
                 <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4 text-white">
                     <h3 className="text-lg font-bold">Curva de Salida: mA Ideal vs Transmitido</h3>
@@ -135,9 +145,14 @@ const RTDChart = forwardRef<any, RTDChartProps>(({
                             <ResponsiveContainer width="100%" height="100%">
                                 <LineChart data={processedData} margin={{ top: 60, right: 30, left: 10, bottom: 40 }}>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                                    <XAxis dataKey="temperatura" tick={{fontSize: 11}} label={{ value: 'Temperatura (UE)', position: 'bottom', offset: 20 }} />
+                                    <XAxis 
+                                        dataKey="temperatura" 
+                                        type="number"
+                                        domain={['dataMin', 'dataMax']}
+                                        tick={{fontSize: 11}} 
+                                        label={{ value: 'Temperatura (UE)', position: 'bottom', offset: 20 }} 
+                                    />
                                     <YAxis 
-                                        // Esto fuerza a que el eje se centre en el rango de 4-20mA
                                         domain={[3.5, 20.5]} 
                                         ticks={[4, 8, 12, 16, 20]} 
                                         tick={{fontSize: 11}} 
@@ -146,9 +161,9 @@ const RTDChart = forwardRef<any, RTDChartProps>(({
                                     <Tooltip />
                                     <Legend verticalAlign="top" align="right" />
                                     <Line type="monotone" dataKey="idealmA" name="Salida Esperada" stroke="#3b82f6" strokeWidth={3}
-                                        dot={makeDot('#3b82f6', 'Ideal', OFF.PATRON)} isAnimationActive={false} />
+                                        dot={makeDot('#3b82f6', 'Ideal', OFF.PATRON)} isAnimationActive={false} connectNulls />
                                     <Line type="monotone" dataKey="maTransmitter" name="Salida Real TX" stroke="#ef4444" strokeWidth={2} strokeDasharray="5 5"
-                                        dot={makeDot('#ef4444', 'Real', OFF.MEDIDO)} isAnimationActive={false} />
+                                        dot={makeDot('#ef4444', 'Real', OFF.MEDIDO)} isAnimationActive={false} connectNulls />
                                 </LineChart>
                             </ResponsiveContainer>
                         </div>
