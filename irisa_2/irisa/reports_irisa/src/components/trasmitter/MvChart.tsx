@@ -19,7 +19,6 @@ interface MVChartProps {
     measurements?: MVMeasurement[];
 }
 
-// ── Cajita SVG siempre visible con Offsets Diferenciados ──────────────────────
 const makeDot = (color: string, label: string, offset: number) =>
     (props: any) => {
         const { cx, cy, value } = props;
@@ -60,82 +59,42 @@ const makeDot = (color: string, label: string, offset: number) =>
         );
     };
 
-// L1 arriba para el ideal, L3 abajo para la medida real
 const OFF = { L1: -80, L3: 22 };
-
-const getYTicks = (values: number[]) => {
-    if (values.length === 0) return [0, 5, 10, 15, 20, 25];
-    const max = Math.max(...values);
-    const min = Math.min(...values, 0);
-    let step = 5;
-    if (max > 50)  step = 10;
-    if (max > 100) step = 20;
-    const ticks: number[] = [];
-    for (let i = Math.floor(min/step)*step; i <= Math.ceil(max/step)*step; i += step) ticks.push(i);
-    return ticks;
-};
-
-const getXTicksNum = (vals: number[]) => {
-    if (vals.length === 0) return [];
-    const min = Math.min(...vals), max = Math.max(...vals);
-    let step = 10;
-    if (max - min > 100) step = 20;
-    if (max - min > 500) step = 50;
-    if (max - min <= 20) step = 2;
-    const ticks: number[] = [];
-    for (let i = Math.floor(min/step)*step; i <= Math.ceil(max/step)*step; i += step) ticks.push(i);
-    return ticks.length > 0 ? ticks : [min, max];
-};
 
 const MVChart = forwardRef<any, MVChartProps>(({ measurements = [] }, ref) => {
     const chart1Ref = useRef<HTMLDivElement>(null); 
     const chart2Ref = useRef<HTMLDivElement>(null); 
 
-    const mvRows = measurements.filter(m => !m.rowType || m.rowType === 'mv');
-    const txRows = measurements.filter(m => m.rowType === 'tx');
-
-    const mvRowsConDatos = mvRows.filter(m => m.idealmV || m.sensormV);
-    const usarEjeUE = mvRowsConDatos.some(m => m.idealUE && m.idealUE !== '');
-
-    const mvData = usarEjeUE
-        ? mvRowsConDatos.map(m => ({
-            ejeX:     parseFloat(m.idealUE || '0'),
-            label:    m.idealUE || '',
-            idealMV:  m.idealmV  ? parseFloat(m.idealmV)  : null,
+    // 1. Filtrar y procesar datos de mV (Termopar)
+    const mvData = measurements
+        .filter(m => (!m.rowType || m.rowType === 'mv') && (m.idealmV || m.sensormV))
+        .map((m, i) => ({
+            // Si hay idealUE (temperatura), la usamos como eje numerico
+            ejeX: m.idealUE ? parseFloat(m.idealUE) : i + 1,
+            labelX: m.idealUE ? `${m.idealUE} UE` : `M${i+1}`,
+            idealMV: m.idealmV ? parseFloat(m.idealmV) : null,
             sensorMV: m.sensormV ? parseFloat(m.sensormV) : null,
-          })).sort((a, b) => a.ejeX - b.ejeX)
-        : mvRowsConDatos.map((m, i) => ({
-            ejeX:     i + 1,
-            label:    `M${i + 1}`,
-            idealMV:  m.idealmV  ? parseFloat(m.idealmV)  : null,
-            sensorMV: m.sensormV ? parseFloat(m.sensormV) : null,
-          }));
+        }))
+        .filter(d => !isNaN(d.ejeX))
+        .sort((a, b) => a.ejeX - b.ejeX);
 
-    const txRowsConDatos = txRows.filter(m => m.idealmA || m.mATX);
-    const txData = txRowsConDatos.map(m => ({
-        ejeX:    m.idealmA ? parseFloat(m.idealmA) : null,
-        idealMA: m.idealmA ? parseFloat(m.idealmA) : null,
-        maTX:    m.mATX    ? parseFloat(m.mATX)    : null,
-    })).sort((a, b) => (a.ejeX || 0) - (b.ejeX || 0));
-
-    const mvYVals  = mvData.flatMap(d => [d.idealMV, d.sensorMV].filter(v => v !== null) as number[]);
-    const mvXVals  = mvData.map(d => d.ejeX);
-    const mvYTicks = getYTicks(mvYVals);
-    const mvXTicks = usarEjeUE ? getXTicksNum(mvXVals) : mvXVals;
-
-    const txYVals  = txData.flatMap(d => [d.idealMA, d.maTX].filter(v => v !== null) as number[]);
-    const txXVals  = txData.map(d => d.ejeX).filter(t => t !== null) as number[];
-    const txYTicks = getYTicks(txYVals);
-    const txXTicks = getXTicksNum(txXVals);
+    // 2. Filtrar y procesar datos de TX (4-20mA)
+    const txData = measurements
+        .filter(m => m.rowType === 'tx' && (m.idealmA || m.mATX))
+        .map(m => ({
+            ejeX: m.idealmA ? parseFloat(m.idealmA) : null,
+            idealMA: m.idealmA ? parseFloat(m.idealmA) : null,
+            maTX: m.mATX ? parseFloat(m.mATX) : null,
+        }))
+        .filter(d => d.ejeX !== null && !isNaN(d.ejeX))
+        .sort((a, b) => (a.ejeX || 0) - (b.ejeX || 0));
 
     useImperativeHandle(ref, () => ({
         captureAllCharts: async () => {
             const images: string[] = [];
             for (const r of [chart1Ref, chart2Ref]) {
                 if (r.current && r.current.offsetHeight > 50) {
-                    const url = await toPng(r.current, {
-                        backgroundColor: '#ffffff', pixelRatio: 2, cacheBust: true
-                    });
+                    const url = await toPng(r.current, { backgroundColor: '#ffffff', pixelRatio: 2, cacheBust: true });
                     images.push(url);
                 }
             }
@@ -143,64 +102,40 @@ const MVChart = forwardRef<any, MVChartProps>(({ measurements = [] }, ref) => {
         }
     }));
 
-    const hasMvData = mvData.length > 0;
-    const hasTxData = txData.length > 0;
     const tooltipStyle = { borderRadius: '8px', fontSize: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' };
-
-    if (!hasMvData && !hasTxData) {
-        return (
-            <div className="mt-8 shadow-lg rounded-xl overflow-hidden border border-gray-200 bg-white">
-                <div className="bg-gradient-to-r from-orange-600 to-red-600 px-6 py-5 text-white">
-                    <h3 className="text-xl font-bold">Analisis mV / TX</h3>
-                </div>
-                <div className="text-center py-12 text-gray-400">
-                    <p>No hay datos suficientes para generar los graficos.</p>
-                </div>
-            </div>
-        );
-    }
 
     return (
         <div className="space-y-6">
-            {/* ── GRAFICO mV (Termopar) ── */}
-            {hasMvData && (
+            {/* GRAFICO 1: MILIVOLTIOS */}
+            {mvData.length > 0 && (
                 <div ref={chart1Ref} className="shadow-lg rounded-xl overflow-hidden border border-gray-200 bg-white">
                     <div className="bg-gradient-to-r from-orange-600 to-red-600 px-6 py-5 text-white">
-                        <div className="flex items-center gap-4">
-                            <span className="text-3xl">📈</span>
-                            <div>
-                                <h3 className="text-xl font-bold">Desviacion de mV (Termopar)</h3>
-                                <p className="text-orange-100 text-sm opacity-90">
-                                    Ideal mV vs Sensor mV | Eje X: {usarEjeUE ? 'Temperatura (UE)' : 'Medicion'}
-                                </p>
-                            </div>
-                        </div>
+                        <h3 className="text-xl font-bold">Desviacion de mV (Termopar)</h3>
+                        <p className="text-orange-100 text-sm opacity-90">Comportamiento del sensor vs Tabla de referencia</p>
                     </div>
-                    <div className="p-6 bg-white">
-                        <div className="h-[700px] w-full">
+                    <div className="p-6">
+                        <div className="h-[600px] w-full">
                             <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={mvData} margin={{ top: 95, right: 50, left: 20, bottom: 80 }}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                                    {usarEjeUE
-                                        ? <XAxis dataKey="ejeX" type="number" ticks={mvXTicks as number[]} tick={{ fontSize: 11 }}
-                                            label={{ value: 'Temperatura (UE)', position: 'insideBottom', offset: -55, fontSize: 12, fontWeight: 'bold' }} />
-                                        : <XAxis dataKey="label" type="category" tick={{ fontSize: 11 }}
-                                            label={{ value: 'Medicion', position: 'insideBottom', offset: -55, fontSize: 12, fontWeight: 'bold' }} />
-                                    }
-                                    <YAxis ticks={mvYTicks} domain={[mvYTicks[0], mvYTicks[mvYTicks.length - 1]]} tick={{ fontSize: 10 }}
-                                        label={{ value: 'Voltaje (mV)', angle: -90, position: 'insideLeft', fontWeight: 'bold', fontSize: 12 }} />
-                                    <Tooltip contentStyle={tooltipStyle}
-                                        formatter={(v: any, n: string) => [v !== null ? Number(v).toFixed(2) : '---', n]}
-                                        labelFormatter={(l) => usarEjeUE ? `Temperatura: ${l} UE` : `${l}`} />
-                                    <Legend verticalAlign="top" height={36} />
-                                    <Line type="monotone" dataKey="idealMV"
-                                        stroke="#8b5cf6" name="Ideal mV" strokeWidth={2}
-                                        dot={makeDot('#8b5cf6', 'Ideal mV', OFF.L1)}
-                                        activeDot={{ r: 6 }} isAnimationActive={false} />
-                                    <Line type="monotone" dataKey="sensorMV"
-                                        stroke="#ec4899" name="Sensor mV" strokeWidth={2} strokeDasharray="5 5"
-                                        dot={makeDot('#ec4899', 'Sensor mV', OFF.L3)}
-                                        activeDot={{ r: 6 }} isAnimationActive={false} />
+                                <LineChart data={mvData} margin={{ top: 80, right: 40, left: 10, bottom: 40 }}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                                    <XAxis 
+                                        dataKey="ejeX" 
+                                        type="number" 
+                                        domain={['dataMin', 'dataMax']}
+                                        tick={{fontSize: 11}} 
+                                        label={{ value: 'Punto de Prueba (Temp / Posicion)', position: 'bottom', offset: 20 }} 
+                                    />
+                                    <YAxis 
+                                        domain={['auto', 'auto']} 
+                                        tick={{fontSize: 11}} 
+                                        label={{ value: 'Voltaje (mV)', angle: -90, position: 'insideLeft' }} 
+                                    />
+                                    <Tooltip contentStyle={tooltipStyle} />
+                                    <Legend verticalAlign="top" align="right" height={40}/>
+                                    <Line type="monotone" dataKey="idealMV" name="Referencia (Ideal)" stroke="#8b5cf6" strokeWidth={3} 
+                                        dot={makeDot('#8b5cf6', 'Ideal', OFF.L1)} isAnimationActive={false} connectNulls />
+                                    <Line type="monotone" dataKey="sensorMV" name="Medido (Sensor)" stroke="#ec4899" strokeWidth={2} strokeDasharray="5 5"
+                                        dot={makeDot('#ec4899', 'Real', OFF.L3)} isAnimationActive={false} connectNulls />
                                 </LineChart>
                             </ResponsiveContainer>
                         </div>
@@ -208,39 +143,37 @@ const MVChart = forwardRef<any, MVChartProps>(({ measurements = [] }, ref) => {
                 </div>
             )}
 
-            {/* ── GRAFICO TX (Transmisor) ── */}
-            {hasTxData && (
+            {/* GRAFICO 2: TRANSMISOR (mA) */}
+            {txData.length > 0 && (
                 <div ref={chart2Ref} className="shadow-lg rounded-xl overflow-hidden border border-gray-200 bg-white">
                     <div className="bg-gradient-to-r from-purple-600 to-indigo-600 px-6 py-5 text-white">
-                        <div className="flex items-center gap-4">
-                            <span className="text-3xl">📈</span>
-                            <div>
-                                <h3 className="text-xl font-bold">Ideal mA vs mA TX</h3>
-                                <p className="text-purple-100 text-sm opacity-90">Eje X: Ideal mA | Eje Y: mA TX</p>
-                            </div>
-                        </div>
+                        <h3 className="text-xl font-bold">Salida del Transmisor (4-20mA)</h3>
+                        <p className="text-purple-100 text-sm opacity-90">Precision de la conversion mV a mA</p>
                     </div>
-                    <div className="p-6 bg-white">
-                        <div className="h-[700px] w-full">
+                    <div className="p-6">
+                        <div className="h-[600px] w-full">
                             <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={txData} margin={{ top: 95, right: 50, left: 20, bottom: 80 }}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                                    <XAxis dataKey="ejeX" type="number" ticks={txXTicks} tick={{ fontSize: 11 }}
-                                        label={{ value: 'Señal de Entrada (mA)', position: 'insideBottom', offset: -55, fontSize: 12, fontWeight: 'bold' }} />
-                                    <YAxis ticks={txYTicks} domain={[txYTicks[0], txYTicks[txYTicks.length - 1]]} tick={{ fontSize: 10 }}
-                                        label={{ value: 'mA TX', angle: -90, position: 'insideLeft', fontWeight: 'bold', fontSize: 12 }} />
-                                    <Tooltip contentStyle={tooltipStyle}
-                                        formatter={(v: any, n: string) => [v !== null ? Number(v).toFixed(2) : '---', n]}
-                                        labelFormatter={(l) => `Ideal mA: ${l}`} />
-                                    <Legend verticalAlign="top" height={36} />
-                                    <Line type="monotone" dataKey="idealMA"
-                                        stroke="#3b82f6" name="Ideal mA" strokeWidth={2}
-                                        dot={makeDot('#3b82f6', 'Ideal mA', OFF.L1)}
-                                        activeDot={{ r: 6 }} isAnimationActive={false} />
-                                    <Line type="monotone" dataKey="maTX"
-                                        stroke="#ef4444" name="mA TX" strokeWidth={2} strokeDasharray="5 5"
-                                        dot={makeDot('#ef4444', 'mA TX', OFF.L3)}
-                                        activeDot={{ r: 6 }} isAnimationActive={false} />
+                                <LineChart data={txData} margin={{ top: 80, right: 40, left: 10, bottom: 40 }}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                                    <XAxis 
+                                        dataKey="ejeX" 
+                                        type="number"
+                                        domain={['dataMin', 'dataMax']}
+                                        tick={{fontSize: 11}} 
+                                        label={{ value: 'Entrada Ideal (mA)', position: 'bottom', offset: 20 }} 
+                                    />
+                                    <YAxis 
+                                        domain={[3.8, 20.2]} 
+                                        ticks={[4, 8, 12, 16, 20]}
+                                        tick={{fontSize: 11}} 
+                                        label={{ value: 'Salida Real (mA)', angle: -90, position: 'insideLeft' }} 
+                                    />
+                                    <Tooltip contentStyle={tooltipStyle} />
+                                    <Legend verticalAlign="top" align="right" height={40} />
+                                    <Line type="monotone" dataKey="idealMA" name="Ideal mA" stroke="#3b82f6" strokeWidth={3}
+                                        dot={makeDot('#3b82f6', 'Referencia', OFF.L1)} isAnimationActive={false} connectNulls />
+                                    <Line type="monotone" dataKey="maTX" name="Real TX" stroke="#ef4444" strokeWidth={2} strokeDasharray="5 5"
+                                        dot={makeDot('#ef4444', 'Transmitido', OFF.L3)} isAnimationActive={false} connectNulls />
                                 </LineChart>
                             </ResponsiveContainer>
                         </div>

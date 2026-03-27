@@ -1,23 +1,22 @@
 import { InputField } from './InputField';
 
 export const TableMV = ({ measurements, onMeasurementsChange }: any) => {
-    // Se ajusto el grid para dar mas espacio al sensor y al error
-    const gridCols = 'lg:grid-cols-[80px_1fr_1fr_140px_1fr_80px]';
+    // Definicion de columnas: Tipo | Ideal | Medido | Sensor(J/K) | Error | Accion
+    const gridCols = 'lg:grid-cols-[80px_1fr_1fr_120px_1fr_80px]';
 
     const handleChange = (index: number, field: string, value: any) => {
         const newM = [...measurements];
         const updatedRow = { ...newM[index], [field]: value };
 
+        // Calculo automatico segun el tipo de fila
         if (updatedRow.rowType === 'tx') {
-            // TX: error = ideal mA - mA TX
-            const idealmA = parseFloat(updatedRow.idealmA) || 0;
-            const mATX    = parseFloat(updatedRow.mATX)    || 0;
-            updatedRow.errormA = (idealmA - mATX).toFixed(3);
+            const ideal = parseFloat(updatedRow.idealmA) || 0;
+            const real  = parseFloat(updatedRow.mATX) || 0;
+            updatedRow.errormA = (ideal - real).toFixed(3);
         } else {
-            // mV: error = ideal mV - sensor mV
-            const idealVal  = parseFloat(updatedRow.idealmV)  || 0;
-            const sensorVal = parseFloat(updatedRow.sensormV) || 0;
-            updatedRow.errormV = (idealVal - sensorVal).toFixed(3);
+            const ideal = parseFloat(updatedRow.idealmV) || 0;
+            const real  = parseFloat(updatedRow.sensormV) || 0;
+            updatedRow.errormV = (ideal - real).toFixed(3);
         }
 
         newM[index] = updatedRow;
@@ -25,97 +24,109 @@ export const TableMV = ({ measurements, onMeasurementsChange }: any) => {
     };
 
     const RowTypeBadge = ({ type }: { type: 'mv' | 'tx' }) => (
-        <span className={`text-[9px] font-black uppercase px-2 py-1 rounded-full tracking-wider
-            ${type === 'mv'
-                ? 'bg-orange-100 text-orange-700 border border-orange-200'
-                : 'bg-blue-100 text-blue-700 border border-blue-200'}`}>
-            {type}
+        <span className={`text-[10px] font-bold uppercase px-3 py-1 rounded-md tracking-tighter border
+            ${type === 'mv' 
+                ? 'bg-orange-50 text-orange-600 border-orange-200' 
+                : 'bg-blue-50 text-blue-600 border-blue-200'}`}>
+            {type === 'mv' ? 'Termopar' : 'Transm.'}
         </span>
     );
 
     return (
-        <div className="w-full min-w-[800px] lg:min-w-full">
-            <div className="w-full">
-                {/* Header Desktop */}
-                <div className={`hidden lg:grid ${gridCols} bg-gray-100 border-b border-gray-200 text-[10px] font-bold text-gray-500 uppercase tracking-wider w-full`}>
-                    <div className="px-2 py-4 text-center">Tipo</div>
-                    <div className="px-4 py-4 text-center border-l border-gray-200">Ideal</div>
-                    <div className="px-4 py-4 text-center border-l border-gray-200">Medido</div>
+        <div className="w-full overflow-x-auto rounded-xl border border-gray-200 shadow-sm bg-white">
+            <div className="min-w-[900px]">
+                {/* Cabecera */}
+                <div className={`grid ${gridCols} bg-gray-50 border-b border-gray-200 text-[11px] font-bold text-gray-500 uppercase`}>
+                    <div className="px-4 py-4 text-center">Tipo</div>
+                    <div className="px-4 py-4 text-center border-l border-gray-200">Referencia Ideal</div>
+                    <div className="px-4 py-4 text-center border-l border-gray-200">Valor Medido</div>
                     <div className="px-4 py-4 text-center border-l border-gray-200">Sensor</div>
-                    <div className="px-4 py-4 text-center bg-red-50 text-red-700 border-l border-red-100">Error</div>
-                    <div className="px-4 py-4 text-center border-l border-gray-200">Accion</div>
+                    <div className="px-4 py-4 text-center bg-red-50/50 text-red-600 border-l border-gray-200">Error Calc.</div>
+                    <div className="px-4 py-4 text-center border-l border-gray-200">---</div>
                 </div>
 
-                {/* Filas */}
-                <div className="divide-y divide-gray-200 bg-white w-full">
-                    {measurements.map((m: any, i: number) => (
-                        <div key={i} className="group hover:bg-teal-50/30 transition-colors w-full border-b border-gray-100">
-                            <div className={`flex flex-col lg:grid ${gridCols} lg:items-center w-full`}>
-
-                                {/* BADGE TIPO */}
-                                <div className="p-4 lg:px-2 lg:py-3 flex justify-center items-center">
+                {/* Cuerpo de la tabla */}
+                <div className="divide-y divide-gray-100">
+                    {measurements.map((m: any, i: number) => {
+                        const isTX = m.rowType === 'tx';
+                        
+                        return (
+                            <div key={i} className="grid ${gridCols} items-center group hover:bg-gray-50/50 transition-colors">
+                                
+                                {/* 1. TIPO */}
+                                <div className="p-3 flex justify-center">
                                     <RowTypeBadge type={m.rowType ?? 'mv'} />
                                 </div>
 
-                                {/* CAMPO 1: IDEAL */}
-                                <div className="p-4 lg:px-6 lg:py-3 border-l border-gray-50">
-                                    {m.rowType === 'tx'
-                                        ? <InputField label="Ideal mA" unit="mA" value={m.idealmA} onChange={(e: any) => handleChange(i, 'idealmA', e.target.value)} />
-                                        : <InputField label="mV ideal"  unit="mV" value={m.idealmV} onChange={(e: any) => handleChange(i, 'idealmV', e.target.value)} />
-                                    }
+                                {/* 2. IDEAL */}
+                                <div className="p-3 border-l border-gray-100">
+                                    <InputField 
+                                        label={isTX ? "Ideal mA" : "Ideal mV"} 
+                                        unit={isTX ? "mA" : "mV"} 
+                                        value={isTX ? m.idealmA : m.idealmV} 
+                                        onChange={(e: any) => handleChange(i, isTX ? 'idealmA' : 'idealmV', e.target.value)} 
+                                    />
                                 </div>
 
-                                {/* CAMPO 2: MEDIDO */}
-                                <div className="p-4 lg:px-6 lg:py-3 border-l border-gray-50">
-                                    {m.rowType === 'tx'
-                                        ? <InputField label="mA TX"     unit="mA" value={m.mATX}    onChange={(e: any) => handleChange(i, 'mATX',    e.target.value)} />
-                                        : <InputField label="mV sensor" unit="mV" value={m.sensormV} onChange={(e: any) => handleChange(i, 'sensormV', e.target.value)} />
-                                    }
+                                {/* 3. MEDIDO */}
+                                <div className="p-3 border-l border-gray-100">
+                                    <InputField 
+                                        label={isTX ? "Salida TX" : "Sensor mV"} 
+                                        unit={isTX ? "mA" : "mV"} 
+                                        value={isTX ? m.mATX : m.sensormV} 
+                                        onChange={(e: any) => handleChange(i, isTX ? 'mATX' : 'sensormV', e.target.value)} 
+                                    />
                                 </div>
 
-                                {/* TIPO SENSOR J/K */}
-                                <div className="p-4 lg:px-2 lg:py-3 flex flex-col items-center justify-center border-l border-gray-50">
-                                    <div className="flex gap-3 bg-gray-100 p-1.5 rounded-lg border border-gray-200 shadow-sm w-fit">
-                                        {['J', 'K'].map((type) => (
-                                            <label key={type} className="flex items-center gap-1.5 cursor-pointer">
-                                                <input
-                                                    type="radio"
-                                                    name={`sensor-${i}`}
-                                                    checked={m.sensorType === type}
-                                                    onChange={() => handleChange(i, 'sensorType', type)}
-                                                    className="w-3.5 h-3.5 accent-orange-600"
-                                                />
-                                                <span className={`text-xs font-bold ${m.sensorType === type ? 'text-orange-700' : 'text-gray-400'}`}>
+                                {/* 4. TIPO SENSOR (Solo visible para mV) */}
+                                <div className="p-3 border-l border-gray-100 flex justify-center">
+                                    {!isTX ? (
+                                        <div className="flex bg-gray-100 p-1 rounded-lg border border-gray-200">
+                                            {['J', 'K'].map((type) => (
+                                                <button
+                                                    key={type}
+                                                    onClick={() => handleChange(i, 'sensorType', type)}
+                                                    className={`px-3 py-1 text-[10px] font-black rounded-md transition-all ${
+                                                        m.sensorType === type 
+                                                        ? 'bg-white text-orange-600 shadow-sm' 
+                                                        : 'text-gray-400 hover:text-gray-600'
+                                                    }`}
+                                                >
                                                     {type}
-                                                </span>
-                                            </label>
-                                        ))}
-                                    </div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <span className="text-[10px] text-gray-300 font-medium italic">N/A (TX)</span>
+                                    )}
                                 </div>
 
-                                {/* ERROR */}
-                                <div className="p-4 lg:px-6 lg:py-3 lg:bg-red-50/20 h-full flex items-center border-l border-red-50">
-                                    {m.rowType === 'tx'
-                                        ? <InputField label="Err mA" unit="mA" value={m.errormA} isError readOnly />
-                                        : <InputField label="Error mV" unit="mV" value={m.errormV} isError readOnly />
-                                    }
+                                {/* 5. ERROR (Solo Lectura) */}
+                                <div className="p-3 border-l border-gray-100 bg-red-50/10">
+                                    <InputField 
+                                        label="Error" 
+                                        unit={isTX ? "mA" : "mV"} 
+                                        value={isTX ? m.errormA : m.errormV} 
+                                        isError 
+                                        readOnly 
+                                    />
                                 </div>
 
-                                {/* ACCIÓN */}
-                                <div className="p-4 lg:py-3 flex justify-center items-center border-l border-gray-50">
+                                {/* 6. ACCION */}
+                                <div className="p-3 border-l border-gray-100 flex justify-center">
                                     <button
                                         onClick={() => onMeasurementsChange(measurements.filter((_: any, idx: any) => idx !== i))}
-                                        className="text-red-400 hover:text-red-600 hover:bg-red-50 p-2 rounded-full transition-all"
+                                        className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all"
+                                        title="Eliminar fila"
                                     >
-                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                         </svg>
                                     </button>
                                 </div>
-
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             </div>
         </div>
