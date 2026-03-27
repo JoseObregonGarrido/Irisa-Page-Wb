@@ -75,9 +75,22 @@ const RTDChart = forwardRef<any, RTDChartProps>(({
             idealmA:       m.idealmA ? parseFloat(m.idealmA) : null,
             maTransmitter: m.maTransmitter ? parseFloat(m.maTransmitter) : null,
         }))
-        // Solo incluimos puntos donde la temperatura sea un numero valido y no cero (a menos que sea intencional)
+        // Solo incluimos puntos donde la temperatura sea un numero valido
         .filter(d => d.temperatura !== null && !isNaN(d.temperatura))
         .sort((a, b) => (a.temperatura || 0) - (b.temperatura || 0));
+
+    // --- CÁLCULO DINÁMICO DEL RANGO Y PARA OHMS ---
+    const ohmValues = processedData
+        .flatMap(d => [d.idealOhm, d.sensorOhm])
+        .filter((v): v is number => v !== null && !isNaN(v));
+
+    const ohmMin = ohmValues.length > 0 ? Math.min(...ohmValues) : 0;
+    const ohmMax = ohmValues.length > 0 ? Math.max(...ohmValues) : 100;
+    const ohmRange = ohmMax - ohmMin;
+    
+    // Agregar margen del 5% arriba y abajo
+    const ohmDomainMin = Math.floor(ohmMin - ohmRange * 0.05);
+    const ohmDomainMax = Math.ceil(ohmMax + ohmRange * 0.05);
 
     useImperativeHandle(ref, () => ({
         captureAllCharts: async () => {
@@ -111,12 +124,12 @@ const RTDChart = forwardRef<any, RTDChartProps>(({
                                     <XAxis 
                                         dataKey="temperatura" 
                                         type="number"
-                                        domain={['dataMin', 'dataMax']} // Ajusta el inicio al primer valor real (ej. 100)
+                                        domain={['dataMin', 'dataMax']}
                                         tick={{fontSize: 11}} 
                                         label={{ value: 'Temperatura (UE)', position: 'bottom', offset: 20 }} 
                                     />
                                     <YAxis 
-                                        domain={['auto', 'auto']} 
+                                        domain={[ohmDomainMin, ohmDomainMax]}
                                         tick={{fontSize: 11}} 
                                         label={{ value: 'Resistencia (Ohm)', angle: -90, position: 'insideLeft' }} 
                                     />
@@ -173,5 +186,7 @@ const RTDChart = forwardRef<any, RTDChartProps>(({
         </div>
     );
 });
+
+RTDChart.displayName = 'RTDChart';
 
 export default RTDChart;
