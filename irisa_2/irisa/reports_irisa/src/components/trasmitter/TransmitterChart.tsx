@@ -83,7 +83,6 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
 
         if (sorted.length === 0) return { processedData: [], metrics: { zeroErr: 0, spanErr: 0, eMax: 0, xMax: 0 } };
 
-        // Calculos de error basados en los 4-20mA ideales
         const zeroErr = sorted[0].yTransmitter - 4;
         const spanErr = sorted[sorted.length - 1].yTransmitter - 20;
 
@@ -127,7 +126,7 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
             <div className="p-6 bg-white">
                 <div className="h-[520px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={processedData} margin={{ top: 40, right: 30, left: 20, bottom: 60 }}>
+                        <LineChart data={processedData} margin={{ top: 60, right: 30, left: 20, bottom: 60 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                             
                             <XAxis 
@@ -171,7 +170,7 @@ const TransmitterChart = forwardRef<any, TransmitterChartProps>(({ measurements,
                                 name="mA Patron" 
                                 strokeWidth={2} 
                                 strokeDasharray="5 5"
-                                dot={false}
+                                dot={makeDot('#3b82f6', 'mA Pat', -25)}
                                 isAnimationActive={false} 
                             />
 
